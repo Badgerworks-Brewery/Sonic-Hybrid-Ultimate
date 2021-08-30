@@ -48,9 +48,9 @@ This guide is useful if you previously played Sonic Hybrid but you want to perfo
 
 * Special stages from the Giant Ring in Sonic the Hedgehog 1 are not working.
 * Loops in Sonic the Hedgehog 1 are currently broken.
-* Marble Zone is broken for some unknown reason.
 * Scrap Brain Zone 3 is broken.
 * The main menu of RSDK will report the wrong stage names.
+* The title card for Sonic the Hedgehog 1 levels will not display the act number correctly.
 
 ## Resources
 
