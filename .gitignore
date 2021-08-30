@@ -1,0 +1,19 @@
+# C# stuff
+bin/
+obj/
+.vs/
+Debug/
+Release/
+launchSettings.json
+
+# Copyrighted stuff
+rsdk-source-data/*.rsdk
+rsdk-source-data/sonic*/
+sonic-hybrid/Data/
+sonic-hybrid/Scripts/
+
+# Unwanted generated stuff
+sonic-hybrid/*Data.bin
+sonic-hybrid/Settings.*
+
+# Include custom content

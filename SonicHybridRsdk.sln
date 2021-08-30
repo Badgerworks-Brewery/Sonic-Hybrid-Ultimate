@@ -1,0 +1,40 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30114.105
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SonicHybridRsdk.UnpackScd", "SonicHybridRsdk.UnpackScd\SonicHybridRsdk.UnpackScd.csproj", "{77D7DECF-309C-46B0-9F1D-30BB1F40D757}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SonicHybridRsdk.UnpackS12", "SonicHybridRsdk.UnpackS12\SonicHybridRsdk.UnpackS12.csproj", "{73BBBBDB-BBD0-46FB-8FA3-D2EC93DDBD05}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SonicHybridRsdk.Generator", "SonicHybridRsdk.Generator\SonicHybridRsdk.Generator.csproj", "{432A7C16-6ECC-4E42-807A-1C2B173A1EEC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SonicHybridRsdk.Build", "SonicHybridRsdk.Build\SonicHybridRsdk.Build.csproj", "{58350A66-3651-41D1-A2DE-190AA422C15C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{77D7DECF-309C-46B0-9F1D-30BB1F40D757}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{77D7DECF-309C-46B0-9F1D-30BB1F40D757}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{77D7DECF-309C-46B0-9F1D-30BB1F40D757}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{77D7DECF-309C-46B0-9F1D-30BB1F40D757}.Release|Any CPU.Build.0 = Release|Any CPU
+		{73BBBBDB-BBD0-46FB-8FA3-D2EC93DDBD05}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{73BBBBDB-BBD0-46FB-8FA3-D2EC93DDBD05}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{73BBBBDB-BBD0-46FB-8FA3-D2EC93DDBD05}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{73BBBBDB-BBD0-46FB-8FA3-D2EC93DDBD05}.Release|Any CPU.Build.0 = Release|Any CPU
+		{432A7C16-6ECC-4E42-807A-1C2B173A1EEC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{432A7C16-6ECC-4E42-807A-1C2B173A1EEC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{432A7C16-6ECC-4E42-807A-1C2B173A1EEC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{432A7C16-6ECC-4E42-807A-1C2B173A1EEC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{58350A66-3651-41D1-A2DE-190AA422C15C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{58350A66-3651-41D1-A2DE-190AA422C15C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{58350A66-3651-41D1-A2DE-190AA422C15C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{58350A66-3651-41D1-A2DE-190AA422C15C}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
