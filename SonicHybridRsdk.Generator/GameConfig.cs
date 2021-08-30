@@ -7,13 +7,34 @@ using Xe.BinaryMapper;
 
 namespace SonicHybridRsdk.Generator
 {
+    record GameObject
+    {
+        public string Name { get; set; }
+        public string Path { get; set; }
+
+        public static List<GameObject> Read(Stream stream) =>
+            Enumerable.Range(0, stream.ReadByte())
+                .Select(x => GameConfig.ReadString(stream))
+                .ToList()
+                .Select(x => new GameObject
+                {
+                    Name = x,
+                    Path = GameConfig.ReadString(stream)
+                })
+                .ToList();
+
+        public static void Write(Stream stream, List<GameObject> objects)
+        {
+            stream.WriteByte(Convert.ToByte(objects.Count));
+            foreach (var item in objects)
+                GameConfig.WriteString(stream, item.Name);
+            foreach (var item in objects)
+                GameConfig.WriteString(stream, item.Path);
+        }
+    }
+
     record GameConfig
     {
-        public record GameObject
-        {
-            public string Name { get; set; }
-            public string Path { get; set; }
-        }
 
         public record Variable
         {
@@ -56,9 +77,9 @@ namespace SonicHybridRsdk.Generator
         public static GameConfig Read(Stream stream)
         {
             var gameConfig = Mapper.ReadObject<GameConfig>(stream);
-            gameConfig.GameObjects = ReadGameObjects(stream);
+            gameConfig.GameObjects = GameObject.Read(stream);
             gameConfig.Variables = ReadItems<Variable>(stream);
-            gameConfig.SoundEffects = ReadGameObjects(stream);
+            gameConfig.SoundEffects = GameObject.Read(stream);
             gameConfig.Players = Enumerable.Range(0, stream.ReadByte())
                 .Select(_ => ReadString(stream))
                 .ToList();
@@ -73,9 +94,9 @@ namespace SonicHybridRsdk.Generator
         public void Write(Stream stream)
         {
             Mapper.WriteObject(stream, this);
-            WriteGameObjects(stream, GameObjects);
+            GameObject.Write(stream, GameObjects);
             WriteItems(stream, Variables);
-            WriteGameObjects(stream, SoundEffects);
+            GameObject.Write(stream, SoundEffects);
 
             stream.WriteByte(Convert.ToByte(Players.Count));
             foreach (var item in Players)
@@ -85,26 +106,6 @@ namespace SonicHybridRsdk.Generator
             WriteItems(stream, StagesRegular);
             WriteItems(stream, StagesSpecial);
             WriteItems(stream, StagesBonus);
-        }
-
-        private static List<GameObject> ReadGameObjects(Stream stream) =>
-            Enumerable.Range(0, stream.ReadByte())
-                .Select(x => ReadString(stream))
-                .ToList()
-                .Select(x => new GameObject
-                {
-                    Name = x,
-                    Path = ReadString(stream)
-                })
-                .ToList();
-
-        private static void WriteGameObjects(Stream stream, List<GameObject> objects)
-        {
-            stream.WriteByte(Convert.ToByte(objects.Count));
-            foreach (var item in objects)
-                WriteString(stream, item.Name);
-            foreach (var item in objects)
-                WriteString(stream, item.Path);
         }
 
         private static List<T> ReadItems<T>(Stream stream) where T : class =>
@@ -119,14 +120,14 @@ namespace SonicHybridRsdk.Generator
                 Mapper.WriteObject<T>(stream, item);
         }
 
-        private static string ReadString(Stream stream)
+        public static string ReadString(Stream stream)
         {
             var data = new byte[stream.ReadByte()];
             stream.Read(data);
             return Encoding.UTF8.GetString(data);
         }
 
-        private static void WriteString(Stream stream, string str)
+        public static void WriteString(Stream stream, string str)
         {
             if (str.Length >= byte.MaxValue)
                 str = str[..byte.MaxValue];

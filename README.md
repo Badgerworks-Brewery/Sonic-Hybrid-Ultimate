@@ -46,7 +46,9 @@ This guide is useful if you previously played Sonic Hybrid but you want to perfo
 
 ## Known bugs
 
-* Special stages from the Giant Ring in Sonic the Hedgehog 1 are not working.
+* Special Stages from the Giant Ring in Sonic the Hedgehog 1 are not working.
+* Giant Ring graphics from Sonic 1 is currently broken.
+* Sonic 1 Special Stages are working from the Stage Select, but the graphics is corrupted.
 * Loops in Sonic the Hedgehog 1 are currently broken.
 * The main menu of RSDK will report the wrong stage names.
 * The title card for Sonic the Hedgehog 1 levels will not display the act number correctly.

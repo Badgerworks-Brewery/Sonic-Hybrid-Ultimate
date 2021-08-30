@@ -13,8 +13,9 @@ namespace SonicHybridRsdk.Generator
             public string DstPath { get; init; }
             public GameConfig SrcConfig { get; init; }
             public GameConfig DstConfig { get; init; }
-            public Dictionary<int, GameConfig.GameObject> SrcObjects { get; init; }
+            public Dictionary<int, GameObject> SrcObjects { get; init; }
             public Dictionary<string, int> DstObjects { get; init; }
+            public Dictionary<string, string> Replacements { get; init; }
         }
 
         static void Main(string[] args) => Generate(args[0], args[1]);
@@ -62,7 +63,7 @@ namespace SonicHybridRsdk.Generator
                 StagesSpecial = new List<GameConfig.Stage>(),
             };
 
-            var hybridObjects = new Dictionary<string, GameConfig.GameObject>();
+            var hybridObjects = new Dictionary<string, GameObject>();
             foreach (var obj in sonic2Config.GameObjects)
                 hybridObjects.Add(obj.Name, obj);
             foreach (var obj in sonic1Config.GameObjects)
@@ -83,6 +84,13 @@ namespace SonicHybridRsdk.Generator
                 DstConfig = sonicHybridConfig,
                 SrcObjects = sonic1Config.GameObjects.Select((x, i) => (Id: i, Obj: x)).ToDictionary(x => x.Id, x => x.Obj),
                 DstObjects = dicHybridObjects,
+                Replacements = new()
+                {
+                    ["Special/PlayerObject.txt"] = "Special/PlayerObject1.txt",
+                    ["Special/SpecialSetup.txt"] = "Special/SpecialSetup1.txt",
+                    ["Special/SpecialFinish.txt"] = "Special/SpecialFinish1.txt",
+                    ["Special/ChaosEmerald.txt"] = "Special/ChaosEmerald1.txt",
+                }
             };
 
             var context2 = new Context
@@ -93,6 +101,13 @@ namespace SonicHybridRsdk.Generator
                 DstConfig = sonicHybridConfig,
                 SrcObjects = sonic2Config.GameObjects.Select((x, i) => (Id: i, Obj: x)).ToDictionary(x => x.Id, x => x.Obj),
                 DstObjects = dicHybridObjects,
+                Replacements = new()
+                {
+                    ["Special/PlayerObject.txt"] = "Special/PlayerObject2.txt",
+                    ["Special/SpecialSetup.txt"] = "Special/SpecialSetup2.txt",
+                    ["Special/SpecialFinish.txt"] = "Special/SpecialFinish2.txt",
+                    ["Special/ChaosEmerald.txt"] = "Special/ChaosEmerald2.txt",
+                }
             };
 
             var variables = new Dictionary<string, int>();
@@ -211,12 +226,36 @@ namespace SonicHybridRsdk.Generator
             File.Copy(Path.Combine(srcPath, "128x128Tiles.bin"), Path.Combine(dstPath, "128x128Tiles.bin"), true);
             File.Copy(Path.Combine(srcPath, "Backgrounds.bin"), Path.Combine(dstPath, "Backgrounds.bin"), true);
             File.Copy(Path.Combine(srcPath, "CollisionMasks.bin"), Path.Combine(dstPath, "CollisionMasks.bin"), true);
-            File.Copy(Path.Combine(srcPath, "StageConfig.bin"), Path.Combine(dstPath, "StageConfig.bin"), true);
+            PatchStageConfig(context,
+                Path.Combine(srcPath, "StageConfig.bin"),
+                Path.Combine(dstPath, "StageConfig.bin"));
             PatchStage(context,
                 Path.Combine(srcPath, $"Act{act}.bin"),
                 Path.Combine(dstPath, $"Act{act}.bin"));
 
             GetStages(context.DstConfig, stageType).Add(dstStage);
+        }
+
+        private static void PatchStageConfig(Context context, string srcFile, string dstFile)
+        {
+            var src = OpenRead(srcFile, StageConfig.Read);
+            PatchGameObjects(src.Sfx, context.Replacements);
+            PatchGameObjects(src.Objects, context.Replacements);
+            Create(dstFile, src.Write);
+        }
+
+        private static void PatchGameObjects(List<GameObject> gameObjects, Dictionary<string, string> replacements)
+        {
+            if ((replacements?.Count ?? 0) == 0)
+                return;
+
+            foreach (var item in gameObjects)
+            {
+                if (replacements.TryGetValue(item.Name, out var newName))
+                    item.Name = newName;
+                if (replacements.TryGetValue(item.Path, out var newPath))
+                    item.Path = newPath;
+            }
         }
 
         private static void PatchStage(Context context, string srcFile, string dstFile)
