@@ -10,7 +10,6 @@ launchSettings.json
 rsdk-source-data/*.rsdk
 rsdk-source-data/sonic*/
 sonic-hybrid/Data/
-sonic-hybrid/Scripts/
 
 # Unwanted generated stuff
 sonic-hybrid/*Data.bin
