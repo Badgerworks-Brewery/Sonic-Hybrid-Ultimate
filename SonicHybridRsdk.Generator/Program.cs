@@ -136,7 +136,7 @@ namespace SonicHybridRsdk.Generator
             UseStage(context1, StageType.StagesRegular, "STARLIGHT ZONE", 3, "Zone05", "ZoneSZ");
             UseStage(context1, StageType.StagesRegular, "SCRAP BRAIN ZONE", 1, "Zone06", "ZoneSBZ");
             UseStage(context1, StageType.StagesRegular, "SCRAP BRAIN ZONE", 2, "Zone06", "ZoneSBZ");
-            UseStage(context1, StageType.StagesRegular, "SCRAP BRAIN ZONE", 4, "Zone04", "ZoneSBZ");
+            UseStage(context1, StageType.StagesRegular, "SCRAP BRAIN ZONE", 4, "Zone04", "ZoneSLZ");
             UseStage(context1, StageType.StagesRegular, "FINAL ZONE", 5, "Zone06", "ZoneSBZ");
 
             UseStage(context2, StageType.StagesRegular, "EMERALD HILL ZONE", 1, "Zone01", "ZoneEHZ");
