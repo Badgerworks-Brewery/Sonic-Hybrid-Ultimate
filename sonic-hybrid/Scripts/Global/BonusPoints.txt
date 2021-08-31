@@ -46,7 +46,7 @@ end event
 
 
 event ObjectStartup
-	LoadSpriteSheet("Global/Display.gif")
+	LoadSpriteSheet("Global/Display2.gif")
 	foreach (TypeName[Bonus Points], arrayPos0, ALL_ENTITIES)
 		object[arrayPos0].propertyValue &= 3
 		switch object[arrayPos0].propertyValue

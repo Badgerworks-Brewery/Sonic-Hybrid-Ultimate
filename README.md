@@ -50,7 +50,6 @@ This guide is useful if you previously played Sonic Hybrid but you want to perfo
 * The main menu of RSDK will report the wrong stage names.
 * The title card for Sonic the Hedgehog 1 levels will not display the act number correctly.
 * The Giant Ring from Sonic the Hedgehog 1 will teleport to the Sonic the Hedgehog 2 special stages.
-* The graphics for the bonus points at the end of the stage is broken.
 
 ## Resources
 

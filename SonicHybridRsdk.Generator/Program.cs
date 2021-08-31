@@ -43,6 +43,7 @@ namespace SonicHybridRsdk.Generator
             foreach (var (SourcePath, DestinationPath) in new (string, string)[]
             {
                 ("Sprites/Global/Items2.gif", "Sprites/Global/Items4.gif"),
+                ("Sprites/Global/Display.gif", "Sprites/Global/Display2.gif"),
             })
                 File.Copy(
                     Path.Combine(sonic1Path, SourcePath),
