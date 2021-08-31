@@ -37,6 +37,21 @@ event ObjectMain
 				end if
 			end if
 		end if
+
+		// If the stage is from Sonic the Hedgehog 1 then use a different switch mechanic
+		// This is a horrible hack, but TBH it is the only one working for me, so ¯\_(ツ)_/¯
+		if stage.listPos < 19 // 6 zones * 3 acts + FZ
+			if object[currentPlayer].gravity == GRAVITY_GROUND
+				BoxCollisionTest(C_TOUCH, object.entityPos, -12, object.value0, 12, object.value1, currentPlayer, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO)
+				if checkResult == 1
+					if object[currentPlayer].speed > 0
+						object[currentPlayer].collisionPlane = PATH_B
+					else
+						object[currentPlayer].collisionPlane = PATH_A
+					end if
+				end if
+			end if
+		end if
 	next
 end event
 
