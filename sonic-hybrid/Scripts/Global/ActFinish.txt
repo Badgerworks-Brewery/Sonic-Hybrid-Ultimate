@@ -186,69 +186,58 @@ event ObjectMain
 		end if
 		break
 	case 5
-		object.value0 += 4
-		SetScreenFade(0, 0, 0, object.value0)
-		if object.value0 == 384
-			fadeColor = 0
-			object.value0 = 0
-			starPostID = 0
-			object.direction = FLIP_NONE
-			stage.listPos++
-			if stage.listPos > 20
-				stage.listPos = 12
-				if options.stageSelectFlag == 0
-					if stage.debugMode == 0
-						if options.gameMode == 0
-							ReadSaveRAM()
-							saveRAM[46] = 1
-							WriteSaveRAM()
-						else
-							saveRAM[46] = 1
+		if object[0].type == TypeName[Blank Object]
+			object.value0 += 8
+			SetScreenFade(208, 255, 224, object.value0)
+			if object.value0 == 384
+				fadeColor = 0
+				object.value0 = 0
+				starPostID = 0
+				object.direction = FLIP_NONE
+				stage.listPos++
+				if stage.listPos > 20
+					stage.listPos = 12
+					if options.stageSelectFlag == 0
+						if stage.debugMode == 0
+							if options.gameMode == 0
+								ReadSaveRAM()
+								saveRAM[46] = 1
+								WriteSaveRAM()
+							else
+								saveRAM[46] = 1
+							end if
 						end if
 					end if
 				end if
-			end if
-			if options.gameMode == 1
-				arrayPos1 = options.saveSlot
-				arrayPos1 <<= 3
-				if stage.player2Enabled == 1
-					saveRAM[arrayPos1] = 3
-				else
-					saveRAM[arrayPos1] = stage.playerListPos
+				if options.gameMode == 1
+					arrayPos1 = options.saveSlot
+					arrayPos1 <<= 3
+					if stage.player2Enabled == 1
+						saveRAM[arrayPos1] = 3
+					else
+						saveRAM[arrayPos1] = stage.playerListPos
+					end if
+					arrayPos1++
+					saveRAM[arrayPos1] = player.lives
+					arrayPos1++
+					saveRAM[arrayPos1] = player.score
+					arrayPos1++
+					saveRAM[arrayPos1] = player.scoreBonus
+					arrayPos1++
+					temp0 = stage.listPos
+					temp0++
+					if temp0 > saveRAM[arrayPos1]
+						saveRAM[arrayPos1] = temp0
+					end if
+					arrayPos1++
+					saveRAM[arrayPos1] = specialStage.emeralds
+					arrayPos1++
+					saveRAM[arrayPos1] = specialStage.listPos
+					WriteSaveRAM()
 				end if
-				arrayPos1++
-				saveRAM[arrayPos1] = player.lives
-				arrayPos1++
-				saveRAM[arrayPos1] = player.score
-				arrayPos1++
-				saveRAM[arrayPos1] = player.scoreBonus
-				arrayPos1++
-				temp0 = stage.listPos
-				temp0++
-				if temp0 > saveRAM[arrayPos1]
-					saveRAM[arrayPos1] = temp0
-				end if
-				arrayPos1++
-				saveRAM[arrayPos1] = specialStage.emeralds
-				arrayPos1++
-				saveRAM[arrayPos1] = specialStage.listPos
-				WriteSaveRAM()
-			end if
-			if options.gameMode == 2
-				timeAttack.result = stage.seconds
-				timeAttack.result *= 100
-				temp0 = stage.minutes
-				temp0 *= 0x1770
-				timeAttack.result += temp0
-				timeAttack.result += stage.milliSeconds
-				stage.listPos--
-				if stage.activeList == REGULAR_STAGE
-					CallNativeFunction2(SetLeaderboard, stage.listPos, timeAttack.result)
-				else
-					CallNativeFunction2(SetLeaderboard, 21, timeAttack.result)
-				end if
-				engine.state = 8
-			else
+				specialStage.nextZone = stage.listPos
+				stage.listPos = specialStage.listPos
+				stage.activeList = SPECIAL_STAGE
 				temp0 = engine.trialMode
 				if stage.listPos >= stage.listSize
 					temp0 = 1
@@ -259,6 +248,83 @@ event ObjectMain
 					stage.activeList = PRESENTATION_STAGE
 					stage.listPos = 0
 					LoadStage()
+				end if
+			end if
+		else
+			object.value0 += 4
+			SetScreenFade(0, 0, 0, object.value0)
+			if object.value0 == 384
+				fadeColor = 0
+				object.value0 = 0
+				starPostID = 0
+				object.direction = FLIP_NONE
+				stage.listPos++
+				if stage.listPos > 20
+					stage.listPos = 12
+					if options.stageSelectFlag == 0
+						if stage.debugMode == 0
+							if options.gameMode == 0
+								ReadSaveRAM()
+								saveRAM[46] = 1
+								WriteSaveRAM()
+							else
+								saveRAM[46] = 1
+							end if
+						end if
+					end if
+				end if
+				if options.gameMode == 1
+					arrayPos1 = options.saveSlot
+					arrayPos1 <<= 3
+					if stage.player2Enabled == 1
+						saveRAM[arrayPos1] = 3
+					else
+						saveRAM[arrayPos1] = stage.playerListPos
+					end if
+					arrayPos1++
+					saveRAM[arrayPos1] = player.lives
+					arrayPos1++
+					saveRAM[arrayPos1] = player.score
+					arrayPos1++
+					saveRAM[arrayPos1] = player.scoreBonus
+					arrayPos1++
+					temp0 = stage.listPos
+					temp0++
+					if temp0 > saveRAM[arrayPos1]
+						saveRAM[arrayPos1] = temp0
+					end if
+					arrayPos1++
+					saveRAM[arrayPos1] = specialStage.emeralds
+					arrayPos1++
+					saveRAM[arrayPos1] = specialStage.listPos
+					WriteSaveRAM()
+				end if
+				if options.gameMode == 2
+					timeAttack.result = stage.seconds
+					timeAttack.result *= 100
+					temp0 = stage.minutes
+					temp0 *= 0x1770
+					timeAttack.result += temp0
+					timeAttack.result += stage.milliSeconds
+					stage.listPos--
+					if stage.activeList == REGULAR_STAGE
+						CallNativeFunction2(SetLeaderboard, stage.listPos, timeAttack.result)
+					else
+						CallNativeFunction2(SetLeaderboard, 21, timeAttack.result)
+					end if
+					engine.state = 8
+				else
+					temp0 = engine.trialMode
+					if stage.listPos >= stage.listSize
+						temp0 = 1
+					end if
+					if temp0 == 0
+						LoadStage()
+					else
+						stage.activeList = PRESENTATION_STAGE
+						stage.listPos = 0
+						LoadStage()
+					end if
 				end if
 			end if
 		end if
