@@ -28,7 +28,7 @@ This guide is useful if you never downloaded the project or if you want to start
 
 ## Perform an update
 
-This guide is useful if you previously played Sonic Hybrid but you want to perform an update.
+This guide is useful if you previously played Sonic Hybrid but you want to perform an update. Please look at the [commit list](https://github.com/Xeeynamo/sonic-hybrid-rsdk/commits/main) to know more info about the changelog through each update.
 
 1. [Download](https://github.com/Xeeynamo/sonic-hybrid-rsdk/archive/refs/heads/main.zip) the latest release
 
