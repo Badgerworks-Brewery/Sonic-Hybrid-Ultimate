@@ -110,12 +110,77 @@ event ObjectMain
 					if stage.player2Enabled == 1
 						SetBit(object.value3, 1, 1)
 					end if
+					if object[0].type == TypeName[Blank Object]
+						object.state = 3
+						if object.propertyValue < 3
+							PlayMusic(1)
+						else
+							if object.outOfBounds == 0
+								PlayMusic(1)
+							end if
+						end if
+						object[30].type = TypeName[Act Finish]
+						object[30].drawOrder = 6
+						object[30].priority = PRIORITY_ACTIVE
+						object[0].controlMode = -1
+						object[0].interaction = 0
+						if stage.player2Enabled == 1
+							object[1].interaction = 0
+							object[1].controlMode = -1
+							object[1].up = 0
+							object[1].down = 0
+							object[1].left = 0
+							object[1].jumpPress = 0
+							object[1].jumpHold = 0
+						end if
+					else
+						object[0].controlMode = -1
+						object[0].interaction = 0
+						object[0].up = 0
+						object[0].down = 0
+						object[0].left = 0
+						object[0].jumpPress = 0
+						object[0].jumpHold = 0
+						if stage.player2Enabled == 1
+							object[1].controlMode = -1
+							object[1].interaction = 0
+							object[1].up = 0
+							object[1].down = 0
+							object[1].left = 0
+							object[1].jumpPress = 0
+							object[1].jumpHold = 0
+						end if
+					end if
 					object.state = 2
 				end if
 			end if
 		end if
 		break
 	case 2
+		if object[0].type == TypeName[Blank Object]
+			object.state = 3
+			if object.propertyValue < 3
+				PlayMusic(1)
+			else
+				if object.outOfBounds == 0
+					PlayMusic(1)
+				end if
+			end if
+			object[30].type = TypeName[Act Finish]
+			object[30].drawOrder = 6
+			object[30].priority = PRIORITY_ACTIVE
+		end if
+		if object[0].controlMode == -1
+			object[0].right = 1
+		end if
+		if stage.player2Enabled == 1
+			object[1].controlMode = object[0].controlMode
+			if object[1].controlMode == -1
+				if object[1].left == 0
+					object[1].right = 1
+				end if
+			end if
+		end if
 		temp0 = screen.xcenter
 		temp0 <<= 16
 		temp0 += object.xpos
