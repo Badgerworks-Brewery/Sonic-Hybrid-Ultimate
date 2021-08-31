@@ -161,8 +161,8 @@ namespace SonicHybridRsdk.Generator
             UseStage(context1, StageType.StagesRegular, "STARLIGHT ZONE", 3, "Zone05", "ZoneSZ");
             UseStage(context1, StageType.StagesRegular, "SCRAP BRAIN ZONE", 1, "Zone06", "ZoneSBZ");
             UseStage(context1, StageType.StagesRegular, "SCRAP BRAIN ZONE", 2, "Zone06", "ZoneSBZ");
-            UseStage(context1, StageType.StagesRegular, "SCRAP BRAIN ZONE", 4, "Zone04", "ZoneSLZ");
-            UseStage(context1, StageType.StagesRegular, "FINAL ZONE", 5, "Zone06", "ZoneSBZ");
+            UseStage(context1, StageType.StagesRegular, "SCRAP BRAIN ZONE", 4, "Zone04", "ZoneSLZ", visualActNumber: 3);
+            UseStage(context1, StageType.StagesRegular, "FINAL ZONE", 5, "Zone06", "ZoneSBZ", visualActNumber: 0);
 
             UseStage(context2, StageType.StagesRegular, "EMERALD HILL ZONE", 1, "Zone01", "ZoneEHZ");
             UseStage(context2, StageType.StagesRegular, "EMERALD HILL ZONE", 2, "Zone01", "ZoneEHZ");
@@ -182,9 +182,9 @@ namespace SonicHybridRsdk.Generator
             UseStage(context2, StageType.StagesRegular, "METROPOLIS ZONE", 1, "Zone09", "ZoneMPZ");
             UseStage(context2, StageType.StagesRegular, "METROPOLIS ZONE", 2, "Zone09", "ZoneMPZ");
             UseStage(context2, StageType.StagesRegular, "METROPOLIS ZONE", 3, "Zone09", "ZoneMPZ");
-            UseStage(context2, StageType.StagesRegular, "SKY CHASE ZONE", 1, "Zone10", "ZoneSCZ");
-            UseStage(context2, StageType.StagesRegular, "WING FORTRESS ZONE", 1, "Zone11", "ZoneWFZ");
-            UseStage(context2, StageType.StagesRegular, "DEATH EGG ZONE", 1, "Zone12", "ZoneDEZ");
+            UseStage(context2, StageType.StagesRegular, "SKY CHASE ZONE", 1, "Zone10", "ZoneSCZ", visualActNumber: 0);
+            UseStage(context2, StageType.StagesRegular, "WING FORTRESS ZONE", 1, "Zone11", "ZoneWFZ", visualActNumber: 0);
+            UseStage(context2, StageType.StagesRegular, "DEATH EGG ZONE", 1, "Zone12", "ZoneDEZ", visualActNumber: 0);
 
             for (var i = 1; i <= 8; i++)
                 UseStage(context2, StageType.StagesSpecial, "SPECIAL STAGE", i, "Special", "Special2");
@@ -205,9 +205,10 @@ namespace SonicHybridRsdk.Generator
             Context context,
             StageType stageType,
             string name,
-            int act,
+            int actNumber,
             string srcFolder,
-            string dstFolder)
+            string dstFolder,
+            int visualActNumber = -1)
         {
             List<GameConfig.Stage> GetStages(GameConfig config, StageType stageType) => stageType switch
             {
@@ -218,12 +219,14 @@ namespace SonicHybridRsdk.Generator
             };
 
             var stages = GetStages(context.SrcConfig, stageType);
+            if (visualActNumber < 0)
+                visualActNumber = actNumber;
 
-            var srcStage = stages.First(x => x.Act == act.ToString() && x.Path == srcFolder);
+            var srcStage = stages.First(x => x.Act == actNumber.ToString() && x.Path == srcFolder);
             var dstStage = new GameConfig.Stage
             {
-                Name = $"{name} {act}",
-                Act = act.ToString(),
+                Name = visualActNumber > 0 ? $"{name} {visualActNumber}" : name,
+                Act = actNumber.ToString(),
                 Mode = srcStage.Mode,
                 Path = dstFolder,
             };
@@ -240,8 +243,9 @@ namespace SonicHybridRsdk.Generator
                 Path.Combine(srcPath, "StageConfig.bin"),
                 Path.Combine(dstPath, "StageConfig.bin"));
             PatchStage(context,
-                Path.Combine(srcPath, $"Act{act}.bin"),
-                Path.Combine(dstPath, $"Act{act}.bin"));
+                Path.Combine(srcPath, $"Act{actNumber}.bin"),
+                Path.Combine(dstPath, $"Act{actNumber}.bin"),
+                visualActNumber);
 
             GetStages(context.DstConfig, stageType).Add(dstStage);
         }
@@ -268,7 +272,7 @@ namespace SonicHybridRsdk.Generator
             }
         }
 
-        private static void PatchStage(Context context, string srcFile, string dstFile)
+        private static void PatchStage(Context context, string srcFile, string dstFile, int actNumber)
         {
             var act = OpenRead(srcFile, StageAct.Read);
             for (int i = 0; i < act.Entities.Count; i++)
@@ -282,6 +286,13 @@ namespace SonicHybridRsdk.Generator
                     var srcObj = context.SrcObjects[id - 1].Name;
                     var dstObj = context.DstObjects[srcObj] + 1;
                     entity.Type = (byte)dstObj;
+
+                    switch (srcObj)
+                    {
+                        case "TitleCard":
+                            entity.PropertyValue = (byte)(actNumber > 0 ? actNumber : 4);
+                            break;
+                    }
                 }
                 else
                 {

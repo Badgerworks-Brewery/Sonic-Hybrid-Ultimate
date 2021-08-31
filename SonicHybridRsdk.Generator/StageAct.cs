@@ -31,7 +31,7 @@ namespace SonicHybridRsdk.Generator
 
         [Data] public ushort AttributeFlags { get; set; }
         [Data] public byte Type { get; set; }
-        [Data] public byte Subtype { get; set; }
+        [Data] public byte PropertyValue { get; set; }
         [Data] public int X { get; set; }
         [Data] public int Y { get; set; }
         public object[] Attributes { get; set; }
