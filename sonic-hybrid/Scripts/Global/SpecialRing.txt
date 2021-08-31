@@ -97,7 +97,7 @@ end event
 
 
 event ObjectStartup
-	LoadSpriteSheet("Global/Items2.gif")
+	LoadSpriteSheet("Global/Items4.gif")
 	SpriteFrame(-32, -32, 64, 64, 83, 1)
 	SpriteFrame(-28, -32, 56, 64, 199, 131)
 	SpriteFrame(-24, -32, 48, 64, 148, 1)
@@ -136,6 +136,6 @@ event RSDKDraw
 end event
 
 event RSDKLoad
-	LoadSpriteSheet("Global/Items2.gif")
+	LoadSpriteSheet("Global/Items4.gif")
 	SpriteFrame(-32, -32, 64, 64, 83, 1)
 end event

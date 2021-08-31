@@ -26,19 +26,28 @@ namespace SonicHybridRsdk.Generator
             var sonic2Path = Path.Combine(sourceDataRsdk, "sonic2/Data");
             var sonicHybridPath = Path.Combine(destinationDataRsdk, "Data");
 
-            Copy(Path.Combine(sonic1Path, "Animations"), Path.Combine(sonicHybridPath, "Animations"));
-            Copy(Path.Combine(sonic1Path, "Game"), Path.Combine(sonicHybridPath, "Game"));
-            Copy(Path.Combine(sonic1Path, "Music"), Path.Combine(sonicHybridPath, "Music"));
-            Copy(Path.Combine(sonic1Path, "Palettes"), Path.Combine(sonicHybridPath, "Palettes"));
-            Copy(Path.Combine(sonic1Path, "SoundFX"), Path.Combine(sonicHybridPath, "SoundFX"));
-            Copy(Path.Combine(sonic1Path, "Sprites"), Path.Combine(sonicHybridPath, "Sprites"));
+            foreach (var folder in new string[]
+            {
+                "Animations",
+                "Game",
+                "Music",
+                "Palettes",
+                "SoundFX",
+                "Sprites",
+            })
+            {
+                Copy(Path.Combine(sonic1Path, folder), Path.Combine(sonicHybridPath, folder));
+                Copy(Path.Combine(sonic2Path, folder), Path.Combine(sonicHybridPath, folder));
+            }
 
-            Copy(Path.Combine(sonic2Path, "Animations"), Path.Combine(sonicHybridPath, "Animations"));
-            Copy(Path.Combine(sonic2Path, "Game"), Path.Combine(sonicHybridPath, "Game"));
-            Copy(Path.Combine(sonic2Path, "Music"), Path.Combine(sonicHybridPath, "Music"));
-            Copy(Path.Combine(sonic2Path, "Palettes"), Path.Combine(sonicHybridPath, "Palettes"));
-            Copy(Path.Combine(sonic2Path, "SoundFX"), Path.Combine(sonicHybridPath, "SoundFX"));
-            Copy(Path.Combine(sonic2Path, "Sprites"), Path.Combine(sonicHybridPath, "Sprites"));
+            foreach (var (SourcePath, DestinationPath) in new (string, string)[]
+            {
+                ("Sprites/Global/Items2.gif", "Sprites/Global/Items4.gif"),
+            })
+                File.Copy(
+                    Path.Combine(sonic1Path, SourcePath),
+                    Path.Combine(sonicHybridPath, DestinationPath),
+                    true);
         }
 
         public static void Generate(string sourceDataRsdk, string destinationDataRsdk)
