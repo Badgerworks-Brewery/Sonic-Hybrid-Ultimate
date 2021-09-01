@@ -38,10 +38,40 @@ foreach (GROUP_PLAYERS, currentPlayer, ACTIVE_ENTITIES)
 next
 ```
 
-## Object.EntityNo
+## Stage properties
+
+RSDKv3: `Stage.XBoundary1`
+RSDKv4: `stage.curXBoundary1`
+
+RSDKv3: `Stage.YBoundary1`
+RSDKv4: `stage.curYBoundary1`
+
+RSDKv3: `Stage.XBoundary2`
+RSDKv4: `stage.curXBoundary2`
+
+RSDKv3: `Stage.YBoundary2`
+RSDKv4: `stage.curYBoundary2`
+
+## Object properties
+
+RSDKv3: `Object.XVelocity`
+RSDKv4: `Object.xvel`
+
+RSDKv3: `Object.YVelocity`
+RSDKv4: `Object.yvel`
 
 RSDKv3: `Object.EntityNo`
 RSDKv4: `Object.EntityPos`
+
+RSDKv3: `Object.TrackScroll`
+RSDKv4: `Object.scrollTracking`
+
+## Player object and properties
+
+RSDKv3: `Player.Timer`
+RSDKv5: `object.value1`
+
+I have no clue why `Timer` became `value1`...
 
 ## Object[24]
 
@@ -52,3 +82,10 @@ foreach (TypeName[HUD], arrayPos0, ALL_ENTITIES)
     object[arrayPos0] // <-- your logic here
 next
 ```
+
+## TempValue*
+
+RSDKv3: `TempValue0`
+RSDKv4: `temp0`
+
+Simple conversion.

@@ -44,6 +44,7 @@ reserve function PlayerObject_Knockback
 reserve function PlayerObject_Death
 reserve function PlayerObject_Drown
 reserve function PlayerObject_CheckTile
+reserve function PlayerObject_Handle3DRampAnims
 reserve function PlayerObject_HandleRollDecel
 reserve function PlayerObject_Clinging
 reserve function PlayerObject_Waterslide
@@ -3393,6 +3394,106 @@ function PlayerObject_CheckTile
 		object.ypos += 0x40000
 	end if
 	object.xvel = object.speed
+end function
+
+
+function PlayerObject_Handle3DRampAnims
+	CallFunction(PlayerObject_HandleMovement)
+	if object.Gravity==1
+		object.State=PlayerObject_HandleAir
+		object.value1=0
+		CallFunction(PlayerObject_HandleAirMovement)
+		if object.Direction==FACING_LEFT
+			if object.Animation==ANI_RAMP_RUNNING3
+				object.Animation=ANI_RAMP_RUNNING5
+			end if
+			if object.Animation==ANI_RAMP_RUNNING2
+				object.Animation=ANI_RAMP_RUNNING6
+			end if
+		end if
+	else
+		CallFunction(PlayerObject_ResetOnFloor)
+		if object.Speed==0
+			if Warp.Destination>0
+				if Warp.Timer>99
+					if Warp.Timer<220
+						Warp.Destination=0
+					end if
+				end if
+				Warp.Timer=0
+			end if
+			if object.value1<240
+				object.Animation=ANI_STOPPED
+				object.value1++
+			else
+				object.Animation=ANI_WAITING
+			end if
+		else
+			if object.Angle==0
+				object.Animation=ANI_RAMP_RUNNING1
+			end if
+			if object.Angle>200
+				if object.Direction==FACING_RIGHT
+					object.Animation=ANI_RAMP_RUNNING3
+				else
+					object.Animation=ANI_RAMP_RUNNING5
+				end if
+			end if
+			if object.Angle>216
+				if object.Direction==FACING_RIGHT
+					object.Animation=ANI_RAMP_RUNNING2
+				else
+					object.Animation=ANI_RAMP_RUNNING6
+				end if
+			end if
+			if object.Angle>232
+				object.Animation=ANI_RAMP_RUNNING1
+			end if
+			if object.Angle==192
+				object.Animation=ANI_RAMP_RUNNING4
+			end if
+		end if
+		if object.JumpPress==1
+			CallFunction(PlayerObject_StartJump)
+		else
+			if object.Up==1
+				if object.Speed==0
+					object.State=PlayerObject_LookingUp
+					object.Animation=ANI_LOOKINGUP
+					object.value1=0
+				end if
+			end if
+			if object.Down==1
+				if object.Speed==0
+					object.State=PlayerObject_Crouching
+					object.Animation=ANI_LOOKINGDOWN
+					object.value1=0
+				else
+					if object.Speed>6554
+						object.ControlLock=0
+						object.State=PlayerObject_HandleRolling
+						object.Animation=ANI_JUMPING
+					end if
+					if object.Speed<-6554
+						object.ControlLock=0
+						object.State=PlayerObject_HandleRolling
+						object.Animation=ANI_JUMPING
+					end if
+				end if
+			end if
+		end if
+	end if
+	if object.Animation!=ANI_STOPPED
+		object.AnimationSpeed=object.Speed
+		if object.AnimationSpeed<0
+			FlipSign(object.AnimationSpeed)
+		end if
+		object.AnimationSpeed*=60
+		object.AnimationSpeed/=393216
+		object.AnimationSpeed+=20
+	else
+		object.AnimationSpeed=0
+	end if
 end function
 
 

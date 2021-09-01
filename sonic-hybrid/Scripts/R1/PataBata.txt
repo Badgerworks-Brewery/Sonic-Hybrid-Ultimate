@@ -1,0 +1,123 @@
+//------------Sonic CD PataBata Script-------------//
+//--------Scripted by Christian Whitehead 'The Taxman'--------//
+//-------Unpacked By Rubberduckycooly's Script Unpacker-------//
+
+//-------Aliases-------//
+#alias 37: TYPE_PATABATA
+
+
+event ObjectMain
+	if Object.PropertyValue==0
+		Object.Frame++
+		if Object.Frame>39
+			Object.Frame=0
+		endif
+		switch Object.State
+		case 0
+			Sin(Object.YPos,Object.Value0)
+			Object.YPos<<=12
+			Object.YPos+=Object.Value1
+			Object.XPos-=32768
+			Object.Value0-=4
+			if Object.Value0==0
+				Object.State=1
+				Object.Direction=FACING_LEFT
+			endif
+			break
+		case 1
+			Sin(Object.YPos,Object.Value0)
+			FlipSign(Object.YPos)
+			Object.YPos<<=12
+			Object.YPos+=Object.Value1
+			Object.XPos+=32768
+			Object.Value0+=4
+			if Object.Value0==2048
+				Object.State=0
+				Object.Direction=FACING_RIGHT
+			endif
+			break
+
+		endswitch
+	else
+		Object.Frame++
+		if Object.Frame>39
+			Object.Frame=20
+		endif
+		switch Object.State
+		case 0
+			Sin(Object.YPos,Object.Value0)
+			Object.YPos<<=11
+			Object.YPos+=Object.Value1
+			Object.XPos-=16384
+			Object.Value0-=2
+			if Object.Value0==0
+				Object.State=1
+				Object.Direction=FACING_LEFT
+			endif
+			break
+		case 1
+			Sin(Object.YPos,Object.Value0)
+			FlipSign(Object.YPos)
+			Object.YPos<<=11
+			Object.YPos+=Object.Value1
+			Object.XPos+=16384
+			Object.Value0+=2
+			if Object.Value0==2048
+				Object.State=0
+				Object.Direction=FACING_RIGHT
+			endif
+			break
+
+		endswitch
+	endif
+	CallFunction(StageSetup_CheckGoodFuture)
+    
+    foreach (GROUP_PLAYERS, currentPlayer, ACTIVE_ENTITIES)
+        BoxCollisionTest(C_TOUCH, object.entityPos, -14,-14,14,14, currentPlayer, object[currentPlayer].value40, object[currentPlayer].value38, object[currentPlayer].value41, object[currentPlayer].value39)
+        if CheckResult==1
+            CallFunction(PlayerObject_BadnikBreak)
+        endif
+    next
+end event
+
+event ObjectDraw
+	if Object.PropertyValue==0
+		temp0=Object.Frame
+		temp0>>=3
+		DrawSpriteFX(temp0,FX_FLIP,Object.XPos,Object.YPos)
+	else
+		temp0=Object.Frame
+		temp0>>=2
+		DrawSpriteFX(temp0,FX_FLIP,Object.XPos,Object.YPos)
+	endif
+end event
+
+
+event ObjectStartup
+	LoadSpriteSheet("R1/Objects.gif")
+	ArrayPos0=32
+	while ArrayPos0<1056
+		if Object[ArrayPos0].Type==TypeName[PataBata]
+			Object[ArrayPos0].Value1=Object[ArrayPos0].YPos
+			Object[ArrayPos0].Value0=1024
+			Object[ArrayPos0].Frame=Object[ArrayPos0].PropertyValue
+			Object[ArrayPos0].Frame*=20
+		endif
+		ArrayPos0++
+	loop
+	SpriteFrame(-16,-16,32,32,1,51)
+	SpriteFrame(-16,-8,32,16,1,84)
+	SpriteFrame(-16,-16,32,32,117,1)
+	SpriteFrame(-16,-8,32,16,1,84)
+	SpriteFrame(-16,-16,32,32,1,51)
+	SpriteFrame(-16,-16,32,32,150,1)
+	SpriteFrame(-16,-8,32,16,1,84)
+	SpriteFrame(-16,-16,32,32,183,1)
+	SpriteFrame(-16,-8,32,16,1,84)
+	SpriteFrame(-16,-16,32,32,150,1)
+end event
+
+event RSDK
+	LoadSpriteSheet("Global/Display.gif")
+	SetEditorIcon(Icon0,SingleIcon,-16,-16,32,32,1,143)
+end event
