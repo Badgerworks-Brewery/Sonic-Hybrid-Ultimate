@@ -64,6 +64,25 @@ function StageSetup_Function71
 	loop
 end function
 
+function StageSetup_CheckGoodFuture
+	if Good_Future==1
+		if Object.PropertyValue>0
+			ResetObjectEntity(Object.EntityPos,Flower_TypeNo,0,Object.XPos,Object.YPos)
+			Object.DrawOrder=4
+			Object.State=1
+		else
+			foreach (TypeName[HUD], arrayPos0, ALL_ENTITIES)
+				temp0 = object[arrayPos0].PropertyValue
+			next
+
+			if temp0>0 // Check for Present, Good Future or Bad Future
+				ResetObjectEntity(Object.EntityPos,Flower_TypeNo,0,Object.XPos,Object.YPos)
+				Object.DrawOrder=4
+				Object.State=1
+			endif
+		endif
+	endif
+endfunction
 
 event ObjectMain
 	switch stage.state

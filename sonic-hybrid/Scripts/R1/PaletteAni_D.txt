@@ -11,7 +11,7 @@ event ObjectMain
 	if Object.Value0==8
 		Object.Value0=0
 		Object.Value1++
-		Object.Value1%=3
+		Object.Value1%=6
 		SetActivePalette(Object.Value1,0,240)
 	endif
 end event

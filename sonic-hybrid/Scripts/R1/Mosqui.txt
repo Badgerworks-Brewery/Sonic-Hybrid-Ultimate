@@ -1,0 +1,266 @@
+//------------Sonic CD Mosqui Script-------------//
+//--------Scripted by Christian Whitehead 'The Taxman'--------//
+//-------Unpacked By Rubberduckycooly's Script Unpacker-------//
+
+//-------Aliases-------//
+#alias 36: TYPE_MOSQUI
+
+
+event ObjectMain
+	if object.propertyValue==0
+		switch object.State
+		case 0
+			object.Priority=1
+			object.Frame++
+			object.Frame&=3
+			object.XPos-=65536
+			object.Value0--
+			if object.Value0==-128
+				object.State=1
+				object.Direction=FACING_LEFT
+			endif
+			if object[0].YPos>object.YPos
+				temp0=object[0].YPos
+				temp0-=object.YPos
+				if temp0<8388608
+					if object[0].XPos>object.XPos
+						temp0=object[0].XPos
+						temp0-=object.XPos
+					else
+						temp0=object.XPos
+						temp0-=object[0].XPos
+					endif
+					if temp0<3145728
+						object.Value0=0
+						object.Frame=2
+						object.State=2
+					endif
+				endif
+			endif
+			break
+		case 1
+			object.Frame++
+			object.Frame&=3
+			object.XPos+=65536
+			object.Value0++
+			if object.Value0==128
+				object.State=0
+				object.Direction=FACING_RIGHT
+			endif
+			if object[0].YPos>object.YPos
+				temp0=object[0].YPos
+				temp0-=object.YPos
+				if temp0<8388608
+					if object[0].XPos>object.XPos
+						temp0=object[0].XPos
+						temp0-=object.XPos
+					else
+						temp0=object.XPos
+						temp0-=object[0].XPos
+					endif
+					if temp0<3145728
+						object.Value0=0
+						object.Frame=2
+						object.State=2
+					endif
+				endif
+			endif
+			break
+		case 2
+			object.Value0++
+			if object.Value0==8
+				object.Value0=0
+				object.Frame++
+				if object.Frame==5
+					object.Frame=4
+					object.State=3
+				endif
+			endif
+			break
+		case 3
+			object.YPos+=393216
+			ObjectTileCollision(0,0,14,0)
+			if CheckResult==1
+				object.State=4
+				//PlayStageSfx(2,0)
+			endif
+			break
+		case 4
+			break
+		case 5
+			if object.OutOfBounds==1
+				object.State=0
+				object.Direction=FACING_RIGHT
+				object.Priority=0
+			endif
+			break
+
+		endswitch
+	else
+		switch object.State
+		case 0
+			object.Priority=1
+			object.Frame++
+			object.Frame%=10
+			object.XPos-=32768
+			object.Value0--
+			if object.Value0==-256
+				object.State=1
+				object.Direction=FACING_LEFT
+			endif
+			if object[0].YPos>object.YPos
+				temp0=object[0].YPos
+				temp0-=object.YPos
+				if temp0<4194304
+					if object[0].XPos>object.XPos
+						temp0=object[0].XPos
+						temp0-=object.XPos
+					else
+						temp0=object.XPos
+						temp0-=object[0].XPos
+					endif
+					if temp0<3145728
+						object.Value0=0
+						object.Frame=7
+						object.State=2
+					endif
+				endif
+			endif
+			break
+		case 1
+			object.Frame++
+			object.Frame%=10
+			object.XPos+=32768
+			object.Value0++
+			if object.Value0==256
+				object.State=0
+				object.Direction=FACING_RIGHT
+			endif
+			if object[0].YPos>object.YPos
+				temp0=object[0].YPos
+				temp0-=object.YPos
+				if temp0<4194304
+					if object[0].XPos>object.XPos
+						temp0=object[0].XPos
+						temp0-=object.XPos
+					else
+						temp0=object.XPos
+						temp0-=object[0].XPos
+					endif
+					if temp0<3145728
+						object.Value0=0
+						object.Frame=7
+						object.State=2
+					endif
+				endif
+			endif
+			break
+		case 2
+			object.Value0++
+			if object.Value0==16
+				object.Value0=0
+				object.Frame++
+				if object.Frame==10
+					object.Frame=9
+					object.State=3
+				endif
+			endif
+			break
+		case 3
+			object.YPos+=393216
+			ObjectTileCollision(0,0,14,0)
+			if CheckResult==1
+				object.State=4
+			endif
+			break
+		case 4
+			break
+		case 5
+			if object.OutOfBounds==1
+				object.State=0
+				object.Priority=0
+			endif
+			break
+
+		endswitch
+	endif
+	CallFunction(StageSetup_CheckGoodFuture)
+	if object.OutOfBounds==1
+		temp0=object.XPos
+		temp1=object.YPos
+		object.XPos=object.Value1
+		object.YPos=object.Value2
+		if object.OutOfBounds==1
+			object.XPos=object.Value1
+			object.YPos=object.Value2
+			object.Direction=FACING_RIGHT
+			object.Value0=0
+			object.Frame=0
+			object.Priority=0
+			object.State=0
+		else
+			object.XPos=temp0
+			object.YPos=temp1
+		endif
+	endif
+    
+	if object.State<5
+        foreach (GROUP_PLAYERS, currentPlayer, ACTIVE_ENTITIES)
+            BoxCollisionTest(C_TOUCH, object.entityPos, -15,-10,15,10, currentPlayer, object[currentPlayer].value40, object[currentPlayer].value38, object[currentPlayer].value41, object[currentPlayer].value39)
+            if CheckResult==1
+                CallFunction(PlayerObject_BadnikBreak)
+            endif
+        next
+	endif
+end event
+
+event ObjectDraw
+	if object.State<5
+		if object.propertyValue==0
+			if object.State<2
+				temp0=object.Frame
+				temp0>>=1
+				DrawSpriteFX(temp0,FX_FLIP,object.XPos,object.YPos)
+			else
+				DrawSpriteFX(object.Frame,FX_FLIP,object.XPos,object.YPos)
+			endif
+		else
+			if object.State<2
+				temp0=object.Frame
+				temp0/=5
+				temp0+=5
+				DrawSpriteFX(temp0,FX_FLIP,object.XPos,object.YPos)
+			else
+				DrawSpriteFX(object.Frame,FX_FLIP,object.XPos,object.YPos)
+			endif
+		endif
+	endif
+end event
+
+
+event ObjectStartup
+	LoadSpriteSheet("R1/Objects.gif")
+	arrayPos0=32
+	while arrayPos0<1056
+		if object[arrayPos0].Type==TypeName[Mosqui]
+			object[arrayPos0].Value1=object[arrayPos0].XPos
+			object[arrayPos0].Value2=object[arrayPos0].YPos
+		endif
+		arrayPos0++
+	loop
+	SpriteFrame(-16,-11,32,24,51,1)
+	SpriteFrame(-16,-3,32,16,51,26)
+	SpriteFrame(-16,-14,32,32,51,43)
+	SpriteFrame(-6,-13,24,32,117,43)
+	SpriteFrame(-10,-14,24,32,142,43)
+	SpriteFrame(-16,-11,32,24,84,1)
+	SpriteFrame(-16,-3,32,16,84,26)
+	SpriteFrame(-16,-14,32,32,84,43)
+	SpriteFrame(-6,-13,24,32,51,76)
+	SpriteFrame(-10,-14,24,32,76,76)
+end event
+
+event RSDK
+	LoadSpriteSheet("Global/Display.gif")
+	SetEditorIcon(Icon0,SingleIcon,-16,-16,32,32,1,143)
+end event
