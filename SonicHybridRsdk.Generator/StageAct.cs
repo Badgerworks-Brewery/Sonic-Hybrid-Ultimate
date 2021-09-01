@@ -3,85 +3,32 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Xe.BinaryMapper;
+using static SonicHybridRsdk.Generator.Global;
 
 namespace SonicHybridRsdk.Generator
 {
-    record Entity
+    interface IStageAct
     {
-        // https://github.com/Rubberduckycooly/RSDK-Reverse/blob/master/RSDKv4/Object.cs#L250
-        private static readonly bool[] AttributeType = new bool[] {
-            true, // state
-            false, // direction
-            true, // scale
-            true, // rotation
-            false, // drawOrder
-            false, // priority
-            false, // alpha
-            false, // animation
-            true, // animationSpeed
-            false, // frame
-            false, // inkEffect
-            true,
-            true,
-            true,
-            true,
-        };
+        List<IEntity> Entities { get; set; }
+        List<string> EntityNames { get; set; }
+        ushort Height { get; set; }
+        byte[] Layers { get; set; }
+        ushort[] Layout { get; set; }
+        string Title { get; set; }
+        ushort Width { get; set; }
 
-        private static IBinaryMapping Mapper = GameConfig.Mapper;
-
-        [Data] public ushort AttributeFlags { get; set; }
-        [Data] public byte Type { get; set; }
-        [Data] public byte PropertyValue { get; set; }
-        [Data] public int X { get; set; }
-        [Data] public int Y { get; set; }
-        public object[] Attributes { get; set; }
-
-        public static Entity Read(Stream stream)
-        {
-            var entity = Mapper.ReadObject<Entity>(stream);
-            entity.Attributes = new object[AttributeType.Length];
-            var data = new byte[4];
-            for (var i = 0; i < AttributeType.Length; i++)
-            {
-                if (0 != (entity.AttributeFlags & (1 << i)))
-                {
-                    entity.Attributes[i] = AttributeType[i] switch
-                    {
-                        false => (byte)stream.ReadByte(),
-                        true => stream.Read(data) == 4 ? BitConverter.ToInt32(data) : 0
-                    };
-                }
-            }
-
-            return entity;
-        }
-
-        public void Write(Stream stream)
-        {
-            Mapper.WriteObject(stream, this);
-            for (var i = 0; i < AttributeType.Length; i++)
-            {
-                if (0 != (AttributeFlags & (1 << i)))
-                {
-                    if (AttributeType[i])
-                        stream.Write(BitConverter.GetBytes((int)Attributes[i]));
-                    else
-                        stream.WriteByte((byte)(int)Attributes[i]);
-                }
-            }
-        }
+        void Write(Stream stream);
     }
 
-    record StageAct
+    record StageAct : IStageAct
     {
-        private static IBinaryMapping Mapper = GameConfig.Mapper;
-
         [Data] public string Title { get; set; }
         [Data(Count = 5)] public byte[] Layers { get; set; }
         [Data] public ushort Width { get; set; }
         [Data] public ushort Height { get; set; }
         public ushort[] Layout { get; set; }
-        public List<Entity> Entities { get; set; }
+        public List<IEntity> Entities { get; set; }
+        public List<string> EntityNames { get; set; } = new List<string>();
 
         public static StageAct Read(Stream stream)
         {
@@ -92,6 +39,7 @@ namespace SonicHybridRsdk.Generator
 
             stage.Entities = Enumerable.Range(0, stream.ReadByte() + (stream.ReadByte() << 8))
                 .Select(_ => Entity.Read(stream))
+                .Cast<IEntity>()
                 .ToList();
 
             return stage;
@@ -109,7 +57,40 @@ namespace SonicHybridRsdk.Generator
             stream.WriteByte((byte)(Entities.Count >> 0));
             stream.WriteByte((byte)(Entities.Count >> 8));
             foreach (var entity in Entities)
-                entity.Write(stream);
+                ((Entity)entity).Write(stream);
         }
+    }
+
+    record StageActV3 : IStageAct
+    {
+        [Data] public string Title { get; set; }
+        [Data(Count = 5)] public byte[] Layers { get; set; }
+        [Data] public byte InternalWidth { get; set; }
+        [Data] public byte InternalHeight { get; set; }
+        public ushort Width { get => InternalWidth; set => InternalWidth = Convert.ToByte(value); }
+        public ushort Height { get => InternalHeight; set => InternalHeight = Convert.ToByte(value); }
+        public ushort[] Layout { get; set; }
+        public List<string> EntityNames { get; set; }
+        public List<IEntity> Entities { get; set; }
+
+        public static StageActV3 Read(Stream stream)
+        {
+            var stage = Mapper.ReadObject<StageActV3>(stream);
+            stage.Layout = new ushort[stage.Width * stage.Height];
+            for (var i = 0; i < stage.Width * stage.Height; i++)
+                stage.Layout[i] = (ushort)((stream.ReadByte() << 8) + stream.ReadByte());
+            stage.EntityNames = Enumerable.Range(0, stream.ReadByte())
+                .Select(_ => ReadString(stream))
+                .ToList();
+            stage.Entities = Enumerable.Range(0, (stream.ReadByte() << 8) + stream.ReadByte())
+                .Select(_ => EntityV3.Read(stream))
+                .Cast<IEntity>()
+                .ToList();
+
+            return stage;
+        }
+
+        public void Write(Stream stream) =>
+            throw new NotImplementedException();
     }
 }

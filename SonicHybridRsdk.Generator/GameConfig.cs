@@ -2,56 +2,44 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 using Xe.BinaryMapper;
+using static SonicHybridRsdk.Generator.Global;
 
 namespace SonicHybridRsdk.Generator
 {
-    record GameObject
+    public record Variable
     {
-        public string Name { get; set; }
-        public string Path { get; set; }
-
-        public static List<GameObject> Read(Stream stream) =>
-            Enumerable.Range(0, stream.ReadByte())
-                .Select(x => GameConfig.ReadString(stream))
-                .ToList()
-                .Select(x => new GameObject
-                {
-                    Name = x,
-                    Path = GameConfig.ReadString(stream)
-                })
-                .ToList();
-
-        public static void Write(Stream stream, List<GameObject> objects)
-        {
-            stream.WriteByte(Convert.ToByte(objects.Count));
-            foreach (var item in objects)
-                GameConfig.WriteString(stream, item.Name);
-            foreach (var item in objects)
-                GameConfig.WriteString(stream, item.Path);
-        }
+        [Data] public string Name { get; set; }
+        [Data] public int Value { get; set; }
     }
 
-    record GameConfig
+    public record Stage
     {
+        [Data] public string Path { get; set; }
+        [Data] public string Act { get; set; }
+        [Data] public string Name { get; set; }
+        [Data] public byte Mode { get; set; }
+    }
 
-        public record Variable
-        {
-            [Data] public string Name { get; set; }
-            [Data] public int Value { get; set; }
-        }
+    interface IGameConfig
+    {
+        string Description { get; set; }
+        List<GameObject> GameObjects { get; set; }
+        string Name { get; set; }
+        byte[] PaletteData { get; }
+        List<string> Players { get; set; }
+        List<GameObject> SoundEffects { get; set; }
+        List<Stage> StagesBonus { get; set; }
+        List<Stage> StagesPresentation { get; set; }
+        List<Stage> StagesRegular { get; set; }
+        List<Stage> StagesSpecial { get; set; }
+        List<Variable> Variables { get; set; }
 
-        public record Stage
-        {
-            [Data] public string Path { get; set; }
-            [Data] public string Act { get; set; }
-            [Data] public string Name { get; set; }
-            [Data] public byte Mode { get; set; }
-        }
+        void Write(Stream stream);
+    }
 
-        public static IBinaryMapping Mapper;
-
+    record GameConfig : IGameConfig
+    {
         [Data] public string Name { get; set; }
         [Data] public string Description { get; set; }
         [Data(Count = 0x120)] public byte[] PaletteData { get; set; }
@@ -63,16 +51,6 @@ namespace SonicHybridRsdk.Generator
         public List<Stage> StagesRegular { get; set; }
         public List<Stage> StagesSpecial { get; set; }
         public List<Stage> StagesBonus { get; set; }
-
-        static GameConfig()
-        {
-            Mapper = MappingConfiguration
-                .DefaultConfiguration(Encoding.UTF8, true)
-                .ForType<ushort>(ReadUInt16BigEndian, WriteUInt16BigEndian)
-                .ForType<int>(ReadInt32BigEndian, WriteInt32BigEndian)
-                .ForType<string>(ReadString, WriteString)
-                .Build();
-        }
 
         public static GameConfig Read(Stream stream)
         {
@@ -117,56 +95,49 @@ namespace SonicHybridRsdk.Generator
         {
             stream.WriteByte(Convert.ToByte(items.Count));
             foreach (var item in items)
-                Mapper.WriteObject<T>(stream, item);
+                Mapper.WriteObject(stream, item);
         }
+    }
 
-        public static string ReadString(Stream stream)
+    record GameConfigV3 : IGameConfig
+    {
+        [Data] public string Name { get; set; }
+        [Data] public string Path { get; set; }
+        [Data] public string Description { get; set; }
+        public byte[] PaletteData { get; }
+        public List<GameObject> GameObjects { get; set; }
+        public List<Variable> Variables { get; set; }
+        public List<GameObject> SoundEffects { get; set; }
+        public List<string> Players { get; set; }
+        public List<Stage> StagesPresentation { get; set; }
+        public List<Stage> StagesRegular { get; set; }
+        public List<Stage> StagesSpecial { get; set; }
+        public List<Stage> StagesBonus { get; set; }
+
+        public static GameConfigV3 Read(Stream stream)
         {
-            var data = new byte[stream.ReadByte()];
-            stream.Read(data);
-            return Encoding.UTF8.GetString(data);
+            var gameConfig = Mapper.ReadObject<GameConfigV3>(stream);
+            gameConfig.GameObjects = GameObject.Read(stream);
+            gameConfig.Variables = ReadItems<Variable>(stream);
+            gameConfig.SoundEffects = Enumerable.Range(0, stream.ReadByte())
+                .Select(_ => ReadString(stream))
+                .Select(x => new GameObject
+                {
+                    Name = System.IO.Path.GetFileNameWithoutExtension(x),
+                    Path = x,
+                })
+                .ToList();
+            gameConfig.Players = Enumerable.Range(0, stream.ReadByte())
+                .Select(_ => ReadString(stream))
+                .ToList();
+            gameConfig.StagesPresentation = ReadItems<Stage>(stream);
+            gameConfig.StagesRegular = ReadItems<Stage>(stream);
+            gameConfig.StagesSpecial = ReadItems<Stage>(stream);
+            gameConfig.StagesBonus = ReadItems<Stage>(stream);
+
+            return gameConfig;
         }
 
-        public static void WriteString(Stream stream, string str)
-        {
-            if (str.Length >= byte.MaxValue)
-                str = str[..byte.MaxValue];
-
-            var data = Encoding.UTF8.GetBytes(str);
-            stream.WriteByte((byte)data.Length);
-            stream.Write(data);
-        }
-
-        private static string ReadString(MappingReadArgs arg) =>
-            ReadString(arg.Reader.BaseStream);
-
-        private static void WriteString(MappingWriteArgs arg) =>
-            WriteString(arg.Writer.BaseStream, arg.Item as string);
-
-        private static object ReadUInt16BigEndian(MappingReadArgs arg)
-        {
-            var data = arg.Reader.ReadBytes(2);
-            return BitConverter.ToUInt16(data);
-        }
-
-        private static void WriteUInt16BigEndian(MappingWriteArgs arg)
-        {
-            var data = BitConverter.GetBytes((ushort)arg.Item);
-            arg.Writer.Write(data);
-        }
-
-        private static object ReadInt32BigEndian(MappingReadArgs arg)
-        {
-            var data = arg.Reader.ReadBytes(4);
-            Array.Reverse(data);
-            return BitConverter.ToInt32(data);
-        }
-
-        private static void WriteInt32BigEndian(MappingWriteArgs arg)
-        {
-            var data = BitConverter.GetBytes((int)arg.Item);
-            Array.Reverse(data);
-            arg.Writer.Write(data);
-        }
+        public void Write(Stream stream) => throw new NotImplementedException();
     }
 }

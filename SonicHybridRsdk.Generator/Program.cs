@@ -1,28 +1,39 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using static SonicHybridRsdk.Generator.Global;
+using static SonicHybridRsdk.Generator.RsdkGenericImporter;
+using static SonicHybridRsdk.Generator.RsdkSonicCdImporter;
 
 namespace SonicHybridRsdk.Generator
 {
+    enum StageType
+    {
+        StagesPresentation,
+        StagesRegular,
+        StagesSpecial,
+    }
+
+    class Context
+    {
+        public string SrcPath { get; init; }
+        public string DstPath { get; init; }
+        public IGameConfig SrcConfig { get; init; }
+        public IGameConfig DstConfig { get; init; }
+        public Dictionary<int, GameObject> SrcObjects { get; init; }
+        public Dictionary<string, int> DstObjects { get; init; }
+        public Dictionary<string, string> Replacements { get; init; }
+    }
+
     public class Program
     {
-        class Context
-        {
-            public string SrcPath { get; init; }
-            public string DstPath { get; init; }
-            public GameConfig SrcConfig { get; init; }
-            public GameConfig DstConfig { get; init; }
-            public Dictionary<int, GameObject> SrcObjects { get; init; }
-            public Dictionary<string, int> DstObjects { get; init; }
-            public Dictionary<string, string> Replacements { get; init; }
-        }
-
         static void Main(string[] args) => Generate(args[0], args[1]);
 
         public static void CopyResources(string sourceDataRsdk, string destinationDataRsdk)
         {
             var sonic1Path = Path.Combine(sourceDataRsdk, "sonic1/Data");
+            var sonicCdPath = Path.Combine(sourceDataRsdk, "soniccd/Data");
             var sonic2Path = Path.Combine(sourceDataRsdk, "sonic2/Data");
             var sonicHybridPath = Path.Combine(destinationDataRsdk, "Data");
 
@@ -37,6 +48,7 @@ namespace SonicHybridRsdk.Generator
             })
             {
                 Copy(Path.Combine(sonic1Path, folder), Path.Combine(sonicHybridPath, folder));
+                Copy(Path.Combine(sonicCdPath, folder), Path.Combine(sonicHybridPath, folder));
                 Copy(Path.Combine(sonic2Path, folder), Path.Combine(sonicHybridPath, folder));
             }
 
@@ -56,10 +68,12 @@ namespace SonicHybridRsdk.Generator
             CopyResources(sourceDataRsdk, destinationDataRsdk);
 
             var sonic1Path = Path.Combine(sourceDataRsdk, "sonic1/Data");
+            var sonicCdPath = Path.Combine(sourceDataRsdk, "soniccd/Data");
             var sonic2Path = Path.Combine(sourceDataRsdk, "sonic2/Data");
             var sonicHybridPath = Path.Combine(destinationDataRsdk, "Data");
 
             var sonic1Config = OpenRead(Path.Combine(sonic1Path, "Game/GameConfig.bin"), GameConfig.Read);
+            var sonicCdConfig = OpenRead(Path.Combine(sonicCdPath, "Game/GameConfig.bin"), GameConfigV3.Read);
             var sonic2Config = OpenRead(Path.Combine(sonic2Path, "Game/GameConfig.bin"), GameConfig.Read);
 
             var sonicHybridConfig = new GameConfig
@@ -67,10 +81,10 @@ namespace SonicHybridRsdk.Generator
                 Name = "Sonic Hybrid",
                 Description = $"Hack by Xeeynamo\n\n{sonic1Config.Description}",
                 PaletteData = sonic2Config.PaletteData,
-                StagesPresentation = new List<GameConfig.Stage>(),
-                StagesRegular = new List<GameConfig.Stage>(),
-                StagesBonus = new List<GameConfig.Stage>(),
-                StagesSpecial = new List<GameConfig.Stage>(),
+                StagesPresentation = new List<Stage>(),
+                StagesRegular = new List<Stage>(),
+                StagesBonus = new List<Stage>(),
+                StagesSpecial = new List<Stage>(),
             };
 
             var hybridObjects = new Dictionary<string, GameObject>();
@@ -84,7 +98,14 @@ namespace SonicHybridRsdk.Generator
             sonicHybridConfig.GameObjects = hybridObjects.Values.ToList();
 
             var dicHybridObjects = sonicHybridConfig.GameObjects.Select((x, i) => (Id: i, Obj: x)).ToDictionary(x => x.Obj.Name, x => x.Id);
-            dicHybridObjects["Lamp Post"] = dicHybridObjects["Star Post"];
+            dicHybridObjects["Lamp Post"] = dicHybridObjects["Star Post"]; // Sonic 1
+            dicHybridObjects["LampPost"] = dicHybridObjects["Star Post"]; // Sonic CD
+            dicHybridObjects["SignPost"] = dicHybridObjects["Sign Post"]; // Sonic CD
+            dicHybridObjects["Flower Pod"] = dicHybridObjects["Animal Prison"]; // Sonic CD
+            dicHybridObjects["Future Post"] = dicHybridObjects["Star Post"]; // TODO HACK
+            dicHybridObjects["Past Post"] = dicHybridObjects["Star Post"]; // TODO HACK
+            dicHybridObjects["Transporter"] = dicHybridObjects["Ring"]; // TODO HACK
+            dicHybridObjects["Goal Post"] = dicHybridObjects["Ring"]; // TODO HACK
 
             var context1 = new Context
             {
@@ -100,6 +121,19 @@ namespace SonicHybridRsdk.Generator
                     ["Special/SpecialSetup.txt"] = "Special/SpecialSetup1.txt",
                     ["Special/SpecialFinish.txt"] = "Special/SpecialFinish1.txt",
                     ["Special/ChaosEmerald.txt"] = "Special/ChaosEmerald1.txt",
+                }
+            };
+
+            var contextCd = new Context
+            {
+                SrcPath = sonicCdPath,
+                DstPath = sonicHybridPath,
+                SrcConfig = sonicCdConfig,
+                DstConfig = sonicHybridConfig,
+                SrcObjects = sonicCdConfig.GameObjects.Select((x, i) => (Id: i, Obj: x)).ToDictionary(x => x.Id, x => x.Obj),
+                DstObjects = dicHybridObjects,
+                Replacements = new()
+                {
                 }
             };
 
@@ -125,83 +159,98 @@ namespace SonicHybridRsdk.Generator
                 variables[item.Name] = item.Value;
             foreach (var item in sonic2Config.Variables)
                 variables[item.Name] = item.Value;
-            sonicHybridConfig.Variables = variables.Select(x => new GameConfig.Variable { Name = x.Key, Value = x.Value }).ToList();
+            sonicHybridConfig.Variables = variables.Select(x => new Variable { Name = x.Key, Value = x.Value }).ToList();
 
             sonicHybridConfig.Players = sonic2Config.Players;
             sonicHybridConfig.SoundEffects = sonic2Config.SoundEffects;
 
-            UseStage(context2, StageType.StagesPresentation, "TITLE SCREEN SONIC 2", 1, "Title", "TitleS2");
-            UseStage(context2, StageType.StagesPresentation, "ENDING SONIC 2", 1, "Ending", "EndingS2");
-            UseStage(context2, StageType.StagesPresentation, "STAFF CREDITS SONIC 2", 1, "Credits", "CreditsS2");
-            UseStage(context2, StageType.StagesPresentation, "LEVEL SELECT SONIC 2", 1, "LSelect", "LSelectS2");
-            UseStage(context2, StageType.StagesPresentation, "LEVEL SELECT 2P", 2, "LSelect", "LSelectS2");
-            UseStage(context2, StageType.StagesPresentation, "CONTINUE SCREEN SONIC 1", 1, "Continue", "ContinueS1");
+            UseStageV4(context2, StageType.StagesPresentation, "TITLE SCREEN SONIC 2", 1, "Title", "TitleS2");
+            UseStageV4(context2, StageType.StagesPresentation, "ENDING SONIC 2", 1, "Ending", "EndingS2");
+            UseStageV4(context2, StageType.StagesPresentation, "STAFF CREDITS SONIC 2", 1, "Credits", "CreditsS2");
+            UseStageV4(context2, StageType.StagesPresentation, "LEVEL SELECT SONIC 2", 1, "LSelect", "LSelectS2");
+            UseStageV4(context2, StageType.StagesPresentation, "LEVEL SELECT 2P", 2, "LSelect", "LSelectS2");
+            UseStageV4(context2, StageType.StagesPresentation, "CONTINUE SCREEN SONIC 1", 1, "Continue", "ContinueS1");
 
-            UseStage(context1, StageType.StagesPresentation, "TITLE SCREEN SONIC 1", 1, "Title", "TitleS1");
-            UseStage(context1, StageType.StagesPresentation, "ENDING SONIC 1", 1, "Ending", "EndingS1");
-            UseStage(context1, StageType.StagesPresentation, "STAFF CREDITS SONIC 1", 1, "Credits", "CreditsS1");
-            UseStage(context1, StageType.StagesPresentation, "UNLOCK ALL ACHIEVEMENTS", 2, "Credits", "CreditsS1");
-            UseStage(context1, StageType.StagesPresentation, "CONTINUE SCREEN SONIC 1", 1, "Continue", "ContinueS1");
-            UseStage(context1, StageType.StagesPresentation, "LEVEL SELECT SONIC 1", 1, "LSelect", "LSelectS1");
+            UseStageV4(context1, StageType.StagesPresentation, "TITLE SCREEN SONIC 1", 1, "Title", "TitleS1");
+            UseStageV4(context1, StageType.StagesPresentation, "ENDING SONIC 1", 1, "Ending", "EndingS1");
+            UseStageV4(context1, StageType.StagesPresentation, "STAFF CREDITS SONIC 1", 1, "Credits", "CreditsS1");
+            UseStageV4(context1, StageType.StagesPresentation, "UNLOCK ALL ACHIEVEMENTS", 2, "Credits", "CreditsS1");
+            UseStageV4(context1, StageType.StagesPresentation, "CONTINUE SCREEN SONIC 1", 1, "Continue", "ContinueS1");
+            UseStageV4(context1, StageType.StagesPresentation, "LEVEL SELECT SONIC 1", 1, "LSelect", "LSelectS1");
 
-            UseStage(context1, StageType.StagesRegular, "GREEN HILL ZONE", 1, "Zone01", "ZoneGHZ");
-            UseStage(context1, StageType.StagesRegular, "GREEN HILL ZONE", 2, "Zone01", "ZoneGHZ");
-            UseStage(context1, StageType.StagesRegular, "GREEN HILL ZONE", 3, "Zone01", "ZoneGHZ");
-            UseStage(context1, StageType.StagesRegular, "MARBLE ZONE", 1, "Zone02", "ZoneMZ");
-            UseStage(context1, StageType.StagesRegular, "MARBLE ZONE", 2, "Zone02", "ZoneMZ");
-            UseStage(context1, StageType.StagesRegular, "MARBLE ZONE", 3, "Zone02", "ZoneMZ");
-            UseStage(context1, StageType.StagesRegular, "SPRING YARD ZONE", 1, "Zone03", "ZoneSYZ");
-            UseStage(context1, StageType.StagesRegular, "SPRING YARD ZONE", 2, "Zone03", "ZoneSYZ");
-            UseStage(context1, StageType.StagesRegular, "SPRING YARD ZONE", 3, "Zone03", "ZoneSYZ");
-            UseStage(context1, StageType.StagesRegular, "LABYRINTH ZONE", 1, "Zone04", "ZoneLZ");
-            UseStage(context1, StageType.StagesRegular, "LABYRINTH ZONE", 2, "Zone04", "ZoneLZ");
-            UseStage(context1, StageType.StagesRegular, "LABYRINTH ZONE", 3, "Zone04", "ZoneLZ");
-            UseStage(context1, StageType.StagesRegular, "STARLIGHT ZONE", 1, "Zone05", "ZoneSZ");
-            UseStage(context1, StageType.StagesRegular, "STARLIGHT ZONE", 2, "Zone05", "ZoneSZ");
-            UseStage(context1, StageType.StagesRegular, "STARLIGHT ZONE", 3, "Zone05", "ZoneSZ");
-            UseStage(context1, StageType.StagesRegular, "SCRAP BRAIN ZONE", 1, "Zone06", "ZoneSBZ");
-            UseStage(context1, StageType.StagesRegular, "SCRAP BRAIN ZONE", 2, "Zone06", "ZoneSBZ");
-            UseStage(context1, StageType.StagesRegular, "SCRAP BRAIN ZONE", 4, "Zone04", "ZoneSLZ", visualActNumber: 3);
-            UseStage(context1, StageType.StagesRegular, "FINAL ZONE", 5, "Zone06", "ZoneSBZ", visualActNumber: 0);
+            UseStageV4(context1, StageType.StagesRegular, "GREEN HILL ZONE", 1, "Zone01", "ZoneGHZ");
+            UseStageV4(context1, StageType.StagesRegular, "GREEN HILL ZONE", 2, "Zone01", "ZoneGHZ");
+            UseStageV4(context1, StageType.StagesRegular, "GREEN HILL ZONE", 3, "Zone01", "ZoneGHZ");
+            UseStageV4(context1, StageType.StagesRegular, "MARBLE ZONE", 1, "Zone02", "ZoneMZ");
+            UseStageV4(context1, StageType.StagesRegular, "MARBLE ZONE", 2, "Zone02", "ZoneMZ");
+            UseStageV4(context1, StageType.StagesRegular, "MARBLE ZONE", 3, "Zone02", "ZoneMZ");
+            UseStageV4(context1, StageType.StagesRegular, "SPRING YARD ZONE", 1, "Zone03", "ZoneSYZ");
+            UseStageV4(context1, StageType.StagesRegular, "SPRING YARD ZONE", 2, "Zone03", "ZoneSYZ");
+            UseStageV4(context1, StageType.StagesRegular, "SPRING YARD ZONE", 3, "Zone03", "ZoneSYZ");
+            UseStageV4(context1, StageType.StagesRegular, "LABYRINTH ZONE", 1, "Zone04", "ZoneLZ");
+            UseStageV4(context1, StageType.StagesRegular, "LABYRINTH ZONE", 2, "Zone04", "ZoneLZ");
+            UseStageV4(context1, StageType.StagesRegular, "LABYRINTH ZONE", 3, "Zone04", "ZoneLZ");
+            UseStageV4(context1, StageType.StagesRegular, "STARLIGHT ZONE", 1, "Zone05", "ZoneSZ");
+            UseStageV4(context1, StageType.StagesRegular, "STARLIGHT ZONE", 2, "Zone05", "ZoneSZ");
+            UseStageV4(context1, StageType.StagesRegular, "STARLIGHT ZONE", 3, "Zone05", "ZoneSZ");
+            UseStageV4(context1, StageType.StagesRegular, "SCRAP BRAIN ZONE", 1, "Zone06", "ZoneSBZ");
+            UseStageV4(context1, StageType.StagesRegular, "SCRAP BRAIN ZONE", 2, "Zone06", "ZoneSBZ");
+            UseStageV4(context1, StageType.StagesRegular, "SCRAP BRAIN ZONE", 4, "Zone04", "ZoneLZ", visualActNumber: 3);
+            UseStageV4(context1, StageType.StagesRegular, "FINAL ZONE", 5, "Zone06", "ZoneSBZ", visualActNumber: 0);
 
-            UseStage(context2, StageType.StagesRegular, "EMERALD HILL ZONE", 1, "Zone01", "ZoneEHZ");
-            UseStage(context2, StageType.StagesRegular, "EMERALD HILL ZONE", 2, "Zone01", "ZoneEHZ");
-            UseStage(context2, StageType.StagesRegular, "CHEMICAL PLANT ZONE", 1, "Zone02", "ZoneCPZ");
-            UseStage(context2, StageType.StagesRegular, "CHEMICAL PLANT ZONE", 2, "Zone02", "ZoneCPZ");
-            UseStage(context2, StageType.StagesRegular, "AQUATIC RUIN ZONE", 1, "Zone03", "ZoneARZ");
-            UseStage(context2, StageType.StagesRegular, "AQUATIC RUIN ZONE", 2, "Zone03", "ZoneARZ");
-            UseStage(context2, StageType.StagesRegular, "CASINO NIGHT ZONE", 1, "Zone04", "ZoneCNZ");
-            UseStage(context2, StageType.StagesRegular, "CASINO NIGHT ZONE", 2, "Zone04", "ZoneCNZ");
-            UseStage(context2, StageType.StagesRegular, "HILL TOP ZONE", 1, "Zone05", "ZoneHTZ");
-            UseStage(context2, StageType.StagesRegular, "HILL TOP ZONE", 2, "Zone05", "ZoneHTZ");
-            UseStage(context2, StageType.StagesRegular, "MYSTIC CAVE ZONE", 1, "Zone06", "ZoneMCZ");
-            UseStage(context2, StageType.StagesRegular, "MYSTIC CAVE ZONE", 2, "Zone06", "ZoneMCZ");
-            UseStage(context2, StageType.StagesRegular, "OIL OCEAN ZONE", 1, "Zone07", "ZoneOOZ");
-            UseStage(context2, StageType.StagesRegular, "OIL OCEAN ZONE", 2, "Zone07", "ZoneOOZ");
-            UseStage(context2, StageType.StagesRegular, "HIDDEN PALACE ZONE", 1, "Zone08", "ZoneHPZ");
-            UseStage(context2, StageType.StagesRegular, "METROPOLIS ZONE", 1, "Zone09", "ZoneMPZ");
-            UseStage(context2, StageType.StagesRegular, "METROPOLIS ZONE", 2, "Zone09", "ZoneMPZ");
-            UseStage(context2, StageType.StagesRegular, "METROPOLIS ZONE", 3, "Zone09", "ZoneMPZ");
-            UseStage(context2, StageType.StagesRegular, "SKY CHASE ZONE", 1, "Zone10", "ZoneSCZ", visualActNumber: 0);
-            UseStage(context2, StageType.StagesRegular, "WING FORTRESS ZONE", 1, "Zone11", "ZoneWFZ", visualActNumber: 0);
-            UseStage(context2, StageType.StagesRegular, "DEATH EGG ZONE", 1, "Zone12", "ZoneDEZ", visualActNumber: 0);
+            UseStageV3(contextCd, StageType.StagesRegular, "PALMTREE PANIC ZONE", 1, "R11A", "ZonePPZ1A");
+            UseStageV3(contextCd, StageType.StagesRegular, "PALMTREE PANIC ZONE", 2, "R12A", "ZonePPZ2A");
+            UseStageV3(contextCd, StageType.StagesRegular, "PALMTREE PANIC ZONE", 3, "R13C", "ZonePPZ3C");
+            UseStageV3(contextCd, StageType.StagesRegular, "COLLISION CHAOS ZONE", 1, "R31A", "ZoneCCZ1A");
+            UseStageV3(contextCd, StageType.StagesRegular, "COLLISION CHAOS ZONE", 2, "R32A", "ZoneCCZ2A");
+            UseStageV3(contextCd, StageType.StagesRegular, "COLLISION CHAOS ZONE", 3, "R33C", "ZoneCCZ3C");
+            UseStageV3(contextCd, StageType.StagesRegular, "TIDAL TEMPEST ZONE", 1, "R41A", "ZoneTTZ1A");
+            UseStageV3(contextCd, StageType.StagesRegular, "TIDAL TEMPEST ZONE", 2, "R42A", "ZoneTTZ2A");
+            UseStageV3(contextCd, StageType.StagesRegular, "TIDAL TEMPEST ZONE", 3, "R43C", "ZoneTTZ3C");
+            UseStageV3(contextCd, StageType.StagesRegular, "QUARTZ QUADRANT ZONE", 1, "R51A", "ZoneQQZ1A");
+            UseStageV3(contextCd, StageType.StagesRegular, "QUARTZ QUADRANT ZONE", 2, "R52A", "ZoneQQZ2A");
+            UseStageV3(contextCd, StageType.StagesRegular, "QUARTZ QUADRANT ZONE", 3, "R53C", "ZoneQQZ3C");
+            UseStageV3(contextCd, StageType.StagesRegular, "WACKY WORKBENCH ZONE", 1, "R61A", "ZoneWWZ1A");
+            UseStageV3(contextCd, StageType.StagesRegular, "WACKY WORKBENCH ZONE", 2, "R62A", "ZoneWWZ2A");
+            UseStageV3(contextCd, StageType.StagesRegular, "WACKY WORKBENCH ZONE", 3, "R63C", "ZoneWWZ3C");
+            UseStageV3(contextCd, StageType.StagesRegular, "STARDUST SPEEDWAY ZONE", 1, "R71A", "ZoneSSZ1A");
+            UseStageV3(contextCd, StageType.StagesRegular, "STARDUST SPEEDWAY ZONE", 2, "R72A", "ZoneSSZ2A");
+            UseStageV3(contextCd, StageType.StagesRegular, "STARDUST SPEEDWAY ZONE", 3, "R73C", "ZoneSSZ3C");
+            UseStageV3(contextCd, StageType.StagesRegular, "METALLIC MADNESS ZONE", 1, "R81A", "ZoneMMZ1A");
+            UseStageV3(contextCd, StageType.StagesRegular, "METALLIC MADNESS ZONE", 2, "R82A", "ZoneMMZ2A");
+            UseStageV3(contextCd, StageType.StagesRegular, "METALLIC MADNESS ZONE", 3, "R83C", "ZoneMMZ3C");
+
+            UseStageV4(context2, StageType.StagesRegular, "EMERALD HILL ZONE", 1, "Zone01", "ZoneEHZ");
+            UseStageV4(context2, StageType.StagesRegular, "EMERALD HILL ZONE", 2, "Zone01", "ZoneEHZ");
+            UseStageV4(context2, StageType.StagesRegular, "CHEMICAL PLANT ZONE", 1, "Zone02", "ZoneCPZ");
+            UseStageV4(context2, StageType.StagesRegular, "CHEMICAL PLANT ZONE", 2, "Zone02", "ZoneCPZ");
+            UseStageV4(context2, StageType.StagesRegular, "AQUATIC RUIN ZONE", 1, "Zone03", "ZoneARZ");
+            UseStageV4(context2, StageType.StagesRegular, "AQUATIC RUIN ZONE", 2, "Zone03", "ZoneARZ");
+            UseStageV4(context2, StageType.StagesRegular, "CASINO NIGHT ZONE", 1, "Zone04", "ZoneCNZ");
+            UseStageV4(context2, StageType.StagesRegular, "CASINO NIGHT ZONE", 2, "Zone04", "ZoneCNZ");
+            UseStageV4(context2, StageType.StagesRegular, "HILL TOP ZONE", 1, "Zone05", "ZoneHTZ");
+            UseStageV4(context2, StageType.StagesRegular, "HILL TOP ZONE", 2, "Zone05", "ZoneHTZ");
+            UseStageV4(context2, StageType.StagesRegular, "MYSTIC CAVE ZONE", 1, "Zone06", "ZoneMCZ");
+            UseStageV4(context2, StageType.StagesRegular, "MYSTIC CAVE ZONE", 2, "Zone06", "ZoneMCZ");
+            UseStageV4(context2, StageType.StagesRegular, "OIL OCEAN ZONE", 1, "Zone07", "ZoneOOZ");
+            UseStageV4(context2, StageType.StagesRegular, "OIL OCEAN ZONE", 2, "Zone07", "ZoneOOZ");
+            UseStageV4(context2, StageType.StagesRegular, "HIDDEN PALACE ZONE", 1, "Zone08", "ZoneHPZ");
+            UseStageV4(context2, StageType.StagesRegular, "METROPOLIS ZONE", 1, "Zone09", "ZoneMPZ");
+            UseStageV4(context2, StageType.StagesRegular, "METROPOLIS ZONE", 2, "Zone09", "ZoneMPZ");
+            UseStageV4(context2, StageType.StagesRegular, "METROPOLIS ZONE", 3, "Zone09", "ZoneMPZ");
+            UseStageV4(context2, StageType.StagesRegular, "SKY CHASE ZONE", 1, "Zone10", "ZoneSCZ", visualActNumber: 0);
+            UseStageV4(context2, StageType.StagesRegular, "WING FORTRESS ZONE", 1, "Zone11", "ZoneWFZ", visualActNumber: 0);
+            UseStageV4(context2, StageType.StagesRegular, "DEATH EGG ZONE", 1, "Zone12", "ZoneDEZ", visualActNumber: 0);
 
             for (var i = 1; i <= 8; i++)
-                UseStage(context2, StageType.StagesSpecial, "SPECIAL STAGE", i, "Special", "Special2");
+                UseStageV4(context2, StageType.StagesSpecial, "SPECIAL STAGE", i, "Special", "Special2");
             for (var i = 1; i <= 6; i++)
-                UseStage(context1, StageType.StagesSpecial, "SPECIAL STAGE", i, "Special", "Special1");
+                UseStageV4(context1, StageType.StagesSpecial, "SPECIAL STAGE", i, "Special", "Special1");
 
             Create(Path.Combine(destinationDataRsdk, "Data/Game/GameConfig.bin"), sonicHybridConfig.Write);
         }
 
-        enum StageType
-        {
-            StagesPresentation,
-            StagesRegular,
-            StagesSpecial,
-        }
-
-        private static void UseStage(
+        private static void UseStageV4(
             Context context,
             StageType stageType,
             string name,
@@ -210,20 +259,12 @@ namespace SonicHybridRsdk.Generator
             string dstFolder,
             int visualActNumber = -1)
         {
-            List<GameConfig.Stage> GetStages(GameConfig config, StageType stageType) => stageType switch
-            {
-                StageType.StagesPresentation => config.StagesPresentation,
-                StageType.StagesRegular => config.StagesRegular,
-                StageType.StagesSpecial => config.StagesSpecial,
-                _ => throw new ArgumentException("Stage type not recognised"),
-            };
-
-            var stages = GetStages(context.SrcConfig, stageType);
+            var stages = context.SrcConfig.GetStages(stageType);
             if (visualActNumber < 0)
                 visualActNumber = actNumber;
 
             var srcStage = stages.First(x => x.Act == actNumber.ToString() && x.Path == srcFolder);
-            var dstStage = new GameConfig.Stage
+            var dstStage = new Stage
             {
                 Name = visualActNumber > 0 ? $"{name} {visualActNumber}" : name,
                 Act = actNumber.ToString(),
@@ -240,99 +281,31 @@ namespace SonicHybridRsdk.Generator
             File.Copy(Path.Combine(srcPath, "Backgrounds.bin"), Path.Combine(dstPath, "Backgrounds.bin"), true);
             File.Copy(Path.Combine(srcPath, "CollisionMasks.bin"), Path.Combine(dstPath, "CollisionMasks.bin"), true);
             PatchStageConfig(context,
+                StageConfig.Read,
                 Path.Combine(srcPath, "StageConfig.bin"),
                 Path.Combine(dstPath, "StageConfig.bin"));
             PatchStage(context,
+                StageAct.Read,
                 Path.Combine(srcPath, $"Act{actNumber}.bin"),
                 Path.Combine(dstPath, $"Act{actNumber}.bin"),
-                visualActNumber);
-
-            GetStages(context.DstConfig, stageType).Add(dstStage);
-        }
-
-        private static void PatchStageConfig(Context context, string srcFile, string dstFile)
-        {
-            var src = OpenRead(srcFile, StageConfig.Read);
-            PatchGameObjects(src.Sfx, context.Replacements);
-            PatchGameObjects(src.Objects, context.Replacements);
-            Create(dstFile, src.Write);
-        }
-
-        private static void PatchGameObjects(List<GameObject> gameObjects, Dictionary<string, string> replacements)
-        {
-            if ((replacements?.Count ?? 0) == 0)
-                return;
-
-            foreach (var item in gameObjects)
-            {
-                if (replacements.TryGetValue(item.Name, out var newName))
-                    item.Name = newName;
-                if (replacements.TryGetValue(item.Path, out var newPath))
-                    item.Path = newPath;
-            }
-        }
-
-        private static void PatchStage(Context context, string srcFile, string dstFile, int actNumber)
-        {
-            var act = OpenRead(srcFile, StageAct.Read);
-            for (int i = 0; i < act.Entities.Count; i++)
-            {
-                Entity entity = act.Entities[i];
-                var id = entity.Type;
-                if (id < context.SrcConfig.GameObjects.Count)
+                (context, entity, name) =>
                 {
-                    if (id == 0)
-                        continue;
-                    var srcObj = context.SrcObjects[id - 1].Name;
-                    var dstObj = context.DstObjects[srcObj] + 1;
-                    entity.Type = (byte)dstObj;
-
-                    switch (srcObj)
+                    switch (name)
                     {
-                        case "TitleCard":
-                            entity.PropertyValue = (byte)(actNumber > 0 ? actNumber : 4);
+                        case "Title Card":
+                            entity.PropertyValue = (byte)(visualActNumber > 0 ? visualActNumber : 4);
                             break;
+                        default:
+                            return false;
                     }
-                }
-                else
-                {
-                    var localId = id - context.SrcConfig.GameObjects.Count;
-                    entity.Type = Convert.ToByte(context.DstConfig.GameObjects.Count + localId);
-                }
-            }
 
-            Create(dstFile, act.Write);
-        }
+                    return true;
+                });
 
-        private static void Copy(string srcPath, string dstPath)
-        {
-            Directory.CreateDirectory(dstPath);
-            foreach (var filePath in Directory.EnumerateFiles(srcPath))
-            {
-                var dstFilePath = Path.Combine(dstPath, Path.GetFileName(filePath));
-                File.Copy(filePath, dstFilePath, true);
-            }
+            var background = OpenRead(Path.Combine(srcPath, "Backgrounds.bin"), StageBackgroundV4.Read);
+            Create(Path.Combine(dstPath, "Backgrounds.bin"), background.Write);
 
-            foreach (var directoryPath in Directory.EnumerateDirectories(srcPath))
-            {
-                var dstDirectoryPath = Path.Combine(dstPath, Path.GetFileName(directoryPath));
-                Copy(directoryPath, dstDirectoryPath);
-            }
-        }
-
-        private static T OpenRead<T>(string fileName, Func<Stream, T> func)
-        {
-            using var stream = File.OpenRead(fileName);
-            return func(stream);
-        }
-
-        private static void Create(string fileName, Action<Stream> func)
-        {
-            var directoryPath = Path.GetDirectoryName(fileName);
-            Directory.CreateDirectory(directoryPath);
-            
-            using var stream = File.Create(fileName);
-            func(stream);
+            context.DstConfig.GetStages(stageType).Add(dstStage);
         }
     }
 }
