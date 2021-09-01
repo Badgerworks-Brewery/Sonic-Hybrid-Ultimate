@@ -157,6 +157,8 @@ namespace SonicHybridRsdk.Generator
             var variables = new Dictionary<string, int>();
             foreach (var item in sonic1Config.Variables)
                 variables[item.Name] = item.Value;
+            foreach (var item in sonicCdConfig.Variables)
+                variables[item.Name] = item.Value;
             foreach (var item in sonic2Config.Variables)
                 variables[item.Name] = item.Value;
             sonicHybridConfig.Variables = variables.Select(x => new Variable { Name = x.Key, Value = x.Value }).ToList();
