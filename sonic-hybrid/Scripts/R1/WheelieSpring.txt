@@ -1,0 +1,109 @@
+//------------Sonic CD Wheelie Spring Script-------------//
+//--------Scripted by Christian Whitehead 'The Taxman'--------//
+//-------Unpacked By Rubberduckycooly's Script Unpacker-------//
+
+//-------Aliases-------//
+#alias 66: TYPE_WHEELIESPRING
+
+
+event ObjectMain
+	if Object.State==0
+		if Object.Value0<Object.PropertyValue
+			Object.Value0++
+			Object.XPos+=98304
+		else
+			Object.State=1
+			Object.Value0=Object.PropertyValue
+			FlipSign(Object.Value0)
+		end if
+	else
+		if Object.Value0<Object.PropertyValue
+			Object.Value0++
+			Object.XPos-=98304
+		else
+			Object.State=0
+			Object.Value0=Object.PropertyValue
+			FlipSign(Object.Value0)
+		end if
+	end if
+	ObjectTileGrip(0,0,15,0)
+
+    foreach (GROUP_PLAYERS, currentPlayer, ACTIVE_ENTITIES)
+        if object[currentPlayer].yvel>=0
+            BoxCollisionTest(C_BOX, object.entityPos, -16,-16,16,16, currentPlayer, object[currentPlayer].value40, object[currentPlayer].value38, object[currentPlayer].value41, object[currentPlayer].value39)
+            BoxCollisionTest(C_TOUCH, object.entityPos, -15,-18,15,-12, currentPlayer, object[currentPlayer].value40, object[currentPlayer].value38, object[currentPlayer].value41, object[currentPlayer].value39)
+            if CheckResult==1
+                Object.Frame=1
+                object[currentPlayer].State=PlayerObject_HandleAir
+                object[currentPlayer].Gravity=1
+                object[currentPlayer].yvel=-1048576
+                object[currentPlayer].Animation=11
+                object[currentPlayer].value1=0
+                PlaySfx(11,0)
+            end if
+        end if
+        if object[currentPlayer].Gravity==0
+            BoxCollisionTest(C_BOX, object.entityPos, -16,-20,16,16, currentPlayer, object[currentPlayer].value40, object[currentPlayer].value38, object[currentPlayer].value41, object[currentPlayer].value39)
+            BoxCollisionTest(C_TOUCH, object.entityPos, -15,-18,15,-12, currentPlayer, object[currentPlayer].value40, object[currentPlayer].value38, object[currentPlayer].value41, object[currentPlayer].value39)
+            if CheckResult==1
+                Object.Frame=1
+                object[currentPlayer].State=PlayerObject_HandleAir
+                object[currentPlayer].Gravity=1
+                object[currentPlayer].yvel=-1048576
+                object[currentPlayer].Animation=11
+                object[currentPlayer].value1=0
+                PlaySfx(11,0)
+            end if
+        end if
+    next
+end event
+
+event ObjectDraw
+	if Object.Frame==0
+		DrawSprite(0)
+	else
+		Object.Frame++
+		temp0=Object.Frame
+		temp0>>=1
+		switch temp0
+		case 0
+		case 1
+			DrawSprite(0)
+			break
+		case 2
+		case 6
+			DrawSprite(1)
+			break
+		case 3
+		case 4
+		case 5
+			DrawSprite(2)
+			break
+
+		end switch
+		if Object.Frame>12
+			Object.Frame=0
+		end if
+	end if
+	temp0=Object.Value0
+	temp0+=Object.PropertyValue
+	temp0%=18
+	temp0/=9
+	temp0+=3
+	DrawSprite(temp0)
+end event
+
+
+event ObjectStartup
+	LoadSpriteSheet("Global/ItemsCD.gif")
+	SpriteFrame(-16,-16,32,16,84,1)
+	SpriteFrame(-16,-8,32,8,84,1)
+	SpriteFrame(-16,-40,32,40,84,18)
+	SpriteFrame(-8,0,16,16,233,0)
+	SpriteFrame(-8,0,16,16,233,17)
+end event
+
+event RSDK
+	LoadSpriteSheet("Global/Display.gif")
+	SetEditorIcon(Icon0,SingleIcon,-16,-16,32,32,1,143)
+end event

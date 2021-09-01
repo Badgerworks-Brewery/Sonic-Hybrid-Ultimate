@@ -69,7 +69,7 @@ RSDKv4: `Object.scrollTracking`
 ## Player object and properties
 
 RSDKv3: `Player.Timer`
-RSDKv5: `object.value1`
+RSDKv4: `object.value1`
 
 I have no clue why `Timer` became `value1`...
 
