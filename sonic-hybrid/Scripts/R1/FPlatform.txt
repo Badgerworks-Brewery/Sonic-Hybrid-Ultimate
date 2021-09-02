@@ -1,0 +1,109 @@
+//------------Sonic CD Fall Platform Script-------------//
+//--------Scripted by Christian Whitehead 'The Taxman'--------//
+//-------Unpacked By Rubberduckycooly's Script Unpacker-------//
+
+//-------Aliases-------//
+#alias 42: TYPE_FALLPLATFORM
+
+
+event ObjectMain
+	if Object.Value0==1
+		if Object.State==0
+			Object.State=1
+		end if
+		if Object.Value1<16
+			Object.Value1++
+			temp0=Object.Value1
+			temp0&=3
+			if temp0==3
+				Object.Value2=65536
+			else
+				Object.Value2=0
+			end if
+		else
+			Object.Value2=0
+		end if
+	else
+		if Object.Value1>0
+			Object.Value1--
+			temp0=Object.Value1
+			temp0&=3
+			if temp0==3
+				Object.Value2=-65536
+			else
+				Object.Value2=0
+			end if
+		else
+			Object.Value2=0
+		end if
+	end if
+	Object.Value0=0
+	if Object.PropertyValue==0
+		switch Object.State
+		case 1
+			if Object.Value3<30
+				Object.Value3++
+			else
+				Object.Value4=0
+				Object.Value3=0
+				Object.State=2
+				Object.Priority=1
+			end if
+			break
+		case 2
+			if Object.Value4<262144
+				Object.Value4+=8192
+			end if
+			Object.Value2+=Object.Value4
+			if Object.OutOfBounds==1
+				Object.YPos=Object.Value5
+				Object.State=3
+				Object.Value4=0
+			end if
+			break
+		case 3
+			if Object.OutOfBounds==1
+				Object.State=0
+				Object.Priority=0
+			end if
+			break
+
+		end switch
+	end if
+	
+	if Object.State<3
+		foreach (GROUP_PLAYERS, currentPlayer, ACTIVE_ENTITIES)
+			BoxCollisionTest(C_PLATFORM, object.entityPos, -32,-9,32,12, currentPlayer, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO)
+			if CheckResult==1
+				Object.Value0=1
+				object[currentPlayer].YPos+=Object.Value2
+			end if
+		next
+	end if
+end event
+
+
+event ObjectDraw
+	Object.YPos+=Object.Value2
+	if Object.State<3
+		DrawSprite(0)
+	end if
+end event
+
+
+event ObjectStartup
+	LoadSpriteSheet("R1/Objects.gif")
+	SpriteFrame(-32,-16,64,32,101,109)
+	ArrayPos0=32
+	while ArrayPos0<1056
+		if Object[ArrayPos0].Type==TypeName[FallPlatform]
+			Object[ArrayPos0].Value5=Object[ArrayPos0].YPos
+		end if
+		ArrayPos0++
+	loop
+end event
+
+event RSDK
+	LoadSpriteSheet("Global/Display.gif")
+	SpriteFrame(-16, -16, 32, 32, 1, 143)
+end event

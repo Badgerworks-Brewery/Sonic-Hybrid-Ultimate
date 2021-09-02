@@ -115,6 +115,7 @@ namespace SonicHybridRsdk.Generator
             dicHybridObjects["Past Post"] = dicHybridObjects["Star Post"]; // TODO HACK
             dicHybridObjects["Transporter"] = dicHybridObjects["Ring"]; // TODO HACK
             dicHybridObjects["Goal Post"] = dicHybridObjects["Ring"]; // TODO HACK
+            dicHybridObjects["MSProjector"] = dicHybridObjects["Ring"]; // TODO HACK
 
             var context1 = new Context
             {
