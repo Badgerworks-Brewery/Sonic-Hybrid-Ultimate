@@ -1,6 +1,7 @@
 //------------Sonic CD Tile Trigger H Script-------------//
 //--------Scripted by Christian Whitehead 'The Taxman'--------//
 //-------Unpacked By Rubberduckycooly's Script Unpacker-------//
+//-----Adapted to RSDKv4 by Luciano (Xeeynamo) Ciccariello----//
 
 //-------Aliases-------//
 #alias 43: TYPE_TILETRIGGERH

@@ -1,0 +1,184 @@
+//------------Sonic CD BossLeg Script-------------//
+//--------Scripted by Christian Whitehead 'The Taxman'--------//
+//-------Unpacked By Rubberduckycooly's Script Unpacker-------//
+//-----Adapted to RSDKv4 by Luciano (Xeeynamo) Ciccariello----//
+
+//-------Aliases-------//
+#alias 49: TYPE_BOSSLEG
+
+// Function declarations
+#function BossLeg_Function62
+#function BossLeg_Function63
+
+function BossLeg_Function62
+	GetBit(temp0,Object.Value4,5)
+	if temp0==1
+		ArrayPos0=Object.Value0
+		Object[ArrayPos0].XPos+=temp1
+		Object[ArrayPos0].YPos+=temp2
+		ArrayPos1=Object[ArrayPos0].Value0
+		Object[ArrayPos1].XPos+=temp1
+		Object[ArrayPos1].YPos+=temp2
+		ArrayPos0=Object[ArrayPos1].Value0
+		Object[ArrayPos0].XPos+=temp1
+		Object[ArrayPos0].YPos+=temp2
+	end if
+end function
+
+
+function BossLeg_Function63
+	ArrayPos0=Object.Value0
+	Object.XPos=Object[ArrayPos0].XPos
+	Object.XPos+=262144
+	Object.XPos+=Object.Value6
+	Object.YPos=Object[ArrayPos0].YPos
+	Object.YPos+=1048576
+	Object.YPos+=Object.Value7
+end function
+
+
+event ObjectMain
+	switch Object.State
+	case 0
+		Object.Value2=32768
+		Object.Value5=16384
+		Object.State=1
+		break
+	case 1
+		ArrayPos0=Object.Value0
+		Object.XPos=Object[ArrayPos0].XPos
+		Object.XPos+=262144
+		Object.YPos=Object[ArrayPos0].YPos
+		Object.YPos+=1048576
+		break
+	case 2
+		ArrayPos0=Object.Value0
+		ArrayPos1=Object[ArrayPos0].Value0
+		ArrayPos0=Object[ArrayPos1].Value1
+		ArrayPos1=Object[ArrayPos0].Value1
+		Object.XPos=Object[ArrayPos1].XPos
+		Object.XPos-=655360
+		Object.YPos=Object[ArrayPos1].YPos
+		break
+	case 3
+		ArrayPos0=Object.Value1
+		if Object.Value6<524288
+			temp1=Object.Value2
+			Object.Value6+=temp1
+			GetBit(temp0,Object.Value4,4)
+			if temp0==1
+				FlipSign(temp1)
+				temp2=0
+				CallFunction(BossLeg_Function62)
+			else
+				CallFunction(BossLeg_Function63)
+			end if
+		else
+			CallFunction(BossLeg_Function63)
+		end if
+		break
+	case 4
+		ArrayPos0=Object.Value1
+		if Object.Value6>-524288
+			temp1=Object.Value2
+			Object.Value6-=temp1
+			GetBit(temp0,Object.Value4,4)
+			if temp0==1
+				temp2=0
+				CallFunction(BossLeg_Function62)
+			else
+				CallFunction(BossLeg_Function63)
+			end if
+		else
+			CallFunction(BossLeg_Function63)
+		end if
+		break
+	case 5
+		if Object.Value6>-524288
+			temp1=Object.Value2
+			Object.Value6-=temp1
+		else
+			temp1=0
+		end if
+		if Object.Value7>-262144
+			temp2=Object.Value5
+			Object.Value7-=temp2
+		else
+			temp2=0
+		end if
+		GetBit(temp0,Object.Value4,4)
+		if temp0==1
+			CallFunction(BossLeg_Function62)
+		else
+			CallFunction(BossLeg_Function63)
+		end if
+		break
+	case 6
+		if Object.Value6>-524288
+			temp1=Object.Value2
+			Object.Value6-=temp1
+		else
+			temp1=0
+		end if
+		if Object.Value7<262144
+			temp2=Object.Value5
+			Object.Value7+=temp2
+		else
+			temp2=0
+		end if
+		GetBit(temp0,Object.Value4,4)
+		if temp0==1
+			FlipSign(temp2)
+			CallFunction(BossLeg_Function62)
+		else
+			CallFunction(BossLeg_Function63)
+		end if
+		break
+	case 7
+		GetBit(temp0,Object.Value4,4)
+		if temp0==0
+			Object.Value2-=1536
+		else
+			Object.Value2+=1536
+		end if
+		Object.Value5+=6752
+		Object.XPos+=Object.Value2
+		Object.YPos+=Object.Value5
+		if Object.OutOfBounds==1
+			Object.Type=TypeName[BlankObject]
+			Object.Priority=0
+		end if
+		break
+
+	end switch
+
+	if Object.State<6
+		foreach (GROUP_PLAYERS, currentPlayer, ACTIVE_ENTITIES)
+			BoxCollisionTest(C_TOUCH, object.entityPos, -12,-20,12,-20, currentPlayer, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO)
+			if checkResult == 1
+				CallFunction(PlayerObject_Hit)
+				ArrayPos0=Object.Value0
+				ArrayPos1=Object[ArrayPos0].Value0
+				ArrayPos0=Object[ArrayPos1].Value0
+				Object[ArrayPos0].Animation=1
+				Object[ArrayPos0].Direction=180
+			end if
+		next
+	end if
+end event
+
+
+event ObjectDraw
+	DrawSprite(0)
+end event
+
+
+event ObjectStartup
+	LoadSpriteSheet("R1/Objects3.gif")
+	SpriteFrame(-12,-20,24,40,74,1)
+end event
+
+event RSDK
+	LoadSpriteSheet("Global/Display.gif")
+	SpriteFrame(-16, -16, 32, 32, 1, 143)
+end event
