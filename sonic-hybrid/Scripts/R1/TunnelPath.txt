@@ -1,0 +1,719 @@
+//------------Sonic CD Tunnel Path Script-------------//
+//--------Scripted by Christian Whitehead 'The Taxman'--------//
+//-------Unpacked By Rubberduckycooly's Script Unpacker-------//
+
+//-------Aliases-------//
+#alias 65: TYPE_TUNNELPATH
+
+event ObjectMain
+    
+    if Object.State==0
+        if Object.PropertyValue==0
+            foreach (GROUP_PLAYERS, currentPlayer, ACTIVE_ENTITIES)
+                arrayPos0 = -1
+                if object[currentPlayer].State!=PlayerObject_Blank
+                    BoxCollisionTest(C_TOUCH, object.entityPos, -16,-16,16,16, currentPlayer, object[currentPlayer].value40, object[currentPlayer].value38, object[currentPlayer].value41, object[currentPlayer].value39)
+                    if CheckResult==1
+                        arrayPos0 = currentPlayer
+                    end if
+                end if
+            next
+
+            if arrayPos0 >= 0
+                Object.Value2 = arrayPos0
+                object[arrayPos0].State=PlayerObject_Blank
+                // if object[currentPlayer].Invincible>0
+                //     object[currentPlayer].BlinkTimer=0
+                //     object[currentPlayer].Invincible=0
+                // end if
+                object[arrayPos0].TileCollisions=0
+                object[arrayPos0].Visible=0
+                Object.State=1
+                Object.Value0=0
+                Object.Priority=1
+                PlaySfx(7,0)
+            end if
+        end if
+	end if
+    
+	if Object.State==1
+        arrayPos0 = Object.Value2
+
+        if object[arrayPos0].State==PlayerObject_Death
+            Object.State=0
+        end if
+        temp0=Object.Value0
+        Object.Value0++
+        object[arrayPos0].Speed=object[arrayPos0].XPos
+        object[arrayPos0].Visible=0
+        
+        switch temp0
+        case 0
+            object[arrayPos0].interaction=0
+            object[arrayPos0].XPos=334541056
+            object[arrayPos0].YPos=15754496
+            break
+        case 1
+            object[arrayPos0].XPos=335589632
+            object[arrayPos0].YPos=15754496
+            break
+        case 2
+            object[arrayPos0].XPos=336638208
+            object[arrayPos0].YPos=15754496
+            break
+        case 3
+            object[arrayPos0].XPos=337686784
+            object[arrayPos0].YPos=15754496
+            break
+        case 4
+            object[arrayPos0].XPos=338735360
+            object[arrayPos0].YPos=15754496
+            break
+        case 5
+            object[arrayPos0].XPos=339783936
+            object[arrayPos0].YPos=15754496
+            break
+        case 6
+            object[arrayPos0].XPos=340832512
+            object[arrayPos0].YPos=16203776
+            break
+        case 7
+            object[arrayPos0].XPos=341881088
+            object[arrayPos0].YPos=16653056
+            break
+        case 8
+            object[arrayPos0].XPos=342929664
+            object[arrayPos0].YPos=17102336
+            break
+        case 9
+            object[arrayPos0].XPos=343453952
+            object[arrayPos0].YPos=17364480
+            break
+        case 10
+            object[arrayPos0].XPos=343903232
+            object[arrayPos0].YPos=18413056
+            break
+        case 11
+            object[arrayPos0].XPos=344352512
+            object[arrayPos0].YPos=19461632
+            break
+        case 12
+            object[arrayPos0].XPos=344801792
+            object[arrayPos0].YPos=20510208
+            break
+        case 13
+            object[arrayPos0].XPos=344998400
+            object[arrayPos0].YPos=21034496
+            break
+        case 14
+            object[arrayPos0].XPos=344998400
+            object[arrayPos0].YPos=22083072
+            break
+        case 15
+            object[arrayPos0].XPos=344998400
+            object[arrayPos0].YPos=23131648
+            break
+        case 16
+            object[arrayPos0].XPos=344998400
+            object[arrayPos0].YPos=24180224
+            break
+        case 17
+            object[arrayPos0].XPos=344998400
+            object[arrayPos0].YPos=25228800
+            break
+        case 18
+            object[arrayPos0].XPos=344998400
+            object[arrayPos0].YPos=26277376
+            break
+        case 19
+            object[arrayPos0].XPos=344998400
+            object[arrayPos0].YPos=27325952
+            break
+        case 20
+            object[arrayPos0].XPos=344998400
+            object[arrayPos0].YPos=28374528
+            break
+        case 21
+            object[arrayPos0].XPos=344998400
+            object[arrayPos0].YPos=29423104
+            break
+        case 22
+            object[arrayPos0].XPos=344998400
+            object[arrayPos0].YPos=30471680
+            break
+        case 23
+            object[arrayPos0].XPos=344998400
+            object[arrayPos0].YPos=31520256
+            break
+        case 24
+            object[arrayPos0].XPos=343949824
+            object[arrayPos0].YPos=31834624
+            break
+        case 25
+            object[arrayPos0].XPos=342901248
+            object[arrayPos0].YPos=32148992
+            break
+        case 26
+            object[arrayPos0].XPos=341852672
+            object[arrayPos0].YPos=32463360
+            break
+        case 27
+            object[arrayPos0].XPos=340804096
+            object[arrayPos0].YPos=32777728
+            break
+        case 28
+            object[arrayPos0].XPos=339755520
+            object[arrayPos0].YPos=33092096
+            break
+        case 29
+            object[arrayPos0].XPos=338706944
+            object[arrayPos0].YPos=32698880
+            break
+        case 30
+            object[arrayPos0].XPos=337658368
+            object[arrayPos0].YPos=32305664
+            break
+        case 31
+            object[arrayPos0].XPos=336609792
+            object[arrayPos0].YPos=31912448
+            break
+        case 32
+            object[arrayPos0].XPos=335561216
+            object[arrayPos0].YPos=31519232
+            break
+        case 33
+            object[arrayPos0].XPos=335036928
+            object[arrayPos0].YPos=30470656
+            break
+        case 34
+            object[arrayPos0].XPos=334512640
+            object[arrayPos0].YPos=29422080
+            break
+        case 35
+            object[arrayPos0].XPos=334512640
+            object[arrayPos0].YPos=28373504
+            break
+        case 36
+            object[arrayPos0].XPos=334512640
+            object[arrayPos0].YPos=27324928
+            break
+        case 37
+            object[arrayPos0].XPos=334512640
+            object[arrayPos0].YPos=26276352
+            break
+        case 38
+            object[arrayPos0].XPos=334512640
+            object[arrayPos0].YPos=25227776
+            break
+        case 39
+            object[arrayPos0].XPos=335561216
+            object[arrayPos0].YPos=24179200
+            break
+        case 40
+            object[arrayPos0].XPos=336609792
+            object[arrayPos0].YPos=23917056
+            break
+        case 41
+            object[arrayPos0].XPos=337658368
+            object[arrayPos0].YPos=23654912
+            break
+        case 42
+            object[arrayPos0].XPos=338706944
+            object[arrayPos0].YPos=23917056
+            break
+        case 43
+            object[arrayPos0].XPos=339755520
+            object[arrayPos0].YPos=24179200
+            break
+        case 44
+            object[arrayPos0].XPos=340504320
+            object[arrayPos0].YPos=25227776
+            break
+        case 45
+            object[arrayPos0].XPos=341253120
+            object[arrayPos0].YPos=26276352
+            break
+        case 46
+            object[arrayPos0].XPos=342001920
+            object[arrayPos0].YPos=27324928
+            break
+        case 47
+            object[arrayPos0].XPos=342395136
+            object[arrayPos0].YPos=27849216
+            break
+        case 48
+            object[arrayPos0].XPos=343443712
+            object[arrayPos0].YPos=28082176
+            break
+        case 49
+            object[arrayPos0].XPos=344492288
+            object[arrayPos0].YPos=28315136
+            break
+        case 50
+            object[arrayPos0].XPos=345540864
+            object[arrayPos0].YPos=28548096
+            break
+        case 51
+            object[arrayPos0].XPos=346589440
+            object[arrayPos0].YPos=28781056
+            break
+        case 52
+            object[arrayPos0].XPos=347638016
+            object[arrayPos0].YPos=29014016
+            break
+        case 53
+            object[arrayPos0].XPos=348686592
+            object[arrayPos0].YPos=29246976
+            break
+        case 54
+            object[arrayPos0].XPos=349735168
+            object[arrayPos0].YPos=29479936
+            break
+        case 55
+            object[arrayPos0].XPos=350783744
+            object[arrayPos0].YPos=29712896
+            break
+        case 56
+            object[arrayPos0].XPos=351832320
+            object[arrayPos0].YPos=29945856
+            break
+        case 57
+            object[arrayPos0].XPos=352880896
+            object[arrayPos0].YPos=30178816
+            CreateTempObject(TypeName[WaterfallSplash],0,object[arrayPos0].XPos,object[arrayPos0].YPos)
+            break
+        case 58
+            object[arrayPos0].XPos=353929472
+            object[arrayPos0].YPos=30411776
+            break
+        case 59
+            object[arrayPos0].XPos=354978048
+            object[arrayPos0].YPos=30644736
+            break
+        case 60
+            object[arrayPos0].XPos=356026624
+            object[arrayPos0].YPos=30877696
+            CreateTempObject(TypeName[WaterfallSplash],0,object[arrayPos0].XPos,object[arrayPos0].YPos)
+            break
+        case 61
+            object[arrayPos0].XPos=357075200
+            object[arrayPos0].YPos=31110656
+            break
+        case 62
+            object[arrayPos0].XPos=358123776
+            object[arrayPos0].YPos=31343616
+            break
+        case 63
+            object[arrayPos0].XPos=359172352
+            object[arrayPos0].YPos=31576576
+            CreateTempObject(TypeName[WaterfallSplash],0,object[arrayPos0].XPos,object[arrayPos0].YPos)
+            break
+        case 64
+            object[arrayPos0].XPos=360220928
+            object[arrayPos0].YPos=31809536
+            break
+        case 65
+            object[arrayPos0].XPos=361269504
+            object[arrayPos0].YPos=32042496
+            break
+        case 66
+            object[arrayPos0].XPos=362318080
+            object[arrayPos0].YPos=32275456
+            CreateTempObject(TypeName[WaterfallSplash],0,object[arrayPos0].XPos,object[arrayPos0].YPos)
+            break
+        case 67
+            object[arrayPos0].XPos=363366656
+            object[arrayPos0].YPos=32508416
+            break
+        case 68
+            object[arrayPos0].XPos=364415232
+            object[arrayPos0].YPos=32741376
+            break
+        case 69
+            object[arrayPos0].XPos=365463808
+            object[arrayPos0].YPos=32974336
+            break
+        case 70
+            object[arrayPos0].XPos=366512384
+            object[arrayPos0].YPos=33207296
+            break
+        case 71
+            object[arrayPos0].XPos=368609536
+            object[arrayPos0].YPos=33673216
+            break
+        case 72
+            object[arrayPos0].XPos=369658112
+            object[arrayPos0].YPos=33906176
+            break
+        case 73
+            object[arrayPos0].XPos=370706688
+            object[arrayPos0].YPos=34139136
+            break
+        case 74
+            object[arrayPos0].XPos=371755264
+            object[arrayPos0].YPos=34372096
+            break
+        case 75
+            object[arrayPos0].XPos=372803840
+            object[arrayPos0].YPos=34605056
+            break
+        case 76
+            object[arrayPos0].XPos=373852416
+            object[arrayPos0].YPos=34838016
+            break
+        case 77
+            object[arrayPos0].XPos=374900992
+            object[arrayPos0].YPos=35070976
+            break
+        case 78
+            object[arrayPos0].XPos=375425280
+            object[arrayPos0].YPos=35136512
+            break
+        case 79
+            object[arrayPos0].XPos=376473856
+            object[arrayPos0].YPos=35005440
+            break
+        case 80
+            object[arrayPos0].XPos=377522432
+            object[arrayPos0].YPos=34874368
+            break
+        case 81
+            object[arrayPos0].XPos=378571008
+            object[arrayPos0].YPos=34743296
+            break
+        case 82
+            object[arrayPos0].XPos=379619584
+            object[arrayPos0].YPos=34612224
+            break
+        case 83
+            object[arrayPos0].XPos=380668160
+            object[arrayPos0].YPos=33825792
+            break
+        case 84
+            object[arrayPos0].XPos=381716736
+            object[arrayPos0].YPos=33039360
+            break
+        case 85
+            object[arrayPos0].XPos=382066176
+            object[arrayPos0].YPos=31990784
+            break
+        case 86
+            object[arrayPos0].XPos=382415616
+            object[arrayPos0].YPos=30942208
+            break
+        case 87
+            object[arrayPos0].XPos=382765056
+            object[arrayPos0].YPos=29893632
+            break
+        case 88
+            object[arrayPos0].XPos=382240768
+            object[arrayPos0].YPos=28845056
+            break
+        case 89
+            object[arrayPos0].XPos=381716480
+            object[arrayPos0].YPos=27796480
+            break
+        case 90
+            object[arrayPos0].XPos=380667904
+            object[arrayPos0].YPos=27534336
+            break
+        case 91
+            object[arrayPos0].XPos=379619328
+            object[arrayPos0].YPos=27272192
+            break
+        case 92
+            object[arrayPos0].XPos=378570752
+            object[arrayPos0].YPos=27010048
+            break
+        case 93
+            object[arrayPos0].XPos=377522176
+            object[arrayPos0].YPos=26747904
+            break
+        case 94
+            object[arrayPos0].XPos=376473600
+            object[arrayPos0].YPos=26957568
+            break
+        case 95
+            object[arrayPos0].XPos=375425024
+            object[arrayPos0].YPos=27167232
+            break
+        case 96
+            object[arrayPos0].XPos=374900736
+            object[arrayPos0].YPos=27298304
+            break
+        case 97
+            object[arrayPos0].XPos=374271744
+            object[arrayPos0].YPos=28346880
+            break
+        case 98
+            object[arrayPos0].XPos=373642752
+            object[arrayPos0].YPos=29395456
+            break
+        case 99
+            object[arrayPos0].XPos=373315072
+            object[arrayPos0].YPos=29919744
+            break
+        case 100
+            object[arrayPos0].XPos=373734400
+            object[arrayPos0].YPos=30968320
+            break
+        case 101
+            object[arrayPos0].XPos=374153728
+            object[arrayPos0].YPos=32016896
+            break
+        case 102
+            object[arrayPos0].XPos=374350336
+            object[arrayPos0].YPos=32541184
+            break
+        case 103
+            object[arrayPos0].XPos=375398912
+            object[arrayPos0].YPos=32890624
+            break
+        case 104
+            object[arrayPos0].XPos=376447488
+            object[arrayPos0].YPos=33240064
+            break
+        case 105
+            object[arrayPos0].XPos=377496064
+            object[arrayPos0].YPos=33589504
+            break
+        case 106
+            object[arrayPos0].XPos=378544640
+            object[arrayPos0].YPos=33589504
+            break
+        case 107
+            object[arrayPos0].XPos=379593216
+            object[arrayPos0].YPos=33589504
+            break
+        case 108
+            object[arrayPos0].XPos=380641792
+            object[arrayPos0].YPos=33589504
+            break
+        case 109
+            object[arrayPos0].XPos=381690368
+            object[arrayPos0].YPos=33589504
+            break
+        case 110
+            object[arrayPos0].XPos=382738944
+            object[arrayPos0].YPos=34638080
+            break
+        case 111
+            object[arrayPos0].XPos=382738944
+            object[arrayPos0].YPos=35686656
+            break
+        case 112
+            object[arrayPos0].XPos=382738944
+            object[arrayPos0].YPos=36735232
+            break
+        case 113
+            object[arrayPos0].XPos=382738944
+            object[arrayPos0].YPos=37783808
+            break
+        case 114
+            object[arrayPos0].XPos=382738944
+            object[arrayPos0].YPos=38832384
+            break
+        case 115
+            object[arrayPos0].XPos=382738944
+            object[arrayPos0].YPos=39880960
+            break
+        case 116
+            object[arrayPos0].XPos=382738944
+            object[arrayPos0].YPos=40929536
+            break
+        case 117
+            object[arrayPos0].XPos=382738944
+            object[arrayPos0].YPos=41978112
+            break
+        case 118
+            object[arrayPos0].XPos=382738944
+            object[arrayPos0].YPos=42502400
+            break
+        case 119
+            object[arrayPos0].XPos=382439424
+            object[arrayPos0].YPos=43550976
+            break
+        case 120
+            object[arrayPos0].XPos=382139904
+            object[arrayPos0].YPos=44599552
+            break
+        case 121
+            object[arrayPos0].XPos=381840384
+            object[arrayPos0].YPos=45648128
+            break
+        case 122
+            object[arrayPos0].XPos=381709312
+            object[arrayPos0].YPos=46172416
+            break
+        case 123
+            object[arrayPos0].XPos=380660736
+            object[arrayPos0].YPos=46565632
+            break
+        case 124
+            object[arrayPos0].XPos=379612160
+            object[arrayPos0].YPos=46958848
+            break
+        case 125
+            object[arrayPos0].XPos=378563584
+            object[arrayPos0].YPos=47352064
+            break
+        case 126
+            object[arrayPos0].XPos=377515008
+            object[arrayPos0].YPos=47745280
+            break
+        case 127
+            object[arrayPos0].XPos=376466432
+            object[arrayPos0].YPos=47220992
+            break
+        case 128
+            object[arrayPos0].XPos=375417856
+            object[arrayPos0].YPos=46696704
+            break
+        case 129
+            object[arrayPos0].XPos=374369280
+            object[arrayPos0].YPos=46172416
+            break
+        case 130
+            object[arrayPos0].XPos=374369280
+            object[arrayPos0].YPos=45123840
+            break
+        case 131
+            object[arrayPos0].XPos=374369280
+            object[arrayPos0].YPos=44075264
+            break
+        case 132
+            object[arrayPos0].XPos=375417856
+            object[arrayPos0].YPos=43725824
+            break
+        case 133
+            object[arrayPos0].XPos=376466432
+            object[arrayPos0].YPos=43376384
+            break
+        case 134
+            object[arrayPos0].XPos=377515008
+            object[arrayPos0].YPos=43026944
+            break
+        case 135
+            object[arrayPos0].XPos=378563584
+            object[arrayPos0].YPos=43026944
+            break
+        case 136
+            object[arrayPos0].XPos=379612160
+            object[arrayPos0].YPos=43026944
+            break
+        case 137
+            object[arrayPos0].XPos=380660736
+            object[arrayPos0].YPos=43026944
+            break
+        case 138
+            object[arrayPos0].XPos=381709312
+            object[arrayPos0].YPos=43026944
+            break
+        case 139
+            object[arrayPos0].XPos=382757888
+            object[arrayPos0].YPos=43026944
+            break
+        case 140
+            object[arrayPos0].XPos=383806464
+            object[arrayPos0].YPos=43026944
+            break
+        case 141
+            object[arrayPos0].XPos=384855040
+            object[arrayPos0].YPos=43026944
+            break
+        case 142
+            object[arrayPos0].XPos=385903616
+            object[arrayPos0].YPos=43026944
+            break
+        case 143
+            object[arrayPos0].XPos=386952192
+            object[arrayPos0].YPos=43446272
+            break
+        case 144
+            object[arrayPos0].XPos=388000768
+            object[arrayPos0].YPos=43865600
+            break
+        case 145
+            object[arrayPos0].XPos=388525056
+            object[arrayPos0].YPos=44062208
+            break
+        case 146
+            object[arrayPos0].XPos=388525056
+            object[arrayPos0].YPos=45110784
+            break
+        case 147
+            object[arrayPos0].XPos=388525056
+            object[arrayPos0].YPos=46159360
+            break
+        case 148
+            object[arrayPos0].XPos=388525056
+            object[arrayPos0].YPos=47207936
+            break
+        case 149
+            object[arrayPos0].XPos=388525056
+            object[arrayPos0].YPos=48256512
+            break
+        case 150
+            object[arrayPos0].XPos=387476480
+            object[arrayPos0].YPos=48675840
+            break
+        case 151
+            object[arrayPos0].XPos=386427904
+            object[arrayPos0].YPos=49095168
+            break
+        case 152
+            object[arrayPos0].XPos=385903616
+            object[arrayPos0].YPos=49291776
+            break
+        case 153
+            object[arrayPos0].XPos=384855040
+            object[arrayPos0].YPos=48662528
+            break
+        case 154
+            object[arrayPos0].XPos=383818240
+            object[arrayPos0].YPos=48560384
+            break
+        case 155
+            object[arrayPos0].Visible=1
+            object[arrayPos0].TileCollisions=1
+            Object.State=0
+            Object.Priority=0
+            object[arrayPos0].xvel=-786432
+            object[arrayPos0].Speed=-786432
+            object[arrayPos0].State=PlayerObject_HandleGround
+            object[arrayPos0].interaction=1
+            if Object[+1].Type==TypeName[BlankObject]
+                Object[+1].Type=TypeName[TunnelPath]
+                PlaySfx(SfxName[Block Break],0)
+            end if
+            break
+
+        end switch
+        if Object.State>0
+            object[arrayPos0].Speed-=object[arrayPos0].XPos
+            FlipSign(object[arrayPos0].Speed)
+        end if
+	end if
+end event
+
+event ObjectDraw
+	if Object.PropertyValue>0
+		DrawSprite(0)
+	end if
+end event
+
+
+event ObjectStartup
+	if Stage.PlayerListPos==0
+		LoadSpriteSheet("R1/Objects.gif")
+		SpriteFrame(-16,-16,32,32,34,175)
+	else
+		LoadSpriteSheet("R1/Objects3.gif")
+		SpriteFrame(-14,-16,29,32,115,167)
+	end if
+end event
+
+event RSDK
+	LoadSpriteSheet("Global/Display.gif")
+	SpriteFrame(-16, -16, 32, 32, 1, 143)
+end event

@@ -61,6 +61,15 @@ namespace SonicHybridRsdk.Generator
                     Path.Combine(sonic1Path, SourcePath),
                     Path.Combine(sonicHybridPath, DestinationPath),
                     true);
+
+            foreach (var (SourcePath, DestinationPath) in new (string, string)[]
+            {
+                ("Sprites/Global/Items.gif", "Sprites/Global/ItemsCD.gif"),
+            })
+                File.Copy(
+                    Path.Combine(sonicCdPath, SourcePath),
+                    Path.Combine(sonicHybridPath, DestinationPath),
+                    true);
         }
 
         public static void Generate(string sourceDataRsdk, string destinationDataRsdk)

@@ -48,6 +48,7 @@ reserve function PlayerObject_Handle3DRampAnims
 reserve function PlayerObject_HandleRollDecel
 reserve function PlayerObject_Clinging
 reserve function PlayerObject_Waterslide
+reserve function PlayerObject_Tunnel
 reserve function PlayerObject_HandleFlyCarry
 reserve function PlayerObject_HandleContRun
 reserve function PlayerObject_InitReplay
@@ -3601,6 +3602,59 @@ function PlayerObject_Waterslide
 	end if
 end function
 
+function PlayerObject_Tunnel
+	if object.Gravity==1
+		object.State=PlayerObject_HandleAir
+		object.value1=0
+		CallFunction(PlayerObject_HandleAirMovement)
+	else
+		// if object.Speed>0
+		// 	if object.Speed<object.MinRollSpeed
+		// 		object.Speed=object.MinRollSpeed
+		// 	end if
+		// 	if object.Speed>1048576
+		// 		object.Speed=1048576
+		// 	end if
+		// else
+		// 	temp0=object.MinRollSpeed
+		// 	FlipSign(temp0)
+		// 	if object.Speed>temp0
+		// 		object.Speed=temp0
+		// 		CallFunction(PlayerObject_ResetOnFloor)
+		// 	end if
+		// 	if object.Speed<-1048576
+		// 		object.Speed=-1048576
+		// 	end if
+		// end if
+		temp0=object.Speed
+		if temp0<0
+			FlipSign(temp0)
+		end if
+		if temp0<390594
+			if Warp.Destination>0
+				if Warp.Timer>99
+					if Warp.Timer<220
+						Warp.Destination=0
+					end if
+				end if
+				Warp.Timer=0
+			end if
+		else
+			if Warp.Destination>0
+				if Warp.Timer==0
+					Warp.Timer=1
+					CreateTempObject(TypeName[WarpStar],0,object.XPos,object.YPos)
+					Object[TempObjectPos].Value0=7
+					Object[TempObjectPos].DrawOrder=4
+				end if
+			end if
+		end if
+		CallFunction(PlayerObject_HandleRollDecel)
+		CallFunction(PlayerObject_RollAnimSpd)
+		//object.AnimationSpeed=object.CustomAnimSpeed
+		CallFunction(PlayerObject_ResetOnFloor)
+	end if
+end function
 
 function PlayerObject_HandleContRun
 	if object.speed > 0x10000

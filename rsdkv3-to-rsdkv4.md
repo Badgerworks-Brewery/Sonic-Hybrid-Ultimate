@@ -71,6 +71,9 @@ RSDKv4: `Object.scrollTracking`
 RSDKv3: `Player.Timer`
 RSDKv4: `object.value1`
 
+RSDKv3: `Player.ObjectInteraction`
+RSDKv4: `object.interaction`
+
 I have no clue why `Timer` became `value1`...
 
 ## Object[24]

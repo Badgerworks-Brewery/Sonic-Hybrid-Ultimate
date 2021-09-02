@@ -40,8 +40,10 @@ This guide is useful if you previously played Sonic Hybrid but you want to perfo
 
 ## Features
 
-* Star Posts in Sonic the Hedgehog 1 will bring you to the Sonic the Hedgehog 2 special stages.
-* Completing Sonic the Hedgehog 1's Final Zone will bring you to Emerald Hill Zone.
+* Play Sonic 1, Sonic CD and Sonic 2 in a single big game.
+* Star Posts in Sonic the Hedgehog 1 and CD will bring you to the Sonic the Hedgehog 2 special stages.
+* Completing Sonic the Hedgehog 1's Final Zone will bring you to Palmtree Panic Zone.
+* Completing Sonic the Hedgehog CD's Metallic Madness Act 3 will bring you to Emerald Hill Zone.
 * The Stage Select in the debug menu will report all the implemented level names.
 
 ## Known bugs
@@ -49,6 +51,9 @@ This guide is useful if you previously played Sonic Hybrid but you want to perfo
 * Sonic 1 Special Stages are working from the Stage Select, but the graphics is corrupted.
 * The main menu of RSDK will report the wrong stage names.
 * The Giant Ring from Sonic the Hedgehog 1 will teleport to the Sonic the Hedgehog 2 special stages.
+* Palmtree Panic Zone is half-implemented.
+* Sonic CD levels does not have any enemy, unique gimmicks, palette cycles and working loops unless stated.
+* Some Sonic CD's enemies and gimmicks might have the wrong palette.
 
 ## Resources
 
