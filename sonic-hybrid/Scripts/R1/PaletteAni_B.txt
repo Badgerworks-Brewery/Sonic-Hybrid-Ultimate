@@ -21,15 +21,16 @@ end event
 event ObjectStartup
 	Object[19].Type=TypeName[PaletteAnimation]
 	Object[19].Priority=1
-	temp0=1
+
+	temp0=0
+	temp1=1
 	while temp0<3
-		RotatePalette(0,177,179,1)
-		RotatePalette(0,172,174,0)
-		CopyPalette(0,0,temp0,0,256)
+		CopyPalette(temp0,0,temp1,0,256)
+		RotatePalette(temp1,177,179,1)
+		RotatePalette(temp1,172,174,0)
 		temp0++
+		temp1++
 	loop
-	RotatePalette(0,177,179,1)
-	RotatePalette(0,172,174,0)
 end event
 
 event RSDK

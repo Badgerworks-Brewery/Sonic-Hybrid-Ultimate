@@ -1,0 +1,270 @@
+//------------Sonic CD Breakable Wall Script-------------//
+//--------Scripted by Christian Whitehead 'The Taxman'--------//
+//-------Unpacked By Rubberduckycooly's Script Unpacker-------//
+//-----Adapted to RSDKv4 by Luciano (Xeeynamo) Ciccariello----//
+
+//-------Aliases-------//
+#alias 56: TYPE_BREAKABLEWALL
+
+
+event ObjectMain
+	if Object.PropertyValue>7
+		Object.XPos+=Object.Value0
+		Object.YPos+=Object.Value1
+		Object.Value1+=16384
+		if Object.OutOfBounds==1
+			Object.Type=TypeName[BlankObject]
+		end if
+	end if
+
+	if Object.PropertyValue<8
+		foreach (GROUP_PLAYERS, currentPlayer, ACTIVE_ENTITIES)
+			if object[currentPlayer].Animation==10
+				BoxCollisionTest(C_TOUCH, object.entityPos, -17,-24,17,24, currentPlayer, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO))
+				if CheckResult==1
+					Object.Type=TypeName[BlankObject]
+					PlaySfx(SfxName[Boss Hit], 0)
+					temp0=Object.PropertyValue
+					temp0*=6
+					temp0+=8
+					temp1=Object.XPos
+					temp1-=524288
+					temp2=Object.XPos
+					temp2+=524288
+					temp3=Object.YPos
+					temp3-=1048576
+					if object[currentPlayer].XPos<Object.XPos
+						CreateTempObject(TypeName[BreakableWall],temp0,temp1,temp3)
+						Object[TempObjectPos].Value0=-196608
+						Object[TempObjectPos].Value1=-131072
+						Object[TempObjectPos].DrawOrder=4
+						temp0++
+						CreateTempObject(TypeName[BreakableWall],temp0,temp2,temp3)
+						Object[TempObjectPos].Value0=-131072
+						Object[TempObjectPos].Value1=-131072
+						Object[TempObjectPos].DrawOrder=4
+						temp0++
+						temp3+=1048576
+						CreateTempObject(TypeName[BreakableWall],temp0,temp1,temp3)
+						Object[TempObjectPos].Value0=-262144
+						Object[TempObjectPos].Value1=-65536
+						Object[TempObjectPos].DrawOrder=4
+						temp0++
+						CreateTempObject(TypeName[BreakableWall],temp0,temp2,temp3)
+						Object[TempObjectPos].Value0=-196608
+						Object[TempObjectPos].Value1=-65536
+						Object[TempObjectPos].DrawOrder=4
+						temp0++
+						temp3+=1048576
+						CreateTempObject(TypeName[BreakableWall],temp0,temp1,temp3)
+						Object[TempObjectPos].Value0=-196608
+						Object[TempObjectPos].Value1=65536
+						Object[TempObjectPos].DrawOrder=4
+						temp0++
+						CreateTempObject(TypeName[BreakableWall],temp0,temp2,temp3)
+						Object[TempObjectPos].Value0=-131072
+						Object[TempObjectPos].Value1=65536
+						Object[TempObjectPos].DrawOrder=4
+						temp0++
+						temp3+=1048576
+					else
+						CreateTempObject(TypeName[BreakableWall],temp0,temp1,temp3)
+						Object[TempObjectPos].Value0=131072
+						Object[TempObjectPos].Value1=-131072
+						Object[TempObjectPos].DrawOrder=4
+						temp0++
+						CreateTempObject(TypeName[BreakableWall],temp0,temp2,temp3)
+						Object[TempObjectPos].Value0=196608
+						Object[TempObjectPos].Value1=-131072
+						Object[TempObjectPos].DrawOrder=4
+						temp0++
+						temp3+=1048576
+						CreateTempObject(TypeName[BreakableWall],temp0,temp1,temp3)
+						Object[TempObjectPos].Value0=196608
+						Object[TempObjectPos].Value1=-65536
+						Object[TempObjectPos].DrawOrder=4
+						temp0++
+						CreateTempObject(TypeName[BreakableWall],temp0,temp2,temp3)
+						Object[TempObjectPos].Value0=262144
+						Object[TempObjectPos].Value1=-65536
+						Object[TempObjectPos].DrawOrder=4
+						temp0++
+						temp3+=1048576
+						CreateTempObject(TypeName[BreakableWall],temp0,temp1,temp3)
+						Object[TempObjectPos].Value0=131072
+						Object[TempObjectPos].Value1=65536
+						Object[TempObjectPos].DrawOrder=4
+						temp0++
+						CreateTempObject(TypeName[BreakableWall],temp0,temp2,temp3)
+						Object[TempObjectPos].Value0=196608
+						Object[TempObjectPos].Value1=65536
+						Object[TempObjectPos].DrawOrder=4
+						temp0++
+						temp3+=1048576
+					end if
+				end if
+			else
+				BoxCollisionTest(C_TOUCH, object.entityPos, -17,-24,16,24, currentPlayer, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO))
+				if CheckResult==1
+					if object[currentPlayer].XPos<Object.XPos
+						object[currentPlayer].XPos=object[currentPlayer].CollisionLeft
+						object[currentPlayer].XPos<<=16
+						object[currentPlayer].XPos+=Object.XPos
+						object[currentPlayer].XPos-=1048576
+						object[currentPlayer].Speed=0
+						object[currentPlayer].xvel=0
+						if object[currentPlayer].Right==1
+							if object[currentPlayer].Direction==FACING_RIGHT
+								object[currentPlayer].Pushing=2
+							end if
+						end if
+					else
+						object[currentPlayer].XPos=object[currentPlayer].CollisionRight
+						object[currentPlayer].XPos<<=16
+						object[currentPlayer].XPos+=Object.XPos
+						object[currentPlayer].XPos+=1048576
+						object[currentPlayer].Speed=0
+						object[currentPlayer].xvel=0
+						if object[currentPlayer].Direction==FACING_LEFT
+							object[currentPlayer].Pushing=2
+						end if
+					end if
+				end if
+			end if
+		next
+	end if
+end event
+
+
+event ObjectDraw
+	DrawSprite(Object.PropertyValue)
+end event
+
+
+event ObjectStartup
+	LoadSpriteSheet("R1/Objects2.gif")
+	ArrayPos0=32
+	while ArrayPos0<1056
+		if Object[ArrayPos0].Type==TypeName[BreakableWall]
+			Object[ArrayPos0].DrawOrder=4
+		end if
+		ArrayPos0++
+	loop
+	SpriteFrame(-16,-24,32,48,190,1)
+	SpriteFrame(-16,-24,32,48,223,1)
+	SpriteFrame(-16,-24,32,48,190,50)
+	SpriteFrame(-16,-24,32,48,223,50)
+	SpriteFrame(-16,-24,32,48,190,99)
+	SpriteFrame(-16,-24,32,48,223,99)
+	SpriteFrame(-16,-24,32,48,190,148)
+	SpriteFrame(-16,-24,32,48,223,148)
+	temp0=0
+	temp3=1
+	while temp0<3
+		temp1=0
+		temp2=190
+		while temp1<2
+			SpriteFrame(-8,-8,16,16,temp2,temp3)
+			temp1++
+			temp2+=16
+		loop
+		temp0++
+		temp3+=16
+	loop
+	temp0=0
+	temp3=1
+	while temp0<3
+		temp1=0
+		temp2=223
+		while temp1<2
+			SpriteFrame(-8,-8,16,16,temp2,temp3)
+			temp1++
+			temp2+=16
+		loop
+		temp0++
+		temp3+=16
+	loop
+	temp0=0
+	temp3=50
+	while temp0<3
+		temp1=0
+		temp2=190
+		while temp1<2
+			SpriteFrame(-8,-8,16,16,temp2,temp3)
+			temp1++
+			temp2+=16
+		loop
+		temp0++
+		temp3+=16
+	loop
+	temp0=0
+	temp3=50
+	while temp0<3
+		temp1=0
+		temp2=223
+		while temp1<2
+			SpriteFrame(-8,-8,16,16,temp2,temp3)
+			temp1++
+			temp2+=16
+		loop
+		temp0++
+		temp3+=16
+	loop
+	temp0=0
+	temp3=99
+	while temp0<3
+		temp1=0
+		temp2=190
+		while temp1<2
+			SpriteFrame(-8,-8,16,16,temp2,temp3)
+			temp1++
+			temp2+=16
+		loop
+		temp0++
+		temp3+=16
+	loop
+	temp0=0
+	temp3=99
+	while temp0<3
+		temp1=0
+		temp2=223
+		while temp1<2
+			SpriteFrame(-8,-8,16,16,temp2,temp3)
+			temp1++
+			temp2+=16
+		loop
+		temp0++
+		temp3+=16
+	loop
+	temp0=0
+	temp3=148
+	while temp0<3
+		temp1=0
+		temp2=190
+		while temp1<2
+			SpriteFrame(-8,-8,16,16,temp2,temp3)
+			temp1++
+			temp2+=16
+		loop
+		temp0++
+		temp3+=16
+	loop
+	temp0=0
+	temp3=148
+	while temp0<3
+		temp1=0
+		temp2=223
+		while temp1<2
+			SpriteFrame(-8,-8,16,16,temp2,temp3)
+			temp1++
+			temp2+=16
+		loop
+		temp0++
+		temp3+=16
+	loop
+end event
+
+event RSDK
+	LoadSpriteSheet("Global/Display.gif")
+	SpriteFrame(-16, -16, 32, 32, 1, 143)
+end event

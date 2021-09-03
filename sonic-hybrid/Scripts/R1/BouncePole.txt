@@ -1,0 +1,76 @@
+//------------Sonic CD Bounce Pole Script-------------//
+//--------Scripted by Christian Whitehead 'The Taxman'--------//
+//-------Unpacked By Rubberduckycooly's Script Unpacker-------//
+//-----Adapted to RSDKv4 by Luciano (Xeeynamo) Ciccariello----//
+
+//-------Aliases-------//
+#alias 57: TYPE_BOUNCEPOLE
+
+
+event ObjectMain
+	foreach (GROUP_PLAYERS, currentPlayer, ACTIVE_ENTITIES)
+		BoxCollisionTest(C_TOUCH, object.entityPos, -16,-8,16,8, currentPlayer, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO)
+		if CheckResult==1
+			if object[currentPlayer].Gravity==1
+				if object[currentPlayer].yvel>0
+					object[currentPlayer].State=PlayerObject_HandleAir
+					object[currentPlayer].value1=0
+					object[currentPlayer].Animation=ANI_JUMPING
+					FlipSign(object[currentPlayer].yvel)
+					object[currentPlayer].yvel-=131072
+					if object[currentPlayer].yvel<-655360
+						object[currentPlayer].yvel=-655360
+					end if
+					Object.Frame=1
+				end if
+			end if
+		end if
+	next
+end event
+
+
+event ObjectDraw
+	Object.Direction=Object.PropertyValue
+	DrawSpriteFX(Object.Frame,FX_FLIP,Object.XPos,Object.YPos)
+	if Object.Frame>0
+		Object.Value0++
+		if Object.Value0==3
+			Object.Value0=0
+			Object.Frame++
+			if Object.Frame>20
+				Object.Frame=0
+			end if
+		end if
+	end if
+end event
+
+
+event ObjectStartup
+	LoadSpriteSheet("R1/Objects.gif")
+	SpriteFrame(-16,-8,32,16,190,34)
+	SpriteFrame(-16,-8,32,16,190,34)
+	SpriteFrame(-16,-8,32,20,190,80)
+	SpriteFrame(-16,-8,32,16,190,34)
+	SpriteFrame(-16,-20,32,28,190,51)
+	SpriteFrame(-16,-8,32,16,190,34)
+	SpriteFrame(-16,-8,32,20,190,80)
+	SpriteFrame(-16,-8,32,16,190,34)
+	SpriteFrame(-16,-8,32,16,190,34)
+	SpriteFrame(-16,-8,32,20,190,80)
+	SpriteFrame(-16,-8,32,16,190,34)
+	SpriteFrame(-16,-20,32,28,190,51)
+	SpriteFrame(-16,-8,32,16,190,34)
+	SpriteFrame(-16,-8,32,20,190,80)
+	SpriteFrame(-16,-8,32,16,190,34)
+	SpriteFrame(-16,-8,32,16,190,34)
+	SpriteFrame(-16,-8,32,20,190,80)
+	SpriteFrame(-16,-8,32,16,190,34)
+	SpriteFrame(-16,-20,32,28,190,51)
+	SpriteFrame(-16,-8,32,16,190,34)
+	SpriteFrame(-16,-8,32,20,190,80)
+end event
+
+event RSDK
+	LoadSpriteSheet("Global/Display.gif")
+	SpriteFrame(-16, -16, 32, 32, 1, 143)
+end event

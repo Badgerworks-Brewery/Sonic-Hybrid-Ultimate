@@ -131,6 +131,7 @@ Also remember that using `object.` instead of `Player.` works only if you are in
 |RSDKv3|RSDKv4|
 |--|--
 `PlaySfx(22,0)`|`PlaySfx(SfxName[Boss Hit], 0)`
+`SetAchievement(XX,YY)`|`CallNativeFunction2(SetAchievement, XX, YY)`
 
 ## CopyPalette
 

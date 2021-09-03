@@ -44,6 +44,8 @@ reserve function PlayerObject_Knockback
 reserve function PlayerObject_Death
 reserve function PlayerObject_Drown
 reserve function PlayerObject_CheckTile
+reserve function PlayerObject_SpinningTop
+reserve function PlayerObject_Hugged
 reserve function PlayerObject_Handle3DRampAnims
 reserve function PlayerObject_HandleRollDecel
 reserve function PlayerObject_Clinging
@@ -3395,6 +3397,48 @@ function PlayerObject_CheckTile
 		object.ypos += 0x40000
 	end if
 	object.xvel = object.speed
+end function
+
+
+function PlayerObject_SpinningTop
+	//object.value1+=object.MinRollSpeed // TODO
+	if object.Gravity==1
+		object.State=PlayerObject_HandleAir
+		object.Animation=ANI_WALKING
+		object.value1=0
+		CallFunction(PlayerObject_HandleAirMovement)
+	else
+		CallFunction(PlayerObject_ResetOnFloor)
+	end if
+end function
+
+
+function PlayerObject_Hugged
+	if object.Gravity==1
+		object.State=PlayerObject_HandleAir
+		object.Animation=ANI_WALKING
+		object.value1=0
+		CallFunction(PlayerObject_HandleAirMovement)
+	else
+		CallFunction(PlayerObject_ResetOnFloor)
+		if object.value1<240
+			object.Animation=ANI_STOPPED
+			object.value1++
+		else
+			object.Animation=ANI_WAITING
+		end if
+		if Warp.Destination>0
+			if Warp.Timer>99
+				if Warp.Timer<204
+					Warp.Destination=0
+				end if
+			end if
+			Warp.Timer=0
+		end if
+		if object.JumpPress==1
+			CallFunction(PlayerObject_StartJump)
+		end if
+	end if
 end function
 
 

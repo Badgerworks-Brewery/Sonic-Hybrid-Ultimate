@@ -39,6 +39,9 @@ event ObjectStartup
                 break
         end switch
     end if
+    
+	animalType1 = TypeName[Pocky]
+	animalType2 = TypeName[Ricky]
 end event
 
 event RSDKDraw
