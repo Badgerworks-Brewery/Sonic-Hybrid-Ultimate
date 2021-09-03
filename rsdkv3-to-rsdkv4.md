@@ -49,6 +49,56 @@ foreach (GROUP_PLAYERS, currentPlayer, ACTIVE_ENTITIES)
 next
 ```
 
+## Palette management
+
+In RSDK there are 8 different palette tables, where every table contains 256 colors. You can choose which one to use using the function `SetActivePalette`.
+
+One key difference between RSDKv3 and RSDKv4 is that in RSDKv3 the function `RotatePalette` only works with the palette table `0`. Therefore every time you want to perform any modification to a different palette table you would need to copy it to `0`, do the rotation and copy it back. The main problem is that you need small hacks to preserve the content of the palette table `0`. Look at this code for instance:
+
+```rsdk
+while temp0<3
+    // Rotate the palette in-place
+    RotatePalette(177,179,1)
+    RotatePalette(172,174,0)
+
+    // Copy the result to the temp0 palette table
+    CopyPalette(0,temp0)
+    temp0++
+loop
+
+// Restore the original palette - as we are rotating 4 colors, we
+// need to rotate it a 4th time to return back to the original palette.
+RotatePalette(177,179,1)
+RotatePalette(172,174,0)
+```
+
+It is possible to transition to RSDKv4 maintaining the existing logic, but it is not as efficient as we expect:
+
+```rsdk
+while temp0<3
+    RotatePalette(0,177,179,1)
+    RotatePalette(0,172,174,0)
+    CopyPalette(0,0,temp0,0,256)
+    temp0++
+loop
+RotatePalette(0,177,179,1)
+RotatePalette(0,172,174,0)
+```
+
+With RSDKv4 you can perform operations straight to the Nth palette table. In the example below the `temp1` is the table we want to perform operations to. By doing so, we do not need to rotate the palette to the table `0`, saving two function calls.
+
+```rsdk
+temp0=0
+temp1=1
+while temp0<3
+    CopyPalette(temp0,0,temp1,0,256)
+    RotatePalette(temp1,177,179,1)
+    RotatePalette(temp1,172,174,0)
+    temp0++
+    temp1++
+loop
+```
+
 ## Properties
 
 |RSDKv3|RSDKv4|
@@ -96,7 +146,6 @@ To have a matching behaviour, replace `CopyPalette(XX,YY)` with `CopyPalette(XX,
 |Engine|Function|
 |--|--
 RSDKv3| `RotatePalette(start, end, isRotatingRight)`
-
 RSDKv4| `RotatePalette(paletteId, start, end, isRotatingRight)`
 
 To have a matching behaviour, replace `RotatePalette(XX,YY,ZZ)` with `RotatePalette(0,XX,YY,ZZ)`
