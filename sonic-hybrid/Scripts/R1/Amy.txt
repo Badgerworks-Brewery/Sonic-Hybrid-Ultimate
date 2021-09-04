@@ -10,7 +10,7 @@
 event ObjectMain
 	ArrayPos0 = -1
 	foreach (GROUP_PLAYERS, currentPlayer, ACTIVE_ENTITIES)
-		if object[currentPlayer].propertyValue == 0
+		if object[currentPlayer].propertyValue == PLAYER_SONIC
 			ArrayPos0 = currentPlayer
 		end if
 	next
@@ -404,7 +404,7 @@ event ObjectStartup
 	LoadSpriteSheet("R1/Objects.gif")
 	ArrayPos0=32
 	foreach (TypeName[AmyRose], ArrayPos0, ALL_ENTITIES)
-		if Stage.PlayerListPos != 0 // Amy should never appear if Sonic is not present
+		if Stage.PlayerListPos != PLAYER_SONIC // Amy should never appear if Sonic is not present
 			Object[ArrayPos0].Type=TypeName[BlankObject]
 		else
 			if Options.GameMode==2

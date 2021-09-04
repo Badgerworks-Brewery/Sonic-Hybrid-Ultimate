@@ -1,0 +1,96 @@
+//------------Sonic CD Glass Bumper Script-------------//
+//--------Scripted by Christian Whitehead 'The Taxman'--------//
+//-------Unpacked By Rubberduckycooly's Script Unpacker-------//
+//-----Adapted to RSDKv4 by Luciano (Xeeynamo) Ciccariello----//
+
+//-------Aliases-------//
+#alias 52: TYPE_GLASSBUMPER
+
+
+event ObjectMain
+	if Object.State==1
+		Object.Value0++
+		if Object.Value0>15
+			Object.Type=TypeName[BlankObject]
+		end if
+	end if
+
+	foreach (GROUP_PLAYERS, currentPlayer, ACTIVE_ENTITIES)
+		if object[currentPos].Animation!=ANI_HURT
+			if Object.State==0
+				BoxCollisionTest(C_TOUCH, object.entityPos, -14, -14, 14, 14, currentPlayer, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO)
+				if CheckResult==1
+					//PlayStageSfx(8, 0) // TODO
+					CreateTempObject(TypeName[ObjectScore],0,Object.XPos,Object.YPos)
+					player.Score+=100
+					Object.State=1
+					Object.Priority=1
+					temp0=object[currentPos].XPos
+					temp0-=Object.XPos
+					temp1=object[currentPos].YPos
+					temp1-=Object.YPos
+					ATan2(temp2,temp0,temp1)
+					Cos256(temp0,temp2)
+					Sin256(temp1,temp2)
+					temp0*=1792
+					temp1*=1792
+					object[currentPos].xvel=temp0
+					object[currentPos].yvel=temp1
+					object[currentPos].Speed=object[currentPos].xvel
+					object[currentPos].Gravity=1
+					object[currentPos].value1=0
+					temp0=Object.iXPos
+					temp1=Object.iYPos
+					temp0-=8
+					temp1-=8
+					Set16x16TileInfo(0,temp0,temp1,0)
+					temp0+=16
+					Set16x16TileInfo(0,temp0,temp1,0)
+					temp0-=16
+					temp1+=16
+					Set16x16TileInfo(0,temp0,temp1,0)
+					temp0+=16
+					Set16x16TileInfo(0,temp0,temp1,0)
+				end if
+			end if
+		end if
+	next
+end event
+
+
+event ObjectDraw
+	if Object.State==1
+		temp0=Object.Value0
+		temp0>>=3
+		DrawSprite(temp0)
+	end if
+end event
+
+
+event ObjectStartup
+	LoadSpriteSheet("R3/Objects3.gif")
+	switch Object[24].PropertyValue
+	case 0
+		SpriteFrame(-16,-16,32,32,66,1)
+		SpriteFrame(-16,-16,32,32,99,1)
+		break
+	case 1
+		SpriteFrame(-16,-16,32,32,66,34)
+		SpriteFrame(-16,-16,32,32,99,34)
+		break
+	case 2
+		SpriteFrame(-16,-16,32,32,66,67)
+		SpriteFrame(-16,-16,32,32,99,67)
+		break
+	case 3
+		SpriteFrame(-16,-16,32,32,66,100)
+		SpriteFrame(-16,-16,32,32,99,100)
+		break
+
+	end switch
+end event
+
+event RSDK
+	LoadSpriteSheet("Global/Display.gif")
+	SpriteFrame(-16, -16, 32, 32, 1, 143)
+end event

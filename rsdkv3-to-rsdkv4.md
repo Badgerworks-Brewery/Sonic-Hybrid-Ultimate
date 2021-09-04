@@ -184,3 +184,55 @@ foreach (TypeName[HUD], arrayPos0, ALL_ENTITIES)
     object[arrayPos0] // <-- your logic here
 next
 ```
+
+## Animations
+
+In the decompiled RSDKv3 there is no definition for the animations. This table helps to map the raw value with which animation it is supposed to be.
+
+| ID | Animation
+|----|----------
+|  0 | ANI_STOPPED
+|  1 | ANI_WAITING
+|  2 | ANI_BORED
+|  3 | ANI_LOOKINGUP
+|  4 | ANI_LOOKINGDOWN
+|  5 | ANI_WALKING
+|  6 | ANI_RUNNING
+|  7 | ANI_SKIDDING
+|  8 | ANI_PEELOUT
+|  9 | ANI_SPINDASH
+| 10 | ANI_JUMPING
+| 11 | ANI_BOUNCING
+| 12 | ANI_HURT
+| 13 | ANI_DYING
+| 14 | ANI_DROWNING
+| 15 | ANI_FANROTATE
+| 16 | ANI_BREATHING
+| 17 | ANI_PUSHING
+| 18 | ANI_FLAILING2
+| 19 | ANI_FLAILING1
+| 20 | 
+| 21 | 
+| 22 | 
+| 23 | 
+| 24 | ANI_FLYING
+| 25 | ANI_FLYINGTIRED
+| 26 | ANI_SWIMMING
+| 27 | ANI_SWIMMINGTIRED
+| 28 | 
+| 29 | ANI_GLIDING_DROP
+| 30 | ANI_GLIDING_STOP
+| 31 | ANI_CLIMBING
+| 32 | ANI_LEDGEPULLUP
+| 33 | ANI_
+| 34 | ANI_
+| 35 | ANI_
+| 36 | ANI_SPINNING_TOP
+| 37 | ANI_3DRAMP1
+| 38 | ANI_3DRAMP2
+| 39 | ANI_3DRAM3
+| 40 | ANI_3DRAM4
+| 41 | ANI_3DRAM5
+| 42 | ANI_3DRAM6
+| 43 | ANI_3DRAM7
+| 44 | ANI_SIZECHANGE

@@ -11,6 +11,9 @@ public alias 256 : GROUP_PLAYERS
 public alias 65536 : HITBOX_AUTO
 public alias arrayPos6 : currentPlayer
 public alias arrayPos7 : playerCount
+public alias 0 : PLAYER_SONIC
+public alias 1 : PLAYER_TAILS
+public alias 2 : PLAYER_KNUCKLES
 
 // Function declarations
 reserve function PlayerObject_ProcessPlayer
