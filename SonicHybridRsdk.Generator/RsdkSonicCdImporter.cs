@@ -14,16 +14,14 @@ namespace SonicHybridRsdk.Generator
             int actNumber,
             string srcFolder,
             string dstFolder,
-            int visualActNumber = -1)
+            string timeZone)
         {
             var stages = context.SrcConfig.GetStages(stageType);
-            if (visualActNumber < 0)
-                visualActNumber = actNumber;
 
             var srcStage = stages.First(x => x.Act == actNumber.ToString() && x.Path == srcFolder);
             var dstStage = new Stage
             {
-                Name = visualActNumber > 0 ? $"{name} {visualActNumber}" : name,
+                Name = actNumber > 0 ? $"{name} {actNumber} {timeZone}" : $"{name} {timeZone}",
                 Act = actNumber.ToString(),
                 Mode = srcStage.Mode,
                 Path = dstFolder,
@@ -67,7 +65,7 @@ namespace SonicHybridRsdk.Generator
                     switch (entityName)
                     {
                         case "Title Card":
-                            entity.PropertyValue = (byte)(visualActNumber > 0 ? visualActNumber : 4);
+                            entity.PropertyValue = (byte)(actNumber > 0 ? actNumber : 4);
                             break;
                         case "Sign Post":
                         case "SignPost":
@@ -97,7 +95,7 @@ namespace SonicHybridRsdk.Generator
                         {
                             AttributeFlags = 0,
                             Type = titleCardType,
-                            PropertyValue = (byte)(visualActNumber > 0 ? actNumber : 4),
+                            PropertyValue = (byte)(actNumber > 0 ? actNumber : 4),
                             X = (short)(playerObject.X - 156),
                             Y = (short)(playerObject.Y - 8),
                         });
