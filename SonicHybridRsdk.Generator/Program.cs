@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -76,10 +76,9 @@ namespace SonicHybridRsdk.Generator
             foreach (var folderPath in Directory.GetDirectories(sonicHybridCustomPath))
             {
                 var folderName = Path.GetFileName(folderPath);
-                File.Copy(
+                Copy(
                     Path.Combine(sonicHybridCustomPath, folderName),
-                    Path.Combine(sonicHybridPath, Path.GetFileName(folderPath)),
-                    true);
+                    Path.Combine(sonicHybridPath, Path.GetFileName(folderPath)));
             }
         }
 
@@ -223,27 +222,27 @@ namespace SonicHybridRsdk.Generator
             UseStageV4(context1, StageType.StagesRegular, "SCRAP BRAIN ZONE", 4, "Zone04", "ZoneLZ", visualActNumber: 3);
             UseStageV4(context1, StageType.StagesRegular, "FINAL ZONE", 5, "Zone06", "ZoneSBZ", visualActNumber: 0);
 
-            UseStageV3(contextCd, StageType.StagesRegular, "PALMTREE PANIC ZONE", 1, "R11A", "ZonePPZ1A");
-            UseStageV3(contextCd, StageType.StagesRegular, "PALMTREE PANIC ZONE", 2, "R12A", "ZonePPZ2A");
-            UseStageV3(contextCd, StageType.StagesRegular, "PALMTREE PANIC ZONE", 3, "R13C", "ZonePPZ3C");
-            UseStageV3(contextCd, StageType.StagesRegular, "COLLISION CHAOS ZONE", 1, "R31A", "ZoneCCZ1A");
-            UseStageV3(contextCd, StageType.StagesRegular, "COLLISION CHAOS ZONE", 2, "R32A", "ZoneCCZ2A");
-            UseStageV3(contextCd, StageType.StagesRegular, "COLLISION CHAOS ZONE", 3, "R33C", "ZoneCCZ3C");
-            UseStageV3(contextCd, StageType.StagesRegular, "TIDAL TEMPEST ZONE", 1, "R41A", "ZoneTTZ1A");
-            UseStageV3(contextCd, StageType.StagesRegular, "TIDAL TEMPEST ZONE", 2, "R42A", "ZoneTTZ2A");
-            UseStageV3(contextCd, StageType.StagesRegular, "TIDAL TEMPEST ZONE", 3, "R43C", "ZoneTTZ3C");
-            UseStageV3(contextCd, StageType.StagesRegular, "QUARTZ QUADRANT ZONE", 1, "R51A", "ZoneQQZ1A");
-            UseStageV3(contextCd, StageType.StagesRegular, "QUARTZ QUADRANT ZONE", 2, "R52A", "ZoneQQZ2A");
-            UseStageV3(contextCd, StageType.StagesRegular, "QUARTZ QUADRANT ZONE", 3, "R53C", "ZoneQQZ3C");
-            UseStageV3(contextCd, StageType.StagesRegular, "WACKY WORKBENCH ZONE", 1, "R61A", "ZoneWWZ1A");
-            UseStageV3(contextCd, StageType.StagesRegular, "WACKY WORKBENCH ZONE", 2, "R62A", "ZoneWWZ2A");
-            UseStageV3(contextCd, StageType.StagesRegular, "WACKY WORKBENCH ZONE", 3, "R63C", "ZoneWWZ3C");
-            UseStageV3(contextCd, StageType.StagesRegular, "STARDUST SPEEDWAY ZONE", 1, "R71A", "ZoneSSZ1A");
-            UseStageV3(contextCd, StageType.StagesRegular, "STARDUST SPEEDWAY ZONE", 2, "R72A", "ZoneSSZ2A");
-            UseStageV3(contextCd, StageType.StagesRegular, "STARDUST SPEEDWAY ZONE", 3, "R73C", "ZoneSSZ3C");
-            UseStageV3(contextCd, StageType.StagesRegular, "METALLIC MADNESS ZONE", 1, "R81A", "ZoneMMZ1A");
-            UseStageV3(contextCd, StageType.StagesRegular, "METALLIC MADNESS ZONE", 2, "R82A", "ZoneMMZ2A");
-            UseStageV3(contextCd, StageType.StagesRegular, "METALLIC MADNESS ZONE", 3, "R83C", "ZoneMMZ3C");
+            UseStageV3(contextCd, StageType.StagesRegular, "PALMTREE PANIC ZONE", 1, "R11A", "ZonePPZ1A", "PRESENT");
+            UseStageV3(contextCd, StageType.StagesRegular, "PALMTREE PANIC ZONE", 2, "R12A", "ZonePPZ2A", "PRESENT");
+            UseStageV3(contextCd, StageType.StagesRegular, "PALMTREE PANIC ZONE", 3, "R13C", "ZonePPZ3C", "GOOD FUTURE");
+            UseStageV3(contextCd, StageType.StagesRegular, "COLLISION CHAOS ZONE", 1, "R31A", "ZoneCCZ1A", "PRESENT");
+            UseStageV3(contextCd, StageType.StagesRegular, "COLLISION CHAOS ZONE", 2, "R32A", "ZoneCCZ2A", "PRESENT");
+            UseStageV3(contextCd, StageType.StagesRegular, "COLLISION CHAOS ZONE", 3, "R33C", "ZoneCCZ3C", "GOOD FUTURE");
+            UseStageV3(contextCd, StageType.StagesRegular, "TIDAL TEMPEST ZONE", 1, "R41A", "ZoneTTZ1A", "PRESENT");
+            UseStageV3(contextCd, StageType.StagesRegular, "TIDAL TEMPEST ZONE", 2, "R42A", "ZoneTTZ2A", "PRESENT");
+            UseStageV3(contextCd, StageType.StagesRegular, "TIDAL TEMPEST ZONE", 3, "R43C", "ZoneTTZ3C", "GOOD FUTURE");
+            UseStageV3(contextCd, StageType.StagesRegular, "QUARTZ QUADRANT ZONE", 1, "R51A", "ZoneQQZ1A", "PRESENT");
+            UseStageV3(contextCd, StageType.StagesRegular, "QUARTZ QUADRANT ZONE", 2, "R52A", "ZoneQQZ2A", "PRESENT");
+            UseStageV3(contextCd, StageType.StagesRegular, "QUARTZ QUADRANT ZONE", 3, "R53C", "ZoneQQZ3C", "GOOD FUTURE");
+            UseStageV3(contextCd, StageType.StagesRegular, "WACKY WORKBENCH ZONE", 1, "R61A", "ZoneWWZ1A", "PRESENT");
+            UseStageV3(contextCd, StageType.StagesRegular, "WACKY WORKBENCH ZONE", 2, "R62A", "ZoneWWZ2A", "PRESENT");
+            UseStageV3(contextCd, StageType.StagesRegular, "WACKY WORKBENCH ZONE", 3, "R63C", "ZoneWWZ3C", "GOOD FUTURE");
+            UseStageV3(contextCd, StageType.StagesRegular, "STARDUST SPEEDWAY ZONE", 1, "R71A", "ZoneSSZ1A", "PRESENT");
+            UseStageV3(contextCd, StageType.StagesRegular, "STARDUST SPEEDWAY ZONE", 2, "R72B", "ZoneSSZ2B", "PAST");
+            UseStageV3(contextCd, StageType.StagesRegular, "STARDUST SPEEDWAY ZONE", 3, "R73D", "ZoneSSZ3D", "BAD FUTURE");
+            UseStageV3(contextCd, StageType.StagesRegular, "METALLIC MADNESS ZONE", 1, "R81A", "ZoneMMZ1A", "PRESENT");
+            UseStageV3(contextCd, StageType.StagesRegular, "METALLIC MADNESS ZONE", 2, "R82A", "ZoneMMZ2A", "PRESENT");
+            UseStageV3(contextCd, StageType.StagesRegular, "METALLIC MADNESS ZONE", 3, "R83D", "ZoneMMZ3D", "BAD FUTURE");
 
             UseStageV4(context2, StageType.StagesRegular, "EMERALD HILL ZONE", 1, "Zone01", "ZoneEHZ");
             UseStageV4(context2, StageType.StagesRegular, "EMERALD HILL ZONE", 2, "Zone01", "ZoneEHZ");
