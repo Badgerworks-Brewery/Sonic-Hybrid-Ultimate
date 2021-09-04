@@ -1,0 +1,363 @@
+//------------Sonic CD Metal Sonic Script-------------//
+//--------Scripted by Christian Whitehead 'The Taxman'--------//
+//-------Unpacked By Rubberduckycooly's Script Unpacker-------//
+//-----Adapted to RSDKv4 by Luciano (Xeeynamo) Ciccariello----//
+
+//-------Aliases-------//
+#alias 52: TYPE_METALSONIC
+
+// Function declarations
+#function MetalSonic_Function52
+
+function MetalSonic_Function52
+	Object.YPos-=2097152
+	ObjectTileGrip(0,0,20,0)
+	if CheckResult==0
+		Object.YPos+=1048576
+		ObjectTileGrip(0,0,20,0)
+		if CheckResult==0
+			Object.YPos+=1048576
+			ObjectTileGrip(0,0,20,0)
+		end if
+	end if
+end function
+
+
+event ObjectMain
+	switch Object.State
+	case 0
+		if Object.Animation==0
+			foreach (GROUP_PLAYERS, currentPlayer, ACTIVE_ENTITIES)
+				if object[currentPlayer].JumpPress==1
+					Object.Value0=120
+					Object.Animation=1
+				end if
+			next
+		else
+			if Object.Value0>0
+				Object.Value0--
+			else
+				Object.Animation=0
+			end if
+		end if
+		break
+	case 1
+		if Object.Value0<140
+			Object.Value0++
+		else
+			Object.Priority=1
+			Object.Value0=0
+			Object.Value3=1
+			Object.Value4=0
+			Object.State++
+		end if
+		break
+	case 2
+		if Object.Value0<204
+			Object.Value0++
+		else
+			Object.Value0=0
+			Object.Value3=2
+			Object.Animation=4
+			Object.Value1=262144
+			Object.Value9=1 // HeavyMetalFlag
+			Object.State++
+		end if
+		break
+	case 3
+		foreach (GROUP_PLAYERS, currentPlayer, ACTIVE_ENTITIES)
+			temp0=Object[-2].XPos
+			temp0-=117440512
+			if Object.XPos<temp0
+				temp0=Object.XPos
+				temp0-=object[currentPlayer].XPos
+				temp0>>=6
+				Object.Value1=262144
+				Object.Value1-=temp0
+				if Object.Value1<131072
+					Object.Value1=131072
+				end if
+				if Object.Value1>393216
+					Object.Value1=393216
+				end if
+				if Object.Value1<245760
+					Object.Value3=2
+					Object.Animation=3
+				else
+					Object.Value3=3
+					Object.Animation=4
+				end if
+				if Object.Value0<180
+					Object.Value0++
+				else
+					Object.Animation=9
+					Object.Value0=0
+					Object.Value3=1
+					Object.State++
+					//PlayStageSfx(4, 0) // TODO
+				end if
+			else
+				temp0=Object.XPos
+				temp0-=object[currentPlayer].XPos
+				temp0>>=6
+				Object.Value1=262144
+				Object.Value1-=temp0
+				if Object.Value1<131072
+					Object.Value1=131072
+				end if
+				if Object.Value1>393216
+					Object.Value1=393216
+				end if
+				if Object.Value1<245760
+					Object.Value3=2
+					Object.Animation=3
+				else
+					Object.Value3=3
+					Object.Animation=4
+				end if
+			end if
+		next
+		break
+	case 4
+		if Object.Value0<60
+			Object.Value0++
+		else
+			Object.Value0=0
+			foreach (GROUP_PLAYERS, currentPlayer, ACTIVE_ENTITIES)
+				if object[currentPlayer].XPos>Object.XPos
+					Object.State=6
+					Object.Animation=6
+					Object.Value3=0
+					Object.Value4=0
+					//PlayStageSfx(6, 0) // TODO
+				else
+					Object.State=5
+					Object.Value1=131072
+					Object.Animation=5
+					Object.Value3=4
+					Object.Value4=0
+					//PlayStageSfx(5, 0) // TODO
+				end if
+			next
+		end if
+		break
+	case 5
+		if Object.Value0<180
+			Object.Value0++
+			temp0=Object[-1].XPos
+			temp0+=4194304
+			if Object.XPos<temp0
+				Object.State=6
+				Object.Value0=60
+				Object.Animation=7
+				Object.Value3=0
+				Object.Value4=0
+				//PlayStageSfx(6, 0) // TODO
+			end if
+		else
+			Object.Value0=0
+			Object.State=3
+			Object.Value4=0
+		end if
+		break
+	case 6
+		Object.Value1+=2048
+		if Object.Value1>524288
+			Object.Value1=524288
+		end if
+		if Object.Value0<180
+			Object.Value0++
+			if Object.Value0==10
+				Object.Animation=7
+			end if
+		else
+			Object.Value0=0
+			Object.State=3
+		end if
+		break
+	case 7
+		foreach (GROUP_PLAYERS, currentPlayer, ACTIVE_ENTITIES)
+			if object[currentPlayer].Animation==ANI_DYING
+				Object.Animation=1
+			end if
+		next
+		break
+	case 8
+		Object.Value2+=14336
+		Object.YPos+=Object.Value2
+		if Object.Value2>1048576
+			ResetObjectEntity(Object.entityPos,TypeName[BlankObject],0,0,0)
+		end if
+		break
+
+	end switch
+	if Object.Value1>0
+		temp0=Object[-1].XPos
+		temp0+=4194304
+		if Object.XPos<temp0
+			Object.XPos=temp0
+		end if
+		if Object.Value1>196608
+			temp0=Object.Value1
+			temp0-=196608
+			Object.XPos+=196608
+			CallFunction(MetalSonic_Function52)
+			Object.XPos+=temp0
+			CallFunction(MetalSonic_Function52)
+		else
+			Object.XPos+=Object.Value1
+			CallFunction(MetalSonic_Function52)
+		end if
+		if CheckResult==1
+			Object.Value2=0
+		else
+			Object.Value2+=14336
+			Object.YPos+=Object.Value2
+		end if
+		switch Object[-2].State
+		case 2
+		case 6
+			if object.Value9 == 1 // HeavyMetalFlag
+				if Stage.PlayerListPos==0
+					//SetAchievement(6,100) // TODO
+				end if
+			end if
+			temp0=Object[-2].XPos
+			temp0-=1966080
+			if Object.XPos>temp0
+				Object.XPos=temp0
+				Object.Value1=0
+				Object.Value2=-425984
+				Object.Value3=0
+				Object.Animation=8
+				Object.State=8
+				CreateTempObject(TypeName[Explosion],0,Object.XPos,Object.YPos)
+				temp0=0
+				temp1=4
+				while temp0<8
+					CreateTempObject(TypeName[Debris],temp1,Object.XPos,Object.YPos)
+					Rand(Object[TempObjectPos].Value1,4)
+					Object[TempObjectPos].Value2++
+					Object[TempObjectPos].Value1<<=16
+					FlipSign(Object[TempObjectPos].Value1)
+					Rand(Object[TempObjectPos].Value2,3)
+					Object[TempObjectPos].Value2+=2
+					Object[TempObjectPos].Value2<<=16
+					FlipSign(Object[TempObjectPos].Value2)
+					temp0++
+					temp1++
+					if temp1>8
+						temp1=4
+					end if
+				loop
+				PlaySfx(SfxName[Boss Hit], 0)
+			end if
+			break
+		case 4
+			temp0=Object[-2].XPos
+			temp0+=2359296
+			if Object.XPos>temp0
+				Object.XPos=temp0
+				Object.Value1=0
+				Object.Value3=0
+				Object.Animation=0
+				Object.State=7
+			end if
+			break
+
+		end switch
+	end if
+	ProcessAnimation()
+	
+	switch Object.Animation
+	case 5
+	case 7
+		foreach (GROUP_PLAYERS, currentPlayer, ACTIVE_ENTITIES)
+			BoxCollisionTest(C_TOUCH, object.entityPos, -16, -12, 16, 12, currentPlayer, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO)
+			if CheckResult==1
+				CallFunction(PlayerObject_Hit)
+				object.Value9=0 // HeavyMetalFlag
+			end if
+		next
+		break
+	end switch
+end event
+
+
+
+event ObjectDraw
+	switch Object.Value3
+	case 1
+		temp0=Object.Value4
+		temp0>>=1
+		DrawSprite(temp0)
+		Object.Value4++
+		Object.Value4&=7
+		break
+	case 2
+		temp0=Object.Value4
+		temp0>>=1
+		temp0+=4
+		DrawSprite(temp0)
+		Object.Value4++
+		Object.Value4&=7
+		break
+	case 3
+		temp0=Object.Value4
+		temp0>>=1
+		temp0+=8
+		DrawSprite(temp0)
+		Object.Value4++
+		Object.Value4&=7
+		break
+	case 4
+		temp0=Object.Value4
+		temp0+=12
+		DrawSprite(temp0)
+		Object.Value4++
+		Object.Value4%=10
+		break
+
+	end switch
+	DrawObjectAnimation()
+end event
+
+
+event ObjectStartup
+	LoadSpriteSheet("R7/Objects3.gif")
+	LoadAnimation("MetalSonic.Ani")
+	SpriteFrame(0,0,0,0,1,83)
+	SpriteFrame(-12,3,16,16,1,83)
+	SpriteFrame(0,0,0,0,1,83)
+	SpriteFrame(-12,3,16,16,18,83)
+	SpriteFrame(0,0,0,0,1,83)
+	SpriteFrame(-14,-8,16,16,18,83)
+	SpriteFrame(0,0,0,0,1,83)
+	SpriteFrame(-18,-12,24,24,1,100)
+	SpriteFrame(0,0,0,0,1,83)
+	SpriteFrame(-18,-12,24,24,1,100)
+	SpriteFrame(0,0,0,0,1,83)
+	SpriteFrame(-22,-16,32,32,1,125)
+	SpriteFrame(-24,-28,48,48,150,75)
+	SpriteFrame(-24,-28,48,48,150,75)
+	SpriteFrame(-24,-28,48,48,150,75)
+	SpriteFrame(-24,-28,48,48,150,75)
+	SpriteFrame(0,0,0,0,1,83)
+	SpriteFrame(-24,-28,48,48,199,75)
+	SpriteFrame(-24,-28,48,48,199,75)
+	SpriteFrame(-24,-28,48,48,199,75)
+	SpriteFrame(-24,-28,48,48,199,75)
+	SpriteFrame(0,0,0,0,1,83)
+	ArrayPos0=32
+	while ArrayPos0<1056
+		if Object[ArrayPos0].Type==TypeName[MetalSonic]
+			MetalSonic_EntityNo=ArrayPos0
+		end if
+		ArrayPos0++
+	loop
+end event
+
+event RSDK
+	LoadSpriteSheet("Global/Display.gif")
+	SpriteFrame(-16, -16, 32, 32, 1, 143)
+end event

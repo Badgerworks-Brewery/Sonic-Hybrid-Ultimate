@@ -1,0 +1,560 @@
+//------------Sonic CD Eggman Script-------------//
+//--------Scripted by Christian Whitehead 'The Taxman'--------//
+//-------Unpacked By Rubberduckycooly's Script Unpacker-------//
+//-----Adapted to RSDKv4 by Luciano (Xeeynamo) Ciccariello----//
+
+//-------Aliases-------//
+#alias 48: TYPE_EGGMAN
+
+// Function declarations
+#function Eggman_Function51
+
+function Eggman_Function51
+	Object.YPos-=2097152
+	ObjectTileGrip(0,6,176,0)
+	if CheckResult==0
+		Object.YPos+=1048576
+		ObjectTileGrip(0,6,176,0)
+		if CheckResult==0
+			Object.YPos+=1048576
+			ObjectTileGrip(0,6,176,0)
+			if CheckResult==0
+				Object.YPos+=1048576
+			end if
+		end if
+	end if
+end function
+
+
+event ObjectMain
+	switch Object.State
+	case 0
+		stage.curXBoundary2=Object.iXPos
+		stage.curXBoundary2-=64
+		temp0=stage.curXBoundary2
+		temp0-=Screen.XSize
+		Stage.NewXBoundary1=temp0
+		
+		foreach (GROUP_PLAYERS, currentPlayer, ACTIVE_ENTITIES)
+			BoxCollisionTest(C_TOUCH, object.entityPos, -256, -256, 0, 256, currentPlayer, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO)
+			if CheckResult==1
+				CreateTempObject(TypeName[FadeMusic],0,Object.XPos,Object.YPos)
+				Object.Direction=FACING_LEFT
+				Object.Priority=1
+				Object.State++
+			end if
+		next
+		break
+	case 1
+		if Object.Value0<120
+			Object.Value0++
+		else
+			Object.Value0=0
+			Object.Animation=1
+			Object.State++
+		end if
+		break
+	case 2
+		if Object.Value0<140
+			Object.XPos-=393216
+			Object.Value0++
+		else
+			Object.Value0=0
+			Object.Direction=FACING_RIGHT
+			Object.State++
+		end if
+		break
+	case 3
+		if Object.Value0<160
+			Object.XPos+=393216
+			Object.Value0++
+		else
+			Object.Value0=0
+			Object.Direction=FACING_LEFT
+			Object.State++
+		end if
+		break
+	case 4
+		if Object.Value0<47
+			Object.XPos-=393216
+			Object.Value0++
+		else
+			Object.Value0=0
+			Object.Animation=0
+			Object.State++
+		end if
+		break
+	case 5
+		if Object.Value0<94
+			Object.Value0++
+			if Object.Value0==30
+				Object[+1].State=1
+				Object[+1].Animation=2
+				Object[+1].Value0=0
+			end if
+			if Object.Value0==90
+				Object.Value2=1
+			end if
+		else
+			Object.Value0=0
+			Object.Animation=1
+			Object.Value5=-393216
+			Object.State++
+		end if
+		break
+	case 6
+		Object.XPos-=131072
+		if Object.Value0<6
+			Object.Value0++
+		else
+			Object.Value0=0
+			Object.Value2=0
+			Object.State++
+		end if
+		break
+	case 7
+		Object.XPos-=131072
+		if Object.Value0<30
+			Object.Value0++
+		else
+			Object.Value0=0
+			Object.Value2=1
+			Object.State++
+		end if
+		break
+	case 8
+		Object.XPos-=131072
+		if Object.Value0<10
+			Object.Value0++
+		else
+			Object.Value0=0
+			Object.Value2=0
+			Object.State++
+		end if
+		break
+	case 9
+		Object.XPos-=131072
+		if Object.Value0<30
+			Object.Value0++
+		else
+			Object.Value0=0
+			Object.Value2=1
+			Object.State++
+		end if
+		break
+	case 10
+		Object.XPos-=131072
+		if Object.Value0<10
+			Object.Value0++
+		else
+			Object.Value0=0
+			Object.Value2=0
+			Object.State++
+		end if
+		CallFunction(Eggman_Function51)
+		break
+	case 11
+		Object.XPos-=131072
+		if Object.Value0<120
+			Object.Value0++
+		else
+			if Object[24].PropertyValue==2
+				if Options.Soundtrack==0
+					SetMusicTrack("JP/R7D.ogg",0,1)
+				else
+					SetMusicTrack("US/R7D.ogg",0,92324)
+				end if
+			end if
+			CreateTempObject(TypeName[FadeMusic],2,Object.XPos,Object.YPos)
+			Object[-2].State=1
+			Object[-1].State=3
+			Object[-1].Value0=4194304
+			Object[-1].YPos-=4194304
+			Object.Value0=0
+			Object.Direction=FACING_RIGHT
+			Object.Value2=1
+			Object.Value5=393216
+			Object.Value1=131072
+			Object.State++
+		end if
+		CallFunction(Eggman_Function51)
+		break
+	case 12
+		Object.XPos+=Object.Value1
+		temp0=Object.iXPos
+		temp0-=16
+		if stage.curXBoundary2<16352
+			temp1=object[currentPlayer].xvel
+			temp1>>=16
+			stage.curXBoundary2+=6
+			stage.curXBoundary2+=temp1
+		end if
+		if stage.curXBoundary1<temp0
+			stage.curXBoundary1=temp0
+		end if
+		if Object.Value0<360
+			Object.Value0++
+		else
+			Object.Value0=0
+			stage.curXBoundary2=Object[-1].iXPos
+			stage.curXBoundary2+=112
+			Object.State++
+		end if
+		CallFunction(Eggman_Function51)
+		break
+	case 13
+		temp0=Object.Value1
+		Object.Value6++
+		Object.Value6&=16383
+		temp1=Object.Value6
+		temp1>>=4
+		Object.Value1+=temp1
+		if Object.Value1>327680
+			Object.Value1=327680
+		end if
+		temp1=Screen.XOffset
+		temp1<<=16
+		temp1-=Object.XPos
+		if temp1>0
+			temp1>>=7
+			if temp1>262144
+				temp1=262144
+			end if
+			temp0+=temp1
+		end if
+		if temp0>327680
+			temp0=327680
+		end if
+		if temp0>196608
+			temp0-=196608
+			Object.XPos+=196608
+			CallFunction(Eggman_Function51)
+			Object.XPos+=temp0
+			CallFunction(Eggman_Function51)
+		else
+			Object.XPos+=temp0
+			CallFunction(Eggman_Function51)
+		end if
+		temp0=Object.iXPos
+		temp0-=16
+		if stage.curXBoundary1<temp0
+			stage.curXBoundary1=temp0
+			if stage.curXBoundary1>15840
+				stage.curXBoundary1=15840
+			end if
+		end if
+		temp0=Object[-1].XPos
+		temp0-=2228224
+		if Object.XPos>temp0
+			Object.XPos=temp0
+			Object.Animation=0
+			Object.Value1=0
+			Object.State++
+		end if
+		break
+	case 14
+		if object[currentPlayer].Animation!=ANI_DYING
+			if Object.Value0<50
+				Object.Value0++
+			else
+				Object.Value0=0
+				Object.Value2=0
+				Object.State++
+			end if
+		end if
+		break
+	case 15
+		if Object.Value0<20
+			Object.Value0++
+		else
+			Object.Value0=0
+			Object.Value2=1
+			Object.State++
+		end if
+		break
+	case 16
+		if Object.Value0<20
+			Object.Value0++
+		else
+			Object.Value0=0
+			Object.Value2=0
+			Object.State++
+		end if
+		break
+	case 17
+		if Object.Value0<20
+			Object.Value0++
+		else
+			Object.Value0=0
+			Object.Value2=1
+			Object.State++
+		end if
+		break
+	case 18
+		if Object.Value0<20
+			Object.Value0++
+		else
+			Object.Value0=0
+			Object.Value2=0
+			Object.State++
+		end if
+		break
+	case 19
+		if Object.Value0<60
+			Object.Value0++
+		else
+			Object.Value0=0
+			Object.State++
+		end if
+		break
+	case 20
+		Object.YPos+=131072
+		if Object.Value0<42
+			Object.Value0++
+		else
+			Object.Value0=0
+			Object.Value2=0
+			Object.State++
+		end if
+		break
+	case 21
+		if Object.Value0<60
+			Object.Value0++
+		else
+			player.score+=1000
+			Object.Value0=0
+			Object.Animation=1
+			Object.State++
+		end if
+		break
+	case 22
+		Object.XPos+=393216
+		if Object.OutOfBounds==1
+			Object.Type=TypeName[BlankObject]
+			Object.Priority=0
+			if Object[24].PropertyValue==2
+				if Options.Soundtrack==0
+					SetMusicTrack("JP/R7C.ogg",0,103060)
+				else
+					SetMusicTrack("US/R7C.ogg",0,136670)
+				end if
+				CreateTempObject(TypeName[FadeMusic],1,Object.XPos,Object.YPos)
+			end if
+			Stage.NewXBoundary2=16352
+		end if
+		break
+
+	end switch
+	if Object.Value2==1
+		if Object.Value3==0
+			CreateTempObject(TypeName[Explosion],0,Object.XPos,Object.YPos)
+			Object[TempObjectPos].XPos+=Object.Value5
+			Object[TempObjectPos].YPos+=11534336
+			ArrayPos0=Object.Value4
+			Object.Value4=Object[TempObjectPos].entityPos
+			Object.Value3=8
+			if Object[ArrayPos0].DrawOrder==3
+				Object[TempObjectPos].DrawOrder=4
+				Rand(temp0,4)
+				CreateTempObject(TypeName[Debris],temp0,Object.XPos,Object.YPos)
+				Object[TempObjectPos].XPos+=Object.Value5
+				Object[TempObjectPos].YPos+=11534336
+				Rand(Object[TempObjectPos].Value1,6)
+				Object[TempObjectPos].Value1<<=16
+				Object[TempObjectPos].Value1-=163840
+				Object[TempObjectPos].Value1+=Object.Value1
+				Rand(Object[TempObjectPos].Value2,3)
+				Object[TempObjectPos].Value2+=2
+				Object[TempObjectPos].Value2<<=16
+				FlipSign(Object[TempObjectPos].Value2)
+			end if
+		else
+			ArrayPos0=Object.Value4
+			Object[ArrayPos0].XPos=Object.XPos
+			Object[ArrayPos0].XPos+=Object.Value5
+			Object[ArrayPos0].YPos=Object.YPos
+			Object[ArrayPos0].YPos+=11534336
+			Object.Value3--
+		end if
+	else
+		if Object.Value3>0
+			ArrayPos0=Object.Value4
+			Object[ArrayPos0].XPos=Object.XPos
+			Object[ArrayPos0].XPos+=Object.Value5
+			Object[ArrayPos0].YPos=Object.YPos
+			Object[ArrayPos0].YPos+=11534336
+			Object.Value3--
+		end if
+	end if
+
+	foreach (GROUP_PLAYERS, currentPlayer, ACTIVE_ENTITIES)
+		if Object.Value2==1
+			if Object.State<12
+				BoxCollisionTest(C_TOUCH, object.entityPos, -12, 48, 12, 176, currentPlayer, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO)
+				if CheckResult==1
+					CallFunction(PlayerObject_Hit)
+				end if
+			else
+				if object[currentPlayer].XPos<Object.XPos
+					object[currentPlayer].XPos=Object.XPos
+					//if object[currentPlayer].RCollisionFlag==1 // TODO
+						CallFunction(PlayerObject_Kill)
+					//end if
+				end if
+				//object[currentPlayer].RCollisionFlag=0 // TODO
+				if Object.State<14
+					BoxCollisionTest(C_TOUCH, object.entityPos, -12, 48, 12, 176, currentPlayer, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO)
+				else
+					BoxCollisionTest(C_TOUCH, object.entityPos, -64, -256, 16, 176, currentPlayer, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO)
+				end if
+				if CheckResult==1
+					CallFunction(PlayerObject_Kill)
+				end if
+			end if
+		end if
+		if object[currentPlayer].YPos<Object.YPos
+			if object[currentPlayer].XPos < 0x00E000000
+				if object[currentPlayer].State==PlayerObject_HandleTailsFlight
+					if object[currentPlayer].value1<470
+						object[currentPlayer].value1=470
+					end if
+				end if
+			end if
+			if object[currentPlayer].XPos > 0x38900000
+				if object[currentPlayer].State==PlayerObject_HandleTailsFlight
+					if object[currentPlayer].value1<470
+						object[currentPlayer].value1=470
+					end if
+				end if
+			end if
+		end if
+	next
+end event
+
+
+event ObjectDraw
+	switch Object.Animation
+	case 0
+		DrawSpriteFX(0,FX_FLIP,Object.XPos,Object.YPos)
+		temp0=Object.AnimationTimer
+		temp0/=6
+		if temp0==1
+			DrawSpriteFX(1,FX_FLIP,Object.XPos,Object.YPos)
+			DrawSpriteFX(2,FX_FLIP,Object.XPos,Object.YPos)
+			DrawSpriteFX(3,FX_FLIP,Object.XPos,Object.YPos)
+		end if
+		if Object.Value2==1
+			temp0=Object.AnimationTimer
+			temp0&=3
+			temp0>>=1
+			temp0+=12
+			temp1=Object.XPos
+			temp2=Object.YPos
+			temp2+=3145728
+			DrawSpriteXY(temp0,temp1,temp2)
+			if Object.Direction==FACING_RIGHT
+				temp2+=2097152
+				temp1+=131072
+				DrawSpriteXY(temp0,temp1,temp2)
+				temp2+=2097152
+				temp1+=131072
+				DrawSpriteXY(temp0,temp1,temp2)
+				temp2+=2097152
+				temp1+=131072
+				DrawSpriteXY(temp0,temp1,temp2)
+			else
+				temp2+=2097152
+				temp1-=131072
+				DrawSpriteXY(temp0,temp1,temp2)
+				temp2+=2097152
+				temp1-=131072
+				DrawSpriteXY(temp0,temp1,temp2)
+				temp2+=2097152
+				temp1-=131072
+				DrawSpriteXY(temp0,temp1,temp2)
+			end if
+		end if
+		Object.AnimationTimer++
+		Object.AnimationTimer%=12
+		break
+	case 1
+		temp0=Object.AnimationTimer
+		temp0&=1
+		if temp0==1
+			Object.Frame++
+			Object.Frame&=3
+		end if
+		temp0=Object.Frame
+		temp0+=4
+		DrawSpriteFX(temp0,FX_FLIP,Object.XPos,Object.YPos)
+		temp0+=4
+		DrawSpriteFX(temp0,FX_FLIP,Object.XPos,Object.YPos)
+		temp0=Object.AnimationTimer
+		temp0/=6
+		DrawSpriteFX(0,FX_FLIP,Object.XPos,Object.YPos)
+		if temp0==1
+			DrawSpriteFX(1,FX_FLIP,Object.XPos,Object.YPos)
+			DrawSpriteFX(2,FX_FLIP,Object.XPos,Object.YPos)
+			DrawSpriteFX(3,FX_FLIP,Object.XPos,Object.YPos)
+		end if
+		if Object.Value2==1
+			temp0=Object.AnimationTimer
+			temp0&=3
+			temp0>>=1
+			temp0+=12
+			temp1=Object.XPos
+			temp2=Object.YPos
+			temp2+=3145728
+			DrawSpriteXY(temp0,temp1,temp2)
+			if Object.Direction==FACING_RIGHT
+				temp2+=2097152
+				temp1+=131072
+				DrawSpriteXY(temp0,temp1,temp2)
+				temp2+=2097152
+				temp1+=131072
+				DrawSpriteXY(temp0,temp1,temp2)
+				temp2+=2097152
+				temp1+=131072
+				DrawSpriteXY(temp0,temp1,temp2)
+			else
+				temp2+=2097152
+				temp1-=131072
+				DrawSpriteXY(temp0,temp1,temp2)
+				temp2+=2097152
+				temp1-=131072
+				DrawSpriteXY(temp0,temp1,temp2)
+				temp2+=2097152
+				temp1-=131072
+				DrawSpriteXY(temp0,temp1,temp2)
+			end if
+		end if
+		Object.AnimationTimer++
+		Object.AnimationTimer%=12
+		break
+
+	end switch
+end event
+
+
+event ObjectStartup
+	LoadSpriteSheet("R7/Objects2.gif")
+	SpriteFrame(-40,-24,72,72,91,1)
+	SpriteFrame(-24,-9,24,16,164,1)
+	SpriteFrame(22,27,8,8,75,99)
+	SpriteFrame(-32,8,16,24,176,142)
+	SpriteFrame(-68,-10,40,16,66,133)
+	SpriteFrame(-60,-10,32,16,66,116)
+	SpriteFrame(-68,-10,40,16,124,150)
+	SpriteFrame(-60,-10,32,16,66,150)
+	SpriteFrame(-63,30,32,16,66,150)
+	SpriteFrame(-55,30,24,16,99,150)
+	SpriteFrame(-63,30,32,16,66,116)
+	SpriteFrame(-55,30,24,16,99,116)
+	SpriteFrame(-8,0,16,32,91,74)
+	SpriteFrame(-8,0,16,32,108,74)
+end event
+
+event RSDK
+	LoadSpriteSheet("Global/Display.gif")
+	SpriteFrame(-16, -16, 32, 32, 1, 143)
+end event
