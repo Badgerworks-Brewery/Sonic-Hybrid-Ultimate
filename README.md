@@ -45,15 +45,18 @@ This guide is useful if you previously played Sonic Hybrid but you want to perfo
 * Completing Sonic the Hedgehog 1's Final Zone will bring you to Palmtree Panic Zone.
 * Completing Sonic the Hedgehog CD's Metallic Madness Act 3 will bring you to Emerald Hill Zone.
 * The Stage Select in the debug menu will report all the implemented level names.
+* Metal Sonic is now a playable character.
 
 ## Known bugs
 
 * Sonic 1 Special Stages are working from the Stage Select, but the graphics is corrupted.
 * The main menu of RSDK will report the wrong stage names.
 * The Giant Ring from Sonic the Hedgehog 1 will teleport to the Sonic the Hedgehog 2 special stages.
-* Palmtree Panic Zone is half-implemented.
+* Palmtree Panic, Collision Chaos and Stardust Speedway are half-implemented.
+* Tidal Tempest, Quartz Quadrant, Wacky Workbench and Metallic Madness are barely implemented.
 * Sonic CD levels does not have any enemy, unique gimmicks, palette cycles and working loops unless stated.
 * Some Sonic CD's enemies and gimmicks might have the wrong palette.
+* Playable Metal Sonic has a "rolling" bugging collision.
 
 ## Resources
 
