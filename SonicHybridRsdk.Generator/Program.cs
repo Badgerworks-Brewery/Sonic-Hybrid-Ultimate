@@ -36,6 +36,7 @@ namespace SonicHybridRsdk.Generator
             var sonicCdPath = Path.Combine(sourceDataRsdk, "soniccd/Data");
             var sonic2Path = Path.Combine(sourceDataRsdk, "sonic2/Data");
             var sonicHybridPath = Path.Combine(destinationDataRsdk, "Data");
+            var sonicHybridCustomPath = Path.Combine(destinationDataRsdk, "Data-Custom");
 
             foreach (var folder in new string[]
             {
@@ -65,11 +66,21 @@ namespace SonicHybridRsdk.Generator
             foreach (var (SourcePath, DestinationPath) in new (string, string)[]
             {
                 ("Sprites/Global/Items.gif", "Sprites/Global/ItemsCD.gif"),
+                ("Animations/MetalSonic.Ani", "Animations/MetalSonicBoss.Ani"),
             })
                 File.Copy(
                     Path.Combine(sonicCdPath, SourcePath),
                     Path.Combine(sonicHybridPath, DestinationPath),
                     true);
+
+            foreach (var folderPath in Directory.GetDirectories(sonicHybridCustomPath))
+            {
+                var folderName = Path.GetFileName(folderPath);
+                File.Copy(
+                    Path.Combine(sonicHybridCustomPath, folderName),
+                    Path.Combine(sonicHybridPath, Path.GetFileName(folderPath)),
+                    true);
+            }
         }
 
         public static void Generate(string sourceDataRsdk, string destinationDataRsdk)
@@ -174,6 +185,8 @@ namespace SonicHybridRsdk.Generator
             sonicHybridConfig.Variables = variables.Select(x => new Variable { Name = x.Key, Value = x.Value }).ToList();
 
             sonicHybridConfig.Players = sonic2Config.Players;
+            sonicHybridConfig.Players.Add("METAL SONIC");
+
             sonicHybridConfig.SoundEffects = sonic2Config.SoundEffects;
 
             UseStageV4(context2, StageType.StagesPresentation, "TITLE SCREEN SONIC 2", 1, "Title", "TitleS2");

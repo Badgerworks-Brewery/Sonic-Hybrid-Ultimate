@@ -82,23 +82,23 @@ event ObjectMain
 				end if
 				switch object.value4
 				case 0
-					stage.playerListPos = 0
+					stage.playerListPos = PLAYER_SONIC
 					stage.player2Enabled = 1
 					break
 				case 1
-					stage.playerListPos = 0
+					stage.playerListPos = PLAYER_SONIC
 					stage.player2Enabled = 0
 					break
 				case 2
-					stage.playerListPos = 1
+					stage.playerListPos = PLAYER_TAILS
 					stage.player2Enabled = 0
 					break
 				case 3
-					stage.playerListPos = 2
+					stage.playerListPos = PLAYER_KNUCKLES
 					stage.player2Enabled = 0
 					break
 				case 4
-					stage.playerListPos = 2
+					stage.playerListPos = PLAYER_KNUCKLES
 					stage.player2Enabled = 1
 					break
 				end switch

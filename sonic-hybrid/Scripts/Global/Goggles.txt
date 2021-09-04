@@ -28,14 +28,14 @@ end table
 event ObjectMain
 	if object.state == 0
 		switch stage.playerListPos
-		case 0
-		case 3
+		case PLAYER_SONIC
+		case PLAYER_METALSONIC
 			object.value1 = Goggles_table0
 			break
-		case 1
+		case PLAYER_TAILS
 			object.value1 = Goggles_table1
 			break
-		case 2
+		case PLAYER_KNUCKLES
 			object.value1 = Goggles_table2
 			break
 		end switch

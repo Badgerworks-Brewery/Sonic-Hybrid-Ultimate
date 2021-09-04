@@ -445,7 +445,7 @@ event ObjectStartup
 			object[currentPlayer].value23 >>= 1
 			object[currentPlayer].value24 >>= 1
 			object[currentPlayer].value25 = 0x1000
-			if stage.playerListPos == 2
+			if stage.playerListPos == PLAYER_KNUCKLES
 				object[currentPlayer].value27 = 0x30000
 			else
 				object[currentPlayer].value27 = 0x38000

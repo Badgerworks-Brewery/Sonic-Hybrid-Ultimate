@@ -69,8 +69,8 @@ event ObjectMain
 		object.value8 = object[0].value0
 		object.value8 *= 100
 		switch stage.playerListPos
-		case 0
-		case 3
+		case PLAYER_SONIC
+		case PLAYER_METALSONIC
 			temp0 = 0
 			foreach (TypeName[Ring], arrayPos0, ALL_ENTITIES)
 				if object[arrayPos0].propertyValue <= 1
@@ -78,8 +78,8 @@ event ObjectMain
 				end if
 			next
 			break
-		case 1
-		case 2
+		case PLAYER_TAILS
+		case PLAYER_KNUCKLES
 			temp0 = 0
 			foreach (TypeName[Ring], arrayPos0, ALL_ENTITIES)
 				if object[arrayPos0].propertyValue != 2
@@ -393,12 +393,12 @@ end event
 event ObjectStartup
 	LoadSpriteSheet("Global/Display.gif")
 	switch stage.playerListPos
-	case 0
-	case 3
+	case PLAYER_SONIC
+	case PLAYER_METALSONIC
 		SpriteFrame(-64, 0, 72, 16, 1, 222)
 		SpriteFrame(16, 0, 48, 16, 1, 205)
 		break
-	case 1
+	case PLAYER_TAILS
 		if options.region == 0
 			SpriteFrame(-61, 0, 69, 16, 74, 222)
 		else
@@ -406,7 +406,7 @@ event ObjectStartup
 		end if
 		SpriteFrame(16, 0, 48, 16, 1, 205)
 		break
-	case 2
+	case PLAYER_KNUCKLES
 		SpriteFrame(-94, 0, 128, 16, 34, 188)
 		SpriteFrame(40, 0, 48, 16, 1, 205)
 		break

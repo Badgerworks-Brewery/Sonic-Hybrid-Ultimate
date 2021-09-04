@@ -8,6 +8,29 @@
 //-------Aliases-------//
 private alias 5 : TYPE_HUD
 
+private alias 15 : SPRITE_LIFEICON_SONIC
+private alias 16 : SPRITE_LIFEICON_TAILS
+private alias 15 : SPRITE_LIFEICON_KNUCKLES
+private alias 21 : SPRITE_LIFENAME_SONIC
+private alias 22 : SPRITE_LIFENAME_TAILS
+private alias 23 : SPRITE_LIFENAME_KNUCKLES
+private alias 24 : SPRITE_SMALLDIGIT_0
+private alias 25 : SPRITE_SMALLDIGIT_1
+private alias 26 : SPRITE_SMALLDIGIT_2
+private alias 27 : SPRITE_SMALLDIGIT_3
+private alias 28 : SPRITE_SMALLDIGIT_4
+private alias 29 : SPRITE_SMALLDIGIT_5
+private alias 30 : SPRITE_SMALLDIGIT_6
+private alias 31 : SPRITE_SMALLDIGIT_7
+private alias 32 : SPRITE_SMALLDIGIT_8
+private alias 33 : SPRITE_SMALLDIGIT_9
+private alias 34 : SPRITE_SMALLDIGIT_MINUS
+private alias 35 : SPRITE_SMALLDIGIT_PLUS
+private alias 36 : SPRITE_SMALLCHAR_XNEGATIVE
+private alias 37 : SPRITE_SMALLCHAR_YNEGATIVE
+private alias 38 : SPRITE_LIFEICON_METALSONIC
+private alias 39 : SPRITE_LIFENAME_METALSONIC
+
 // Function declarations
 reserve function HUD_DrawPC
 reserve function HUD_DrawMobile
@@ -15,6 +38,27 @@ reserve function HUD_DrawMobile
 // Static Values
 
 // Tables
+
+function HUD_CalculateLifeIcon
+	switch stage.playerListPos
+		case PLAYER_SONIC
+			temp0 = SPRITE_LIFEICON_SONIC
+			temp2 = SPRITE_LIFENAME_SONIC
+			break
+		case PLAYER_TAILS
+			temp0 = SPRITE_LIFEICON_TAILS
+			temp2 = SPRITE_LIFENAME_TAILS
+			break
+		case PLAYER_KNUCKLES
+			temp0 = SPRITE_LIFEICON_KNUCKLES
+			temp2 = SPRITE_LIFENAME_KNUCKLES
+			break
+		case PLAYER_METALSONIC
+			temp0 = SPRITE_LIFEICON_METALSONIC
+			temp2 = SPRITE_LIFENAME_METALSONIC
+			break
+	end switch
+end function
 
 function HUD_DrawPC
 	DrawSpriteScreenXY(10, 17, 13)
@@ -61,11 +105,10 @@ function HUD_DrawPC
 			DrawSpriteScreenXY(37, temp1, 31)
 		end if
 	end if
-	temp0 = stage.playerListPos
-	temp0 += 15
+
+	CallFunction(HUD_CalculateLifeIcon)
 	DrawSpriteScreenXY(temp0, 16, 212)
-	temp0 += 6
-	DrawSpriteScreenXY(temp0, 33, 213)
+	DrawSpriteScreenXY(temp2, 33, 213)
 	DrawSpriteScreenXY(20, 38, 222)
 	DrawNumbers(24, 56, 220, player.lives, 2, 8, 0)
 end function
@@ -120,12 +163,11 @@ function HUD_DrawMobile
 	end if
 	temp1 = screen.xsize
 	temp1 -= 64
-	temp0 = stage.playerListPos
-	temp0 += 15
+
+	CallFunction(HUD_CalculateLifeIcon)
 	DrawSpriteScreenXY(temp0, temp1, 8)
 	temp1 += 17
-	temp0 += 6
-	DrawSpriteScreenXY(temp0, temp1, 9)
+	DrawSpriteScreenXY(temp2, temp1, 9)
 	temp1 += 5
 	DrawSpriteScreenXY(20, temp1, 18)
 	temp1 += 18
@@ -150,9 +192,8 @@ event ObjectDraw
 	CallFunction(object.value0)
 end event
 
-
 event ObjectStartup
-	LoadSpriteSheet("Global/Display.gif")
+	LoadSpriteSheet("Global/HUD.gif")
 	SpriteFrame(0, 0, 8, 11, 1, 50)
 	SpriteFrame(0, 0, 8, 11, 10, 50)
 	SpriteFrame(0, 0, 8, 11, 19, 50)
@@ -168,33 +209,36 @@ event ObjectStartup
 	SpriteFrame(0, 0, 39, 11, 1, 131)
 	SpriteFrame(0, 0, 29, 4, 1, 45)
 	SpriteFrame(0, 0, 3, 11, 37, 50)
-	SpriteFrame(0, 0, 16, 16, 83, 18)
-	SpriteFrame(0, 0, 16, 16, 100, 18)
-	SpriteFrame(0, 0, 16, 16, 117, 18)
+	SpriteFrame(0, 0, 16, 16, 83, 18)	// SPRITE_LIFEICON_SONIC
+	SpriteFrame(0, 0, 16, 16, 100, 18)	// SPRITE_LIFEICON_TAILS
+	SpriteFrame(0, 0, 16, 16, 117, 18)	// SPRITE_LIFEICON_KNUCKLES
 	SpriteFrame(0, 0, 8, 8, 1, 98)
 	SpriteFrame(0, 0, 8, 8, 10, 98)
 	SpriteFrame(0, 0, 6, 6, 19, 98)
-	SpriteFrame(0, 0, 31, 7, 185, 18)
-	if options.region == 0
+	SpriteFrame(0, 0, 31, 7, 185, 18) 	// SPRITE_LIFENAME_SONIC
+	if options.region == 0 				// SPRITE_LIFENAME_TAILS
 		SpriteFrame(0, 0, 31, 7, 217, 18)
 	else
 		SpriteFrame(0, 0, 31, 7, 185, 26)
 	end if
-	SpriteFrame(0, 0, 31, 7, 217, 26)
-	SpriteFrame(0, 0, 8, 8, 37, 64)
-	SpriteFrame(0, 0, 8, 8, 46, 64)
-	SpriteFrame(0, 0, 8, 8, 55, 64)
-	SpriteFrame(0, 0, 8, 8, 64, 64)
-	SpriteFrame(0, 0, 8, 8, 73, 64)
-	SpriteFrame(0, 0, 8, 8, 82, 64)
-	SpriteFrame(0, 0, 8, 8, 91, 64)
-	SpriteFrame(0, 0, 8, 8, 100, 64)
-	SpriteFrame(0, 0, 8, 8, 109, 64)
-	SpriteFrame(0, 0, 8, 8, 118, 64)
-	SpriteFrame(-16, 0, 8, 8, 127, 64)
-	SpriteFrame(8, 0, 8, 8, 136, 64)
-	SpriteFrame(0, 0, 8, 8, 25, 98)
-	SpriteFrame(0, 0, 8, 8, 34, 98)
+	SpriteFrame(0, 0, 31, 7, 217, 26)	// SPRITE_LIFENAME_KNUCKLES
+	SpriteFrame(0, 0, 8, 8, 37, 64)     // SPRITE_SMALLDIGIT_0
+	SpriteFrame(0, 0, 8, 8, 46, 64)     // SPRITE_SMALLDIGIT_1
+	SpriteFrame(0, 0, 8, 8, 55, 64)     // SPRITE_SMALLDIGIT_2
+	SpriteFrame(0, 0, 8, 8, 64, 64)     // SPRITE_SMALLDIGIT_3
+	SpriteFrame(0, 0, 8, 8, 73, 64)     // SPRITE_SMALLDIGIT_4
+	SpriteFrame(0, 0, 8, 8, 82, 64)     // SPRITE_SMALLDIGIT_5
+	SpriteFrame(0, 0, 8, 8, 91, 64)     // SPRITE_SMALLDIGIT_6
+	SpriteFrame(0, 0, 8, 8, 100, 64)    // SPRITE_SMALLDIGIT_7
+	SpriteFrame(0, 0, 8, 8, 109, 64)    // SPRITE_SMALLDIGIT_8
+	SpriteFrame(0, 0, 8, 8, 118, 64)    // SPRITE_SMALLDIGIT_9
+	SpriteFrame(-16, 0, 8, 8, 127, 64)  // SPRITE_SMALLDIGIT_MINUS
+	SpriteFrame(8, 0, 8, 8, 136, 64)    // SPRITE_SMALLDIGIT_PLUS
+	SpriteFrame(0, 0, 8, 8, 25, 98)		// SPRITE_SMALLCHAR_XNEGATIVE
+	SpriteFrame(0, 0, 8, 8, 34, 98)		// SPRITE_SMALLCHAR_YNEGATIVE
+	
+	SpriteFrame(0, 0, 16, 16, 120, 47)	// SPRITE_LIFEICON_METALSONIC
+	SpriteFrame(0, 0, 37, 7, 211, 34)	// SPRITE_LIFENAME_METALSONIC
 	foreach (TypeName[HUD], arrayPos0, ALL_ENTITIES)
 		if engine.deviceType == RETRO_STANDARD
 			object[arrayPos0].value0 = HUD_DrawPC

@@ -325,7 +325,7 @@ end event
 
 event ObjectStartup
 	LoadSpriteSheet("R7/Objects3.gif")
-	LoadAnimation("MetalSonic.Ani")
+	LoadAnimation("MetalSonicBoss.Ani")
 	SpriteFrame(0,0,0,0,1,83)
 	SpriteFrame(-12,3,16,16,1,83)
 	SpriteFrame(0,0,0,0,1,83)

@@ -240,14 +240,14 @@ event ObjectStartup
 		object[arrayPos0].value31 >>= 4
 		object[arrayPos0].propertyValue &= 15
 	next
-	if stage.playerListPos == 1
+	if stage.playerListPos == PLAYER_TAILS
 		foreach (TypeName[Monitor], arrayPos0, ALL_ENTITIES)
 			if object[arrayPos0].propertyValue == 5
 				object[arrayPos0].propertyValue = 6
 			end if
 		next
 	end if
-	if stage.playerListPos == 2
+	if stage.playerListPos == PLAYER_KNUCKLES
 		foreach (TypeName[Monitor], arrayPos0, ALL_ENTITIES)
 			if object[arrayPos0].propertyValue == 5
 				object[arrayPos0].propertyValue = 7

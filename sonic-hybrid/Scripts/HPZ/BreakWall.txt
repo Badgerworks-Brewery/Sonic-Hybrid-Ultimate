@@ -47,7 +47,7 @@ event ObjectMain
 					checkResult = 1
 				end if
 			end if
-			if stage.playerListPos == 2
+			if stage.playerListPos == PLAYER_KNUCKLES
 				checkResult = 1
 			end if
 			if PlayerObject_SuperState == 1

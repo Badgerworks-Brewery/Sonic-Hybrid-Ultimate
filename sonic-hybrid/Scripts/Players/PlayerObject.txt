@@ -14,6 +14,8 @@ public alias arrayPos7 : playerCount
 public alias 0 : PLAYER_SONIC
 public alias 1 : PLAYER_TAILS
 public alias 2 : PLAYER_KNUCKLES
+public alias 3 : PLAYER_SONIC_AND_TAILS
+public alias 4 : PLAYER_METALSONIC
 
 // Function declarations
 reserve function PlayerObject_ProcessPlayer
@@ -409,14 +411,14 @@ end function
 
 function PlayerObject_SwitchPhysicsState
 	switch stage.playerListPos
-	case 0
-	case 3
+	case PLAYER_SONIC
+	case PLAYER_METALSONIC
 		temp0 = PlayerObject_SonicPhysicsTable
 		break
-	case 1
+	case PLAYER_TAILS
 		temp0 = PlayerObject_TailsPhysicsTable
 		break
-	case 2
+	case PLAYER_METALSONIC
 		temp0 = PlayerObject_KnuxPhysicsTable
 		break
 	end switch
@@ -468,14 +470,14 @@ end function
 function PlayerObject_ProcessSuperState
 	if PlayerObject_SuperState != 0
 		switch stage.playerListPos
-		case 0
-		case 3
+		case PLAYER_SONIC
+		case PLAYER_METALSONIC
 			CallFunction(PlayerObject_ProcessSuperPalS)
 			break
-		case 1
+		case PLAYER_TAILS
 			CallFunction(PlayerObject_ProcessSuperPalT)
 			break
-		case 2
+		case PLAYER_KNUCKLES
 			CallFunction(PlayerObject_ProcessSuperPalK)
 			break
 		end switch
@@ -493,7 +495,7 @@ function PlayerObject_ProcessSuperState
 		end if
 	end if
 	if PlayerObject_SuperState == 2
-		if stage.playerListPos == 0
+		if stage.playerListPos == PLAYER_SONIC
 			LoadAnimation("Sonic.ani")
 		end if
 		if music.currentTrack == 7
@@ -1528,7 +1530,7 @@ function PlayerObject_SuperTransform
 		object[currentPlayer].value8 = 0
 		object[currentPlayer].visible = 1
 		CallFunction(PlayerObject_SwitchPhysicsState)
-		if stage.playerListPos == 0
+		if stage.playerListPos == PLAYER_SONIC
 			LoadAnimation("SuperSonic.ani")
 		end if
 		object[currentPlayer].state = PlayerObject_Transforming
@@ -3878,10 +3880,14 @@ event ObjectStartup
 		screen.cameraStyle = 0
 		screen.cameraTarget = 0
 		currentPlayer = 0
-		if stage.playerListPos > 2
-			stage.playerListPos = 0
-			stage.player2Enabled = 1
-		end if
+
+		switch stage.playerListPos
+			case PLAYER_SONIC_AND_TAILS
+				stage.playerListPos = PLAYER_SONIC
+				stage.player2Enabled = 1
+				break
+		end switch
+		
 		ResetObjectEntity(0, TypeName[Player Object], 0, object[arrayPos0].xpos, object[arrayPos0].ypos)
 		screen.cameraX = object[0].ixpos
 		screen.cameraY = object[0].iypos
@@ -3900,8 +3906,9 @@ event ObjectStartup
 		PlayerObject_value1 = 0
 		PlayerObject_value2 = 0
 		PlayerObject_value3 = 0
+
 		switch stage.playerListPos
-		case 0
+		case PLAYER_SONIC
 			LoadAnimation("SuperSonic.ani")
 			LoadAnimation("Sonic.ani")
 			CallFunction(PlayerObject_ProcessSuperPalS)
@@ -3910,7 +3917,7 @@ event ObjectStartup
 			object[0].value32 = PlayerObject_ShieldAbilities
 			ANI_PEELOUT = ANI_RUNNING
 			break
-		case 1
+		case PLAYER_TAILS
 			object[0].type = TypeName[Tails Object]
 			object[0].propertyValue = 1
 			CallFunction(PlayerObject_ProcessSuperPalT)
@@ -3926,7 +3933,7 @@ event ObjectStartup
 			end if
 			stage.player2Enabled = 0
 			break
-		case 2
+		case PLAYER_KNUCKLES
 			LoadAnimation("Knuckles.ani")
 			CallFunction(PlayerObject_ProcessSuperPalK)
 			object[0].propertyValue = 2
@@ -3937,12 +3944,25 @@ event ObjectStartup
 				stage.player2Enabled = 0
 			end if
 			break
+		case PLAYER_METALSONIC
+			LoadAnimation("MetalSonicPlayer.ani")
+			CallFunction(PlayerObject_ProcessSuperPalS)
+			object[0].propertyValue = 0
+			object[0].value30 = -1
+			object[0].value32 = PlayerObject_Blank
+			ANI_PEELOUT = ANI_RUNNING
+			if options.saveSlot > 0
+				stage.player2Enabled = 0
+			end if
+			break
 		end switch
+
 		if stage.player2Enabled == 1
 			playerCount = 2
 		else
 			playerCount = 1
 		end if
+
 		currentPlayer = 0
 		CallFunction(PlayerObject_SwitchPhysicsState)
 		ResetObjectEntity(arrayPos0, TypeName[Blank Object], 0, 0, 0)

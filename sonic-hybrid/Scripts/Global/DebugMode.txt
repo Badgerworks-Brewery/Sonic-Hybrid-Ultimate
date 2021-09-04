@@ -226,7 +226,7 @@ event ObjectMain
 		object.value4 = 0
 		if inputPress.buttonB == 1
 			if DebugMode_ExitTimer == 0
-				if stage.playerListPos == 1
+				if stage.playerListPos == PLAYER_TAILS
 					object.type = TypeName[Tails Object]
 				else
 					object.type = TypeName[Player Object]
