@@ -286,6 +286,8 @@ end event
 
 
 event ObjectStartup
+    stage.gameid = GAMEID_SONIC2
+
 	SetMusicTrack("HillTop.ogg", 0, 1)
 	SpeedUpMusic = HTZSetup_Function97
 	SlowDownMusic = HTZSetup_Function98

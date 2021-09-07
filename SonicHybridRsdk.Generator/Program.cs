@@ -181,6 +181,7 @@ namespace SonicHybridRsdk.Generator
                 variables[item.Name] = item.Value;
             foreach (var item in sonic2Config.Variables)
                 variables[item.Name] = item.Value;
+            variables["stage.gameid"] = 0;
             sonicHybridConfig.Variables = variables.Select(x => new Variable { Name = x.Key, Value = x.Value }).ToList();
 
             sonicHybridConfig.Players = sonic2Config.Players;
@@ -222,27 +223,45 @@ namespace SonicHybridRsdk.Generator
             UseStageV4(context1, StageType.StagesRegular, "SCRAP BRAIN ZONE", 4, "Zone04", "ZoneLZ", visualActNumber: 3);
             UseStageV4(context1, StageType.StagesRegular, "FINAL ZONE", 5, "Zone06", "ZoneSBZ", visualActNumber: 0);
 
-            UseStageV3(contextCd, StageType.StagesRegular, "PALMTREE PANIC ZONE", 1, "R11A", "ZonePPZ1A", "PRESENT");
-            UseStageV3(contextCd, StageType.StagesRegular, "PALMTREE PANIC ZONE", 2, "R12A", "ZonePPZ2A", "PRESENT");
-            UseStageV3(contextCd, StageType.StagesRegular, "PALMTREE PANIC ZONE", 3, "R13C", "ZonePPZ3C", "GOOD FUTURE");
-            UseStageV3(contextCd, StageType.StagesRegular, "COLLISION CHAOS ZONE", 1, "R31A", "ZoneCCZ1A", "PRESENT");
-            UseStageV3(contextCd, StageType.StagesRegular, "COLLISION CHAOS ZONE", 2, "R32A", "ZoneCCZ2A", "PRESENT");
-            UseStageV3(contextCd, StageType.StagesRegular, "COLLISION CHAOS ZONE", 3, "R33C", "ZoneCCZ3C", "GOOD FUTURE");
-            UseStageV3(contextCd, StageType.StagesRegular, "TIDAL TEMPEST ZONE", 1, "R41A", "ZoneTTZ1A", "PRESENT");
-            UseStageV3(contextCd, StageType.StagesRegular, "TIDAL TEMPEST ZONE", 2, "R42A", "ZoneTTZ2A", "PRESENT");
-            UseStageV3(contextCd, StageType.StagesRegular, "TIDAL TEMPEST ZONE", 3, "R43C", "ZoneTTZ3C", "GOOD FUTURE");
-            UseStageV3(contextCd, StageType.StagesRegular, "QUARTZ QUADRANT ZONE", 1, "R51A", "ZoneQQZ1A", "PRESENT");
-            UseStageV3(contextCd, StageType.StagesRegular, "QUARTZ QUADRANT ZONE", 2, "R52A", "ZoneQQZ2A", "PRESENT");
-            UseStageV3(contextCd, StageType.StagesRegular, "QUARTZ QUADRANT ZONE", 3, "R53C", "ZoneQQZ3C", "GOOD FUTURE");
-            UseStageV3(contextCd, StageType.StagesRegular, "WACKY WORKBENCH ZONE", 1, "R61A", "ZoneWWZ1A", "PRESENT");
-            UseStageV3(contextCd, StageType.StagesRegular, "WACKY WORKBENCH ZONE", 2, "R62A", "ZoneWWZ2A", "PRESENT");
-            UseStageV3(contextCd, StageType.StagesRegular, "WACKY WORKBENCH ZONE", 3, "R63C", "ZoneWWZ3C", "GOOD FUTURE");
-            UseStageV3(contextCd, StageType.StagesRegular, "STARDUST SPEEDWAY ZONE", 1, "R71A", "ZoneSSZ1A", "PRESENT");
-            UseStageV3(contextCd, StageType.StagesRegular, "STARDUST SPEEDWAY ZONE", 2, "R72B", "ZoneSSZ2B", "PAST");
-            UseStageV3(contextCd, StageType.StagesRegular, "STARDUST SPEEDWAY ZONE", 3, "R73D", "ZoneSSZ3D", "BAD FUTURE");
-            UseStageV3(contextCd, StageType.StagesRegular, "METALLIC MADNESS ZONE", 1, "R81A", "ZoneMMZ1A", "PRESENT");
-            UseStageV3(contextCd, StageType.StagesRegular, "METALLIC MADNESS ZONE", 2, "R82A", "ZoneMMZ2A", "PRESENT");
-            UseStageV3(contextCd, StageType.StagesRegular, "METALLIC MADNESS ZONE", 3, "R83D", "ZoneMMZ3D", "BAD FUTURE");
+            var SonicCDStageNames = new[]
+            {
+                "PALMTREE PANIC",
+                "DESERT DAZZLE",
+                "COLLISION CHAOS",
+                "TIDAL TEMPEST",
+                "QUARTZ QUADRANT",
+                "WACKY WORKBENCH",
+                "STARDUST SPEEDWAY",
+                "METALLIC MADNESS",
+            };
+            var SonicCDTimeZones = new[]
+            {
+                "PRESENT",
+                "PAST",
+                "GOOD FUTURE",
+                "BAD FUTURE",
+            };
+            for (var zone = 1; zone <= SonicCDStageNames.Length; zone++)
+            {
+                if (zone == 2) // Ignore R2
+                    continue;
+
+                var stageName = $"{SonicCDStageNames[zone - 1]} ZONE";
+                var stageShortName = new string(stageName.Split(' ').Select(x => x.First()).ToArray());
+                for (var act = 1; act <= 3; act++)
+                {
+                    for (var timeZoneId = 0; timeZoneId < SonicCDTimeZones.Length; timeZoneId++)
+                    {
+                        if (act == 3 && timeZoneId < 2) // Act 3 does not contain PRESENT or PAST
+                            continue;
+
+                        var timeZone = (char)('A' + timeZoneId);
+                        var srcFolder = $"R{zone}{act}{timeZone}";
+                        var dstFolder = $"Zone{stageShortName}{act}{timeZone}";
+                        UseStageV3(contextCd, StageType.StagesRegular, stageName, act, srcFolder, dstFolder, SonicCDTimeZones[timeZoneId]);
+                    }
+                }
+            }
 
             UseStageV4(context2, StageType.StagesRegular, "EMERALD HILL ZONE", 1, "Zone01", "ZoneEHZ");
             UseStageV4(context2, StageType.StagesRegular, "EMERALD HILL ZONE", 2, "Zone01", "ZoneEHZ");

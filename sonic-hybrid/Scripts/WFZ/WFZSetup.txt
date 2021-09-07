@@ -144,6 +144,8 @@ end event
 
 
 event ObjectStartup
+    stage.gameid = GAMEID_SONIC2
+
 	SetMusicTrack("WingFortress.ogg", 0, 0x18622)
 	SpeedUpMusic = WFZSetup_Function98
 	SlowDownMusic = WFZSetup_Function99

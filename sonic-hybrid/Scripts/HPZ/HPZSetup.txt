@@ -543,6 +543,8 @@ end event
 
 
 event ObjectStartup
+    stage.gameid = GAMEID_SONIC2
+
 	if stage.actNum == 1
 		SetMusicTrack("MysticCave2.ogg", 0, 0x48EF)
 		SpeedUpMusic = HPZSetup_Function101

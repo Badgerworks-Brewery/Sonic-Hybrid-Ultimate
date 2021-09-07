@@ -298,6 +298,8 @@ end event
 
 
 event ObjectStartup
+    stage.gameid = GAMEID_UNDEFINED
+
 	SetMusicTrack("DeathEgg.ogg", 0, 1)
 	SetPaletteEntry(0, 192, 0)
 	object[10].type = TypeName[MBZ Setup]

@@ -687,6 +687,8 @@ end event
 
 
 event ObjectStartup
+    stage.gameid = GAMEID_SONIC1
+
 	if stage.actNum < 4
 		SetMusicTrack("Labyrinth.ogg", 0, 0x149DC)
 		SpeedUpMusic = LZSetup_Function99

@@ -3,11 +3,11 @@ event ObjectMain
 end event
 
 event ObjectStartup
-    temp0 = stage.actNum
-	foreach (TypeName[HUD], arrayPos0, ALL_ENTITIES)
+    stage.gameid = GAMEID_SONICCD
+    
+    foreach (TypeName[HUD], arrayPos0, ALL_ENTITIES)
         temp0 = object[arrayPos0].propertyValue
     next
-
     if Options.Soundtrack==0
         switch temp0
             case 0

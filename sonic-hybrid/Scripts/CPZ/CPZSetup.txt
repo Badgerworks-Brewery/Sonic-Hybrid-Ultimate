@@ -475,6 +475,8 @@ end event
 
 
 event ObjectStartup
+    stage.gameid = GAMEID_SONIC2
+
 	LoadSpriteSheet("CPZ/Objects.gif")
 	SetPaletteEntry(0, 192, 0)
 	SetMusicTrack("ChemicalPlant.ogg", 0, 0xA7224)

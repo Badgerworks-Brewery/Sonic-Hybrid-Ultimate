@@ -276,6 +276,8 @@ end event
 
 
 event ObjectStartup
+    stage.gameid = GAMEID_SONIC2
+
 	if stage.activeList != BONUS_STAGE
 		if options.vsMode == 0
 			SetMusicTrack("EmeraldHill.ogg", 0, 0x254AE)

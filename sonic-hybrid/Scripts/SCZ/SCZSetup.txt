@@ -200,6 +200,8 @@ end event
 
 
 event ObjectStartup
+    stage.gameid = GAMEID_SONIC2
+
 	SetMusicTrack("SkyChase.ogg", 0, 0x3066D)
 	animalType1 = TypeName[Cucky]
 	animalType2 = TypeName[Tocky]

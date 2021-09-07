@@ -110,6 +110,8 @@ end event
 
 
 event ObjectStartup
+    stage.gameid = GAMEID_SONIC1
+
 	SetMusicTrack("SpringYard.ogg", 0, 0x18BF4)
 	SpeedUpMusic = SYZSetup_Function93
 	SlowDownMusic = SYZSetup_Function94

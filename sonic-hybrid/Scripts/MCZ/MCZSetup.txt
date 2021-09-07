@@ -151,6 +151,8 @@ end event
 
 
 event ObjectStartup
+    stage.gameid = GAMEID_SONIC2
+
 	if options.vsMode == 0
 		SetMusicTrack("MysticCave.ogg", 0, 0x1841C)
 		SpeedUpMusic = MCZSetup_Function97

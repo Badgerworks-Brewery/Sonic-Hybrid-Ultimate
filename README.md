@@ -45,6 +45,7 @@ This guide is useful if you previously played Sonic Hybrid but you want to perfo
 * Completing Sonic the Hedgehog 1's Final Zone will bring you to Palmtree Panic Zone.
 * Completing Sonic the Hedgehog CD's Metallic Madness Act 3 will bring you to Emerald Hill Zone.
 * The Stage Select in the debug menu will report all the implemented level names.
+* Sonic CD stages correctly transitions as the original game.
 * Metal Sonic is now a playable character.
 
 ## Known bugs

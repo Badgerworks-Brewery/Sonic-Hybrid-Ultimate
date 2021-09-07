@@ -516,6 +516,8 @@ end event
 
 
 event ObjectStartup
+    stage.gameid = GAMEID_SONIC2
+
 	SetMusicTrack("OilOcean.ogg", 0, 0x47AC4)
 	SpeedUpMusic = OOZSetup_Function101
 	SlowDownMusic = OOZSetup_Function102

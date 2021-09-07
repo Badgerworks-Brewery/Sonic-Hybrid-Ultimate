@@ -186,6 +186,8 @@ end event
 
 
 event ObjectStartup
+    stage.gameid = GAMEID_SONIC1
+
 	SetMusicTrack("GreenHill.ogg", 0, 0x9B0AA)
 	SpeedUpMusic = GHZSetup_Function93
 	SlowDownMusic = GHZSetup_Function94

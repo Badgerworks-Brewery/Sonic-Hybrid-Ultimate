@@ -8,10 +8,76 @@
 //-------Aliases-------//
 private alias 8 : TYPE_ACTFINISH
 
+public alias 0 : GAMEID_UNDEFINED
+public alias 1 : GAMEID_SONIC1
+public alias 2 : GAMEID_SONICCD
+public alias 3 : GAMEID_SONIC2
+public alias 4 : GAMEID_SONIC3
+public alias 5 : GAMEID_SONICANDKNUCKLES
 
-// Static Values
+reserve function ActFinish_NextStage
 
-// Tables
+function ActFinish_NextStage
+	// temp0 Contains the number of steps to advance when moving to the next stage
+	switch stage.gameid
+		case GAMEID_SONIC1
+			temp0 = 1
+			break
+		case GAMEID_SONICCD
+			// temp1 will be Present, Past, Good Future and Bad Future
+			temp0 = 4
+			temp1 = 1
+			foreach (TypeName[HUD], arrayPos0, ALL_ENTITIES)
+				temp1 = object[arrayPos0].propertyValue
+			next
+
+			// Ensure that the next stage is always Present or Good Future for Act 3
+			temp0 -= temp1
+
+			// As Act 3 will always be Good Future, if we do not actually achieved a
+			// good future we should force to advance to the Bad Future.
+			if stage.actNum == 2
+				if Good_Future == 0
+					temp0 += 1
+				end if
+			end if
+
+			break
+		case GAMEID_SONIC2
+			temp0 = 1
+			break
+		case GAMEID_SONIC3
+			temp0 = 1
+			break
+		case GAMEID_SONICANDKNUCKLES
+			temp0 = 1
+			break
+		default
+			temp0 = 1
+	end switch
+
+	player.score = stage.listPos
+	stage.listPos += temp0
+	player.lives = stage.listPos
+
+	// Not sure what is this... but maybe it's related to set a flag when Sonic 2 is completed?
+	// I commented it as it is always falling back to Starlight Zone Act 1 lol
+	// if stage.listPos > 20
+	// 	stage.listPos = 12
+	// 	if options.stageSelectFlag == 0
+	// 		if stage.debugMode == 0
+	// 			if options.gameMode == 0
+	// 				ReadSaveRAM()
+	// 				saveRAM[46] = 1
+	// 				WriteSaveRAM()
+	// 			else
+	// 				saveRAM[46] = 1
+	// 			end if
+	// 		end if
+	// 	end if
+	// end if
+
+end function
 
 event ObjectMain
 	options.touchControls = 0
@@ -28,7 +94,7 @@ event ObjectMain
 		switch stage.minutes
 		case 0
 			if stage.seconds < 30
-				object.value7 = 0xC350
+				object.value7 = 50000
 			else
 				if stage.seconds < 45
 					object.value7 = 0x2710
@@ -39,13 +105,13 @@ event ObjectMain
 			break
 		case 1
 			if stage.seconds < 30
-				object.value7 = 0xFA0
+				object.value7 = 4000
 			else
-				object.value7 = 0xBB8
+				object.value7 = 3000
 			end if
 			break
 		case 2
-			object.value7 = 0x7D0
+			object.value7 = 2000
 			break
 		case 3
 			object.value7 = 1000
@@ -194,21 +260,7 @@ event ObjectMain
 				object.value0 = 0
 				starPostID = 0
 				object.direction = FLIP_NONE
-				stage.listPos++
-				if stage.listPos > 20
-					stage.listPos = 12
-					if options.stageSelectFlag == 0
-						if stage.debugMode == 0
-							if options.gameMode == 0
-								ReadSaveRAM()
-								saveRAM[46] = 1
-								WriteSaveRAM()
-							else
-								saveRAM[46] = 1
-							end if
-						end if
-					end if
-				end if
+				CallFunction(ActFinish_NextStage)
 				if options.gameMode == 1
 					arrayPos1 = options.saveSlot
 					arrayPos1 <<= 3
@@ -258,21 +310,7 @@ event ObjectMain
 				object.value0 = 0
 				starPostID = 0
 				object.direction = FLIP_NONE
-				stage.listPos++
-				if stage.listPos > 20
-					stage.listPos = 12
-					if options.stageSelectFlag == 0
-						if stage.debugMode == 0
-							if options.gameMode == 0
-								ReadSaveRAM()
-								saveRAM[46] = 1
-								WriteSaveRAM()
-							else
-								saveRAM[46] = 1
-							end if
-						end if
-					end if
-				end if
+				CallFunction(ActFinish_NextStage)
 				if options.gameMode == 1
 					arrayPos1 = options.saveSlot
 					arrayPos1 <<= 3

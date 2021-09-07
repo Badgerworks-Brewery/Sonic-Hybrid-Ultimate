@@ -337,6 +337,8 @@ end event
 
 
 event ObjectStartup
+    stage.gameid = GAMEID_SONIC2
+
 	if options.vsMode == 0
 		SetMusicTrack("CasinoNight.ogg", 0, 0xF564)
 		SpeedUpMusic = CNZSetup_Function99

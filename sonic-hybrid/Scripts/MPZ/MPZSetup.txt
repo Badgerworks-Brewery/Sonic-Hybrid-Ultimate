@@ -289,6 +289,8 @@ end event
 
 
 event ObjectStartup
+    stage.gameid = GAMEID_SONIC2
+
 	SetMusicTrack("Metropolis.ogg", 0, 0x4B882)
 	SpeedUpMusic = MPZSetup_Function97
 	SlowDownMusic = MPZSetup_Function98

@@ -125,6 +125,8 @@ end event
 
 
 event ObjectStartup
+    stage.gameid = GAMEID_SONIC1
+
 	LoadSpriteSheet("SLZ/Objects.gif")
 	SetMusicTrack("Starlight.ogg", 0, 0x1498C)
 	SpeedUpMusic = SLZSetup_Function93

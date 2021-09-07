@@ -291,6 +291,8 @@ end event
 
 
 event ObjectStartup
+    stage.gameid = GAMEID_SONIC1
+
 	if stage.actNum < 5
 		SetMusicTrack("ScrapBrain.ogg", 0, 1)
 		SpeedUpMusic = SBZSetup_Function95

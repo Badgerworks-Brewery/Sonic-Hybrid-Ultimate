@@ -180,6 +180,8 @@ end event
 
 
 event ObjectStartup
+    stage.gameid = GAMEID_SONIC1
+
 	SetMusicTrack("Marble.ogg", 0, 0x18434)
 	SpeedUpMusic = MZSetup_Function93
 	SlowDownMusic = MZSetup_Function94

@@ -490,6 +490,8 @@ end event
 
 
 event ObjectStartup
+    stage.gameid = GAMEID_SONIC2
+
 	stage.midPoint = 2
 	SetPaletteEntry(0, 192, 0)
 	SetMusicTrack("AquaticRuin.ogg", 0, 1)

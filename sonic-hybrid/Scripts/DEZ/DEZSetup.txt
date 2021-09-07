@@ -71,6 +71,8 @@ end event
 
 
 event ObjectStartup
+    stage.gameid = GAMEID_SONIC2
+
 	SetMusicTrack("DeathEgg.ogg", 0, 1)
 	SetPaletteEntry(0, 192, 0)
 	Copy16x16Tile(767, 768)
