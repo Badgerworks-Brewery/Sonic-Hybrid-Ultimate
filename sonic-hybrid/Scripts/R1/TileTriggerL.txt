@@ -12,19 +12,19 @@ event ObjectMain
         if object[currentPlayer].Gravity==0
             BoxCollisionTest(C_TOUCH, object.entityPos, -12,Object.Value0,12,Object.Value1, currentPlayer, object[currentPlayer].value40, object[currentPlayer].value38, object[currentPlayer].value41, object[currentPlayer].value39)
             if CheckResult==1
-                if Object[+1].PropertyValue==0
-                    temp0=Object.Value6
-                else
-                    temp0=Object.Value7
-                end if
-                SetTileLayerEntry(temp0,0,Object.Value2,Object.Value3)
-                temp0++
-                SetTileLayerEntry(temp0,0,Object.Value4,Object.Value3)
-                temp0++
-                SetTileLayerEntry(temp0,0,Object.Value2,Object.Value5)
-                temp0++
-                SetTileLayerEntry(temp0,0,Object.Value4,Object.Value5)
-                temp0++
+				if object[currentPlayer].Speed>0
+					temp0=Object.Value7
+				else
+					temp0=Object.Value6
+				end if
+				SetTileLayerEntry(temp0,0,Object.Value2,Object.Value3)
+				temp0++
+				SetTileLayerEntry(temp0,0,Object.Value4,Object.Value3)
+				temp0++
+				SetTileLayerEntry(temp0,0,Object.Value2,Object.Value5)
+				temp0++
+				SetTileLayerEntry(temp0,0,Object.Value4,Object.Value5)
+				temp0++
             end if
         end if
     next

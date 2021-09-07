@@ -53,9 +53,9 @@ This guide is useful if you previously played Sonic Hybrid but you want to perfo
 * Sonic 1 Special Stages are working from the Stage Select, but the graphics is corrupted.
 * The main menu of RSDK will report the wrong stage names.
 * The Giant Ring from Sonic the Hedgehog 1 will teleport to the Sonic the Hedgehog 2 special stages.
-* Palmtree Panic, Collision Chaos and Stardust Speedway are half-implemented.
+* Collision Chaos and Stardust Speedway are half-implemented.
 * Tidal Tempest, Quartz Quadrant, Wacky Workbench and Metallic Madness are barely implemented.
-* Sonic CD levels does not have any enemy, unique gimmicks, palette cycles and working loops unless stated.
+* In Palmtree Panic Zone, the spinner will softlock the player.
 * Some Sonic CD's enemies and gimmicks might have the wrong palette.
 * Playable Metal Sonic has a "rolling" bugging collision.
 
