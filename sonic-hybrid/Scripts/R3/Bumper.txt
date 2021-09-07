@@ -4,8 +4,11 @@
 //-----Adapted to RSDKv4 by Luciano (Xeeynamo) Ciccariello----//
 
 //-------Aliases-------//
-#alias 36: TYPE_BUMPER
+private alias 49 : TYPE_BUMPER
 
+// Function declarations
+reserve function Bumper_DebugDraw
+reserve function Bumper_DebugSpawn
 
 event ObjectMain
 	switch Object.PropertyValue
@@ -59,30 +62,30 @@ event ObjectMain
 		Object.YPos=Object.Value5
 		Object.YPos-=Object[29].Value2
 		break
-
 	end switch
-	if Object.State>0
-		Object.Frame=Object.Value0
-		Object.Frame/=5
-		Object.Frame++
-		Object.Value0++
-		if Object.Value0>22
-			Object.Value0=0
-			Object.State=0
-			Object.Frame=0
+
+	if object.state > 0
+		object.frame = object.value0
+		object.frame /= 5
+		object.frame++
+		object.value0++
+		if object.value0 > 22
+			object.value0 = 0
+			object.state = 0
+			object.frame = 0
 		end if
 	end if
-	if Object.OutOfBounds==1
-		Object.Value1=0
-		Object.Priority=0
+	if object.outOfBounds == 1
+		object.value1 = 0
+		object.priority = PRIORITY_ACTIVE_BOUNDS
 	end if
 	
 	foreach (GROUP_PLAYERS, currentPlayer, ACTIVE_ENTITIES)
 		if object[currentPos].Animation != ANI_HURT
-			BoxCollisionTest(C_TOUCH, object.entityPos, -14, -14, 14, 14, currentPlayer, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO)
+			BoxCollisionTest(C_TOUCH, object.entityPos, -14, -14, 14, 14, currentPlayer, object[currentPlayer].value40, object[currentPlayer].value38, object[currentPlayer].value41, object[currentPlayer].value39)
 			if CheckResult==1
 				if Object.State==0
-					//PlayStageSfx(0,0) // TODO
+					PlaySfx(SfxName[Bumper], 0)
 					if Object.Value1<5
 						CreateTempObject(TypeName[ObjectScore],0,Object.XPos,Object.YPos)
 						Player.Score+=100
@@ -90,29 +93,45 @@ event ObjectMain
 					end if
 				end if
 				if Object.Value0>5
-					//PlayStageSfx(0, 0) // TODO
+					PlaySfx(SfxName[Bumper], 0)
 				end if
-				Object.State=1
-				Object.Priority=1
-				temp0=object[currentPos].XPos
-				temp0-=Object.XPos
-				temp1=object[currentPos].YPos
-				temp1-=Object.YPos
-				ATan2(temp2,temp0,temp1)
-				Cos256(temp0,temp2)
-				Sin256(temp1,temp2)
-				if object[currentPos].State==PlayerObject_HandleTailsFlight
-					temp0 <<= 10
-					temp1 <<= 10
-				else
-					temp0 *= 0x700
-					temp1 *= 0x700
-					object[currentPos].value1=0
+				
+				object.state = 1
+				object.priority = PRIORITY_ACTIVE
+				temp0 = object[currentPlayer].xpos
+				temp0 -= object.xpos
+				temp1 = object[currentPlayer].ypos
+				temp1 -= object.ypos
+				ATan2(temp2, temp0, temp1)
+				Cos256(temp0, temp2)
+				Sin256(temp1, temp2)
+				temp0 *= 0x700
+				temp1 *= 0x700
+				if object[currentPlayer].state == PlayerObject_HandleFlyCarry
+					object[1].value36 = 30
 				end if
-				object[currentPos].xvel=temp0
-				object[currentPos].yvel=temp1
-				object[currentPos].Speed=object[currentPos].xvel
-				object[currentPos].Gravity=1
+				CheckEqual(object[currentPlayer].animation, ANI_GLIDING)
+				temp2 = checkResult
+				CheckEqual(object[currentPlayer].animation, ANI_GLIDING_STOP)
+				temp2 |= checkResult
+				CheckEqual(object[currentPlayer].animation, ANI_FLYING)
+				temp2 |= checkResult
+				if temp2 == 0
+					object[currentPlayer].state = PlayerObject_HandleAir
+					if object[currentPlayer].animation != ANI_JUMPING
+						if object[currentPlayer].animation != ANI_RUNNING
+							object[currentPlayer].animation = ANI_WALKING
+						end if
+					end if
+				end if
+				if object[currentPlayer].animation != ANI_GLIDING
+					object[currentPlayer].xvel = temp0
+					object[currentPlayer].speed = object[currentPlayer].xvel
+					object[currentPlayer].value1 = 0
+				end if
+				object[currentPlayer].yvel = temp1
+				object[currentPlayer].gravity = GRAVITY_AIR
+				object[currentPlayer].tileCollisions = 1
 			end if
 		end if
 	next
@@ -138,7 +157,23 @@ event ObjectStartup
 	SpriteFrame(-12,-12,24,24,206,170)
 	SpriteFrame(-20,-20,40,40,215,203)
 	SpriteFrame(-20,-20,40,40,215,203)
+	
+	SetTableValue(TypeName[Bumper], DebugMode_ObjCount, DebugMode_TypesTable)
+	SetTableValue(Bumper_DebugDraw, DebugMode_ObjCount, DebugMode_DrawTable)
+	SetTableValue(Bumper_DebugSpawn, DebugMode_ObjCount, DebugMode_SpawnTable)
+	DebugMode_ObjCount++
 end event
+
+function Bumper_DebugDraw
+	DrawSprite(0)
+end function
+
+
+function Bumper_DebugSpawn
+	CreateTempObject(TypeName[Bumper], 0, object.xpos, object.ypos)
+	Object[tempObjectPos].Value4=Object[tempObjectPos].XPos
+	Object[tempObjectPos].Value5=Object[tempObjectPos].YPos
+end function
 
 event RSDK
 	LoadSpriteSheet("Global/Display.gif")

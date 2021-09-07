@@ -236,3 +236,9 @@ In the decompiled RSDKv3 there is no definition for the animations. This table h
 | 42 | ANI_3DRAM6
 | 43 | ANI_3DRAM7
 | 44 | ANI_SIZECHANGE
+
+## Constants
+
+| ID | Identifier | Context
+|----|------------|---------
+|  1 | GRAVITY_AIR | object.gravity
