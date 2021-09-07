@@ -39,8 +39,7 @@ event ObjectMain
 		end if
 
 		// If the stage is from Sonic the Hedgehog 1 then use a different switch mechanic
-		// This is a horrible hack, but TBH it is the only one working for me, so ¯\_(ツ)_/¯
-		if stage.listPos < 19 // 6 zones * 3 acts + FZ
+		if stage.gameid == GAMEID_SONIC1
 			if object[currentPlayer].gravity == GRAVITY_GROUND
 				BoxCollisionTest(C_TOUCH, object.entityPos, -12, object.value0, 12, object.value1, currentPlayer, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO)
 				if checkResult == 1
