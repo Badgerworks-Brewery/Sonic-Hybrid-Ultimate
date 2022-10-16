@@ -22,9 +22,9 @@ This guide is useful if you never downloaded the project or if you want to start
 
 1. Open a terminal and run the command `dotnet run --project SonicHybridRsdk.Build`
 
-1. Put the [RSDKv4](https://github.com/Rubberduckycooly/Sonic-1-2-2013-Decompilation/releases) engine in the `sonic-hybrid` folder
+1. Put the [RSDKv4 or 5u](https://github.com/Rubberduckycooly/RSDKv5-Decompilation/tree/master/RSDKv5U) engine in the `sonic-hybrid` folder
 
-1. Run the RSDKv4 executable and have fun!
+1. Compile/run the executable and have fun!
 
 ## Perform an update
 
@@ -36,7 +36,7 @@ This guide is useful if you previously played Sonic Hybrid but you want to perfo
 
 1. Open a terminal and run the command `dotnet run --project SonicHybridRsdk.Build`
 
-1. Run the RSDKv4 executable and have fun!
+1. Run the executable and have fun!
 
 ## Features
 
@@ -58,10 +58,11 @@ This guide is useful if you previously played Sonic Hybrid but you want to perfo
 * In Palmtree Panic Zone, the spinner will softlock the player.
 * Some Sonic CD's enemies and gimmicks might have the wrong palette.
 * Playable Metal Sonic has a "rolling" bugging collision.
+* Wont Run At All
 
 ## Resources
 
-I written [some notes](rsdkv3-to-rsdkv4.md) on how to convert RSDKv3 scripts to RSDKv4 scripts without modifying the RSDKv4 engine.
+Xeeynamo has written [some notes](rsdkv3-to-rsdkv4.md) on how to convert RSDKv3 scripts to RSDKv4 scripts without modifying the RSDKv4 engine.
 
 Everything contained in `rsdk/Scripts` is a modified version of [Rubberduckycooly's Sonic 1/2 script decompilation](https://github.com/Rubberduckycooly/Sonic-1-Sonic-2-2013-Script-Decompilation). This project would not exist without it.
 
