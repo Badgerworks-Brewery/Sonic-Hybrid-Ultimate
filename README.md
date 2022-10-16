@@ -1,4 +1,4 @@
-# Sonic Hybrid RSDK
+# Sonic RSDK + Oxygen Engine
 
 Aims to mix different Sonic the Hedgehog games into a single big game.
 
