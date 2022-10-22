@@ -4,7 +4,8 @@ Aims to mix different Sonic the Hedgehog games into a single big game.
 
 ![Sonic 1 in Sonic 2](docs/preview.png)
 
-## Start from here
+## WARNING: DOES NOT WORK YET!
+Start from here:
 
 This guide is useful if you never downloaded the project or if you want to start from scratch.
 
@@ -17,7 +18,7 @@ This guide is useful if you never downloaded the project or if you want to start
     * `Data.rsdk` from Sonic CD as `soniccd.rsdk`
     * `Data.rsdk` from Sonic 1 as `sonic1.rsdk`
     * `Data.rsdk` from Sonic 2 as `sonic2.rsdk`
-
+    * `Rom.bin`   from Sonic 3&k as `sonic3.bin`
 1. Install [.NET 6](https://dotnet.microsoft.com/download/dotnet/6.0)
 
 1. Open a terminal and run the command `dotnet run --project SonicHybridRsdk.Build`
