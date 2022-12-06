@@ -48,9 +48,10 @@ This guide is useful if you previously played Sonic Hybrid but you want to perfo
 * The Stage Select in the debug menu will report all the implemented level names.
 * Sonic CD stages correctly transitions as the original game.
 * Metal Sonic is now a playable character.
+* Sonic 3 will be included.
 
 ## Known bugs
-
+* No Sonic 3 yet.
 * Sonic 1 Special Stages are working from the Stage Select, but the graphics is corrupted.
 * The main menu of RSDK will report the wrong stage names.
 * The Giant Ring from Sonic the Hedgehog 1 will teleport to the Sonic the Hedgehog 2 special stages.
@@ -68,3 +69,11 @@ Xeeynamo has written [some notes](rsdkv3-to-rsdkv4.md) on how to convert RSDKv3 
 Everything contained in `rsdk/Scripts` is a modified version of [Rubberduckycooly's Sonic 1/2 script decompilation](https://github.com/Rubberduckycooly/Sonic-1-Sonic-2-2013-Script-Decompilation). This project would not exist without it.
 
 The function `SonicHybridRsdk.Unpack12/DecryptData` was written by Giuseppe Gatta (nextvolume) from its [Retrun](http://unhaut.epizy.com/retrun/).
+
+## Credits
+* Decompilation by Rubberduckycooly.
+* Hybrid-RSDK by Xeeynamo.
+* Sonic 3 AIR by Eukaryot.
+* P.O.C by The S3 AIR Official Discord.
+* Additional stuff by the Retro Engine Modding Discord.
+* Led by Chazdoesstuff/Crunch on gamejolt 
