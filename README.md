@@ -50,7 +50,7 @@ This guide is useful if you previously played Sonic Hybrid but you want to perfo
 * Metal Sonic is now a playable character.
 * Sonic 3 will be included.
 
-## Known bugs
+## Known issues 
 * No Sonic 3 yet.
 * Sonic 1 Special Stages are working from the Stage Select, but the graphics is corrupted.
 * The main menu of RSDK will report the wrong stage names.
@@ -71,9 +71,11 @@ Everything contained in `rsdk/Scripts` is a modified version of [Rubberduckycool
 The function `SonicHybridRsdk.Unpack12/DecryptData` was written by Giuseppe Gatta (nextvolume) from its [Retrun](http://unhaut.epizy.com/retrun/).
 
 ## Credits
+* Main Programming by FGSOFTWARE1
 * Decompilation by Rubberduckycooly.
 * Hybrid-RSDK by Xeeynamo.
 * Sonic 3 AIR by Eukaryot.
 * P.O.C by The S3 AIR Official Discord.
 * Additional stuff by the Retro Engine Modding Discord.
 * Led by Chazdoesstuff/Crunch on gamejolt 
+
