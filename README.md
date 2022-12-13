@@ -41,10 +41,11 @@ This guide is useful if you previously played Sonic Hybrid but you want to perfo
 
 ## Features
 
-* Play Sonic 1, Sonic CD and Sonic 2 in a single big game.
+* Play Sonic 1, Sonic CD, Sonic 2 and Sonic 3&k a single big game.
 * Star Posts in Sonic the Hedgehog 1 and CD will bring you to the Sonic the Hedgehog 2 special stages.
 * Completing Sonic the Hedgehog 1's Final Zone will bring you to Palmtree Panic Zone.
 * Completing Sonic the Hedgehog CD's Metallic Madness Act 3 will bring you to Emerald Hill Zone.
+* Completing Death Egg Zone in Sonic the Hedgehog 2 will bring you to Angel Island Zone. 
 * The Stage Select in the debug menu will report all the implemented level names.
 * Sonic CD stages correctly transitions as the original game.
 * Metal Sonic is now a playable character.
@@ -77,5 +78,5 @@ The function `SonicHybridRsdk.Unpack12/DecryptData` was written by Giuseppe Gatt
 * Sonic 3 AIR by Eukaryot.
 * P.O.C by The S3 AIR Official Discord.
 * Additional stuff by the Retro Engine Modding Discord.
-* Led by Chazdoesstuff/Crunch on gamejolt 
+* Led by Chazdoesstuff/Crunch on gamejolt.
 
