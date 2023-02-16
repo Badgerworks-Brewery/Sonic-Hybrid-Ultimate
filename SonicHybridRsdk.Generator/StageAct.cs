@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -82,15 +82,33 @@ namespace SonicHybridRsdk.Generator
             stage.EntityNames = Enumerable.Range(0, stream.ReadByte())
                 .Select(_ => ReadString(stream))
                 .ToList();
-            stage.Entities = Enumerable.Range(0, (stream.ReadByte() << 8) + stream.ReadByte())
-                .Select(_ => EntityV3.Read(stream))
-                .Cast<IEntity>()
+            stage.Entities = Enumerable.Range(
+                    0, stream.ReadByte() + (stream.ReadByte() << 8))
+                .Select(i =>
+                {
+                    var entity = EntityV3.Read(stream);
+                    entity.Name = stage.EntityNames[i];
+                    return (IEntity)entity;
+                })
                 .ToList();
-
             return stage;
         }
 
-        public void Write(Stream stream) =>
-            throw new NotImplementedException();
-    }
-}
+        public void Write(Stream stream)
+        {
+            Mapper.WriteObject(stream, this);
+            for (var i = 0; i < Width * Height; i++)
+            {
+                stream.WriteByte((byte)(Layout[i] >> 8));
+                stream.WriteByte((byte)(Layout[i] >> 0));
+            }
+
+            stream.WriteByte((byte)EntityNames.Count);
+            foreach (var entityName in EntityNames)
+                WriteString(stream, entityName);
+
+            stream.WriteByte((byte)(Entities.Count >> 0));
+            stream.WriteByte((byte)(Entities.Count >> 8));
+            foreach (var entity in Entities)
+                ((EntityV3)entity).Write(stream);
+        }
