@@ -18,12 +18,12 @@ This guide is useful if you never downloaded the project or if you want to start
     * `Data.rsdk` from Sonic CD as `soniccd.rsdk`
     * `Data.rsdk` from Sonic 1 as `sonic1.rsdk`
     * `Data.rsdk` from Sonic 2 as `sonic2.rsdk`
-    * `Rom.bin`   from Sonic 3&k as `sonic3.bin`
+    * `Rom.bin`   from Sonic 3&K as `sonic3.bin`
 1. Install [.NET 6](https://dotnet.microsoft.com/download/dotnet/6.0)
 
 1. Open a terminal and run the command `dotnet run --project SonicHybridRsdk.Build`
 
-1. Put the [RSDKv4 or 5u](https://github.com/Rubberduckycooly/RSDKv5-Decompilation/tree/master/RSDKv5U) engine in the `sonic-hybrid` folder
+1. Put the [RSDKv4 or 5u](https://github.com/Rubberduckycooly/RSDKv5-Decompilation/tree/master/RSDKv5U) engine in the `sonic-hybrid` folder (still havent decided)
 
 1. Compile/run the executable and have fun!
 
@@ -52,6 +52,7 @@ This guide is useful if you previously played Sonic Hybrid but you want to perfo
 * Sonic 3 will be included.
 
 ## Known issues 
+* **wont run at all**
 * No Sonic 3 yet.
 * Sonic 1 Special Stages are working from the Stage Select, but the graphics is corrupted.
 * The main menu of RSDK will report the wrong stage names.
@@ -61,7 +62,7 @@ This guide is useful if you previously played Sonic Hybrid but you want to perfo
 * In Palmtree Panic Zone, the spinner will softlock the player.
 * Some Sonic CD's enemies and gimmicks might have the wrong palette.
 * Playable Metal Sonic has a "rolling" bugging collision.
-* Wont Run At All
+
 
 ## Resources
 
@@ -78,5 +79,5 @@ The function `SonicHybridRsdk.Unpack12/DecryptData` was written by Giuseppe Gatt
 * Sonic 3 AIR by Eukaryot.
 * P.O.C by The S3 AIR Official Discord.
 * Additional stuff by the Retro Engine Modding Discord.
-* Led by Chazdoesstuff/Crunch on gamejolt.
-
+* Led by fgsoftware1doesstuff on gamejolt.
+* Additional Coding Assistance By Pixel-1 Games.
