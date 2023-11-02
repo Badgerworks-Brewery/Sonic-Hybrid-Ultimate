@@ -23,7 +23,7 @@ This guide is useful if you never downloaded the project or if you want to start
 
 1. Open a terminal and run the command `dotnet run --project SonicHybridRsdk.Build`
 
-1. Put the [RSDKv4 or 5u](https://github.com/Rubberduckycooly/RSDKv5-Decompilation/tree/master/RSDKv5U) engine in the `sonic-hybrid` folder (still havent decided)
+1. Put the [RSDKv4](https://github.com/Rubberduckycooly/Sonic-1-2-2013-Decompilation/releases/tag/1.3.2) engine in the `sonic-hybrid` folder (still havent decided)
 
 1. Compile/run the executable and have fun!
 
