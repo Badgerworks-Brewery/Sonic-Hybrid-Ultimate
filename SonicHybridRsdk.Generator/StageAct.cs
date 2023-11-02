@@ -82,16 +82,11 @@ namespace SonicHybridRsdk.Generator
             stage.EntityNames = Enumerable.Range(0, stream.ReadByte())
                 .Select(_ => ReadString(stream))
                 .ToList();
-            stage.Entities = Enumerable.Range(
-                    0, stream.ReadByte() + (stream.ReadByte() << 8))
-                .Select(i =>
-                {
-                    var entity = EntityV3.Read(stream);
-                    entity.Name = stage.EntityNames[i];
-                    return (IEntity)entity;
-                })
-                .ToList();
-            return stage;
+			stage.Entities = Enumerable.Range(0, (stream.ReadByte() << 8) + stream.ReadByte())
+				.Select(_ => EntityV3.Read(stream))
+				.Cast<IEntity>()
+				.ToList();
+			return stage;
         }
 
         public void Write(Stream stream)
@@ -112,3 +107,5 @@ namespace SonicHybridRsdk.Generator
             foreach (var entity in Entities)
                 ((EntityV3)entity).Write(stream);
         }
+    }
+}

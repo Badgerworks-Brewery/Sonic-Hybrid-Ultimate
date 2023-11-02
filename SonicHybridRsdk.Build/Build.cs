@@ -3,8 +3,8 @@ using System.IO;
 
 try
 {
-    const string SourceData = "rsdk-source-data/";
-    const string DestinationData = "sonic-hybrid/";
+    const string SourceData = "../../../../rsdk-source-data/";
+    const string DestinationData = "../../../../sonic-hybrid/";
     const string SonicCdRsdk = SourceData + "soniccd.rsdk";
     const string Sonic1Rsdk = SourceData + "sonic1.rsdk";
     const string Sonic2Rsdk = SourceData + "sonic2.rsdk";

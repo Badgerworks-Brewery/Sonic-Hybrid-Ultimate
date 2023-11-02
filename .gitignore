@@ -15,4 +15,11 @@ sonic-hybrid/Data/
 sonic-hybrid/*Data.bin
 sonic-hybrid/Settings.*
 
-# Include custom content
+# Don't Include RSDKv4 files
+sonic-hybrid/vorbis.dll
+sonic-hybrid/usage.txt
+sonic-hybrid/SDL2.dll
+sonic-hybrid/RSDKv4.exe
+sonic-hybrid/ogg.dll
+sonic-hybrid/log.txt
+sonic-hybrid/glew32.dll
