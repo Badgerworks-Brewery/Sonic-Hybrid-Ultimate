@@ -52,7 +52,7 @@ This guide is useful if you previously played Sonic Hybrid but you want to perfo
 * Sonic 3 will be included.
 
 ## Known issues 
-* **wont run at all**
+* **It runs, but when you load a level  it only loads the background**
 * No Sonic 3 yet.
 * Sonic 1 Special Stages are working from the Stage Select, but the graphics is corrupted.
 * The main menu of RSDK will report the wrong stage names.
