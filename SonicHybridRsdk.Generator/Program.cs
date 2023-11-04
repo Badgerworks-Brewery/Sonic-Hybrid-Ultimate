@@ -97,7 +97,7 @@ namespace SonicHybridRsdk.Generator
 
             var sonicHybridConfig = new GameConfig
             {
-                Name = "Sonic Hybrid",
+                Name = "Sonic Hybrid Ultimate",
                 Description = $"Hack by Xeeynamo\n\n{sonic1Config.Description}",
                 PaletteData = sonic2Config.PaletteData,
                 StagesPresentation = new List<Stage>(),

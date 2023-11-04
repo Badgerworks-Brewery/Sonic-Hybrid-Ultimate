@@ -18,6 +18,7 @@ event ObjectMain
 	// This should never happen as we should always able to find
 	// a player that corresponds to Sonic. Infact Amy will not
 	// be initialised if she does not find Sonic.
+	// this can happen if you add Knuckles or Metal for example
 	if ArrayPos0 < 0
 		ArrayPos0 = 0
 	end if

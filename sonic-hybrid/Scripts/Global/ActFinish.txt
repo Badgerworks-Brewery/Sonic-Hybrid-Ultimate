@@ -12,8 +12,7 @@ public alias 0 : GAMEID_UNDEFINED
 public alias 1 : GAMEID_SONIC1
 public alias 2 : GAMEID_SONICCD
 public alias 3 : GAMEID_SONIC2
-public alias 4 : GAMEID_SONIC3
-public alias 5 : GAMEID_SONICANDKNUCKLES
+public alias 4 : GAMEID_SONIC3ANDKNUCKLES
 
 reserve function ActFinish_NextStage
 
@@ -46,10 +45,7 @@ function ActFinish_NextStage
 		case GAMEID_SONIC2
 			temp0 = 1
 			break
-		case GAMEID_SONIC3
-			temp0 = 1
-			break
-		case GAMEID_SONICANDKNUCKLES
+		case GAMEID_SONIC3ANDKNUCKLES
 			temp0 = 1
 			break
 		default
@@ -62,6 +58,7 @@ function ActFinish_NextStage
 
 	// Not sure what is this... but maybe it's related to set a flag when Sonic 2 is completed?
 	// I commented it as it is always falling back to Starlight Zone Act 1 lol
+	// Its because stage 20 or 12 I don't remember is SLZ1 in sonic 1's globalconfig
 	// if stage.listPos > 20
 	// 	stage.listPos = 12
 	// 	if options.stageSelectFlag == 0
