@@ -18,7 +18,7 @@ This guide is useful if you never downloaded the project or if you want to start
     * `Data.rsdk` from Sonic CD as `soniccd.rsdk`
     * `Data.rsdk` from Sonic 1 as `sonic1.rsdk`
     * `Data.rsdk` from Sonic 2 as `sonic2.rsdk`
-    * `Rom.bin`   from Sonic 3&K as `sonic3.bin`
+    * `Rom.bin`   from Sonic 3&K as `sonic3.bin` (I doubt this will be addable as Sonic 3 is a ROM unlike the rest which is a RSDK)
 1. Install [.NET 6](https://dotnet.microsoft.com/download/dotnet/6.0)
 
 1. Open a terminal and run the command `dotnet run --project SonicHybridRsdk.Build`
@@ -81,3 +81,4 @@ The function `SonicHybridRsdk.Unpack12/DecryptData` was written by Giuseppe Gatt
 * Additional stuff by the Retro Engine Modding Discord.
 * Led by fgsoftware1doesstuff on gamejolt.
 * Additional Coding Assistance By Pixel-1 Games.
+* Minor Additions by SomeRandomPerson_ on gamejolt
