@@ -25,7 +25,7 @@ try
     Console.WriteLine("Unpacking Sonic the Hedgehog 2...");
     SonicHybridRsdk.UnpackS12.Program.Unpack(Sonic2Rsdk, SourceData + "sonic2");
 
-    Console.WriteLine("Generating Sonic Hybrid...");
+    Console.WriteLine("Generating Sonic Hybrid Ultimate...");
     SonicHybridRsdk.Generator.Program.Generate(SourceData, DestinationData);
 }
 catch (FileNotFoundException ex)
