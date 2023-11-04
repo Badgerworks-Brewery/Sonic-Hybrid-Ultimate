@@ -1,4 +1,4 @@
-# RSDKv3 to RSDKv4 Script conversion
+# RSDKv3 to RSDKv4 Script conversion (Semi-Outdated)
 
 Notes on how to convert RSDKv3 scripts to RSDKv4.
 
