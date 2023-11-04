@@ -13,6 +13,7 @@ namespace SonicHybridRsdk.Generator
         StagesPresentation,
         StagesRegular,
         StagesSpecial,
+        StagesBonus,
     }
 
     class Context
