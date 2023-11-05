@@ -193,7 +193,7 @@ end event
 
 
 event ObjectStartup
-	LoadSpriteSheet("Global/Items.gif")
+	LoadSpriteSheet("Global/ItemsHU.gif")
 	SpriteFrame(-16, -16, 32, 32, 18, 1)
 	SpriteFrame(-8, -9, 16, 14, 18, 51)
 	SpriteFrame(-8, -9, 16, 14, 35, 51)
