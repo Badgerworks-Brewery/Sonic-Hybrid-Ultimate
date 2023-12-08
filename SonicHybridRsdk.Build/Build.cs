@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 
 try
@@ -30,17 +30,11 @@ try
 }
 catch (FileNotFoundException ex)
 {
-    return Error(-1, $"Unable to find '{ex.FileName}'");
+    Console.Error.WriteLine($"Unable to find '{ex.FileName}'");
+    Environment.ExitCode = -1;
 }
 catch (Exception ex)
 {
-    return Error(-2, ex.Message);
-}
-
-return 0;
-
-static int Error(int statusCode, string str)
-{
-    Console.Error.WriteLine($"\u001b[31mERROR: {str}\u001b[0m");
-    return statusCode;
+    Console.Error.WriteLine($"An error occurred: {ex.Message}");
+    Environment.ExitCode = -2;
 }
