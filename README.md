@@ -85,4 +85,4 @@ The function `SonicHybridRsdk.Unpack12/DecryptData` was written by Giuseppe Gatt
 * Sonic 3 AIR by Eukaryot.
 * Additional stuff by the Retro Engine Modding Discord.
 * Led by fgsoftware1doesstuff on gamejolt.
-* Main Coding By Pixel-1 Games, SomeRandomPerson_, FGSOFTWARE1 and Twanvb1
+* Main Coding By Pixel-1 Games, SomeRandomPerson_, FGSOFTWARE1 and Twanvanb1
