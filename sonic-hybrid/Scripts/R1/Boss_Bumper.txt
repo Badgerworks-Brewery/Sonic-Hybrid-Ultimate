@@ -1,0 +1,91 @@
+//------------Sonic CD BossBumper Script-------------//
+//--------Scripted by Christian Whitehead 'The Taxman'--------//
+//-------Unpacked By Rubberduckycooly's Script Unpacker-------//
+//-----Adapted to RSDKv4 by Luciano (Xeeynamo) Ciccariello----//
+
+//-------Aliases-------//
+#alias 54: TYPE_BOSSBUMPER
+
+
+event ObjectMain
+	switch Object.State
+	case 0
+		Object.State=1
+		ArrayPos0=Object.Value0
+		Object.XPos=Object[ArrayPos0].XPos
+		Object.XPos-=1245184
+		Object.YPos=Object[ArrayPos0].YPos
+		if Object[ArrayPos0].Frame!=0
+			if Object[ArrayPos0].Frame==1
+				Object.XPos+=524288
+			else
+				Object.XPos+=1048576
+			end if
+		end if
+		break
+	case 1
+		ArrayPos0=Object.Value0
+		Object.XPos=Object[ArrayPos0].XPos
+		Object.XPos-=1245184
+		Object.YPos=Object[ArrayPos0].YPos
+		if Object[ArrayPos0].Frame!=0
+			if Object[ArrayPos0].Frame==1
+				Object.XPos+=524288
+			else
+				Object.XPos+=1048576
+			end if
+		end if
+		break
+	case 2
+		Object.Value2-=1280
+		Object.Value5+=6144
+		Object.XPos+=Object.Value2
+		Object.YPos+=Object.Value5
+		if Object.OutOfBounds==1
+			Object.Type=TypeName[BlankObject]
+			Object.Priority=0
+		end if
+		break
+
+	end switch
+
+	if Object.State<2
+    	foreach (GROUP_PLAYERS, currentPlayer, ACTIVE_ENTITIES)
+			if object[currentPlayer].Animation!=ANI_HURT
+				ArrayPos0=Object.Value0
+				if Object[ArrayPos0].Frame==0
+					BoxCollisionTest(C_TOUCH, object.entityPos, -10,-16,14,16, currentPlayer, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO)
+					if CheckResult==1
+						object[currentPlayer].Speed=-262144
+						object[currentPlayer].xvel=-262144
+						if Object.Frame==0
+							PlaySfx(11,0) // TODO
+						end if
+						Object.Frame=2
+					end if
+				end if
+			end if
+		next
+	end if
+end event
+
+
+event ObjectDraw
+	DrawSprite(Object.Frame)
+	if Object.Frame>0
+		Object.Frame--
+	end if
+end event
+
+
+event ObjectStartup
+	LoadSpriteSheet("R1/Objects3.gif")
+	SpriteFrame(-14,-16,24,32,99,26)
+	SpriteFrame(-18,-16,24,32,99,26)
+	SpriteFrame(-18,-16,24,32,99,26)
+end event
+
+event RSDK
+	LoadSpriteSheet("Global/Display.gif")
+	SpriteFrame(-16, -16, 32, 32, 1, 143)
+end event

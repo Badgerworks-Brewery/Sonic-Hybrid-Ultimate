@@ -1,0 +1,48 @@
+//------------Sonic CD LoveHeart Script-------------//
+//--------Scripted by Christian Whitehead 'The Taxman'--------//
+//-------Unpacked By Rubberduckycooly's Script Unpacker-------//
+//-----Adapted to RSDKv4 by Luciano (Xeeynamo) Ciccariello----//
+
+//-------Aliases-------//
+#alias 60: TYPE_LOVEHEART
+
+
+event ObjectDraw
+	if Object.Value0>144
+		temp0=Object.Value0
+		temp0-=144
+		temp0<<=3
+		if temp0>255
+			temp0=255
+		end if
+		Object.Alpha=255
+		Object.Alpha-=temp0
+		if Object.Alpha==0
+			Object.Type=TypeName[BlankObject]
+		end if
+	end if
+	Sin(temp0,Object.Value1)
+	temp0<<=9
+	temp0+=Object.XPos
+	if Object.Value0>19
+		DrawSpriteFX(1,FX_INK,temp0,Object.YPos)
+	else
+		DrawSpriteXY(0,temp0,Object.YPos)
+	end if
+	Object.YPos-=24576
+	Object.Value1+=8
+	Object.Value1&=511
+	Object.Value0++
+end event
+
+
+event ObjectStartup
+	LoadSpriteSheet("R3/Objects3.gif")
+	SpriteFrame(-8,-8,16,16,193,134)
+	SpriteFrame(-8,-8,16,16,193,150)
+end event
+
+event RSDK
+	LoadSpriteSheet("Global/Display.gif")
+	SpriteFrame(-16, -16, 32, 32, 1, 143)
+end event

@@ -1,0 +1,211 @@
+//------------Sonic CD Rotating Drum Script-------------//
+//--------Scripted by Christian Whitehead 'The Taxman'--------//
+//-------Unpacked By Rubberduckycooly's Script Unpacker-------//
+//-----Adapted to RSDKv4 by Luciano (Xeeynamo) Ciccariello----//
+
+//-------Aliases-------//
+#alias 60: TYPE_ROTATINGDRUM
+
+
+event ObjectMain
+	switch Object.State
+	case 0
+		Object.Frame=0
+		Object.Direction=FACING_RIGHT
+		Object.DrawOrder=3
+		Object.Value2=65536
+		break
+	case 1
+		Object.Frame=1
+		Object.Direction=FACING_RIGHT
+		Object.DrawOrder=3
+		Object.Value2=327680
+		break
+	case 2
+		Object.Frame=2
+		Object.Direction=FACING_RIGHT
+		Object.DrawOrder=3
+		Object.Value2=393216
+		break
+	case 3
+		Object.Frame=3
+		Object.Direction=FACING_RIGHT
+		Object.DrawOrder=3
+		Object.Value2=524288
+		break
+	case 4
+		Object.Frame=4
+		Object.Direction=FACING_RIGHT
+		Object.DrawOrder=3
+		Object.Value2=524288
+		break
+	case 5
+		Object.Frame=5
+		Object.Direction=2
+		Object.DrawOrder=3
+		Object.Value2=524288
+		break
+	case 6
+		Object.Frame=6
+		Object.Direction=2
+		Object.DrawOrder=3
+		Object.Value2=393216
+		break
+	case 7
+		Object.Frame=7
+		Object.Direction=2
+		Object.DrawOrder=3
+		Object.Value2=327680
+		break
+	case 8
+		Object.Frame=8
+		Object.Direction=2
+		Object.DrawOrder=3
+		Object.Value2=65536
+		break
+	case 9
+		Object.Frame=9
+		Object.Direction=2
+		Object.DrawOrder=2
+		Object.Value2=-65536
+		break
+	case 10
+		Object.Frame=9
+		Object.Direction=2
+		Object.DrawOrder=2
+		Object.Value2=-327680
+		break
+	case 11
+		Object.Frame=9
+		Object.Direction=2
+		Object.DrawOrder=2
+		Object.Value2=-393216
+		break
+	case 12
+		Object.Frame=9
+		Object.Direction=2
+		Object.DrawOrder=2
+		Object.Value2=-524288
+		break
+	case 13
+		Object.Frame=9
+		Object.Direction=2
+		Object.DrawOrder=2
+		Object.Value2=-524288
+		break
+	case 14
+		Object.Frame=9
+		Object.Direction=FACING_RIGHT
+		Object.DrawOrder=2
+		Object.Value2=-524288
+		break
+	case 15
+		Object.Frame=9
+		Object.Direction=FACING_RIGHT
+		Object.DrawOrder=2
+		Object.Value2=-393216
+		break
+	case 16
+		Object.Frame=9
+		Object.Direction=FACING_RIGHT
+		Object.DrawOrder=2
+		Object.Value2=-327680
+		break
+	case 17
+		Object.Frame=9
+		Object.Direction=FACING_RIGHT
+		Object.DrawOrder=2
+		Object.Value2=-65536
+		break
+
+	end switch
+	temp0=RotatingDrum_Timer
+	temp0%=10
+	if temp0==0
+		Object.Value1++
+		if Object.Value1>3
+			Object.Value1=0
+			Object.State++
+			Object.State%=18
+		end if
+	else
+		Object.Value2=0
+	end if
+	Object.Priority=1
+	temp0=Object.iXPos
+	temp0-=Screen.XOffset
+	temp0-=Screen.XSize
+	if temp0>128
+		Object.YPos=Object.Value3
+		Object.State=Object.PropertyValue
+		Object.Value1=0
+		Object.Value2=0
+		Object.Priority=3
+	end if
+	temp0=Object.iXPos
+	temp0-=Screen.XOffset
+	if temp0<-128
+		Object.YPos=Object.Value3
+		Object.State=Object.PropertyValue
+		Object.Value1=0
+		Object.Value2=0
+		Object.Priority=3
+	end if
+
+	
+	foreach (GROUP_PLAYERS, currentPlayer, ACTIVE_ENTITIES)
+		switch Object.State
+		case 2
+			BoxCollisionTest(C_PLATFORM, object.entityPos, -24, -8, 24, 12, currentPlayer, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO)
+			if CheckResult==1
+				object[currentPlayer].YPos+=Object.Value2
+			end if
+			break
+		case 3
+		case 4
+		case 5
+		case 6
+			BoxCollisionTest(C_PLATFORM, object.entityPos, -24, -4, 24, 12, currentPlayer, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO)
+			if CheckResult==1
+				object[currentPlayer].YPos+=Object.Value2
+			end if
+			break
+
+		end switch
+	next
+end event
+
+
+event ObjectDraw
+	Object.YPos+=Object.Value2
+	DrawSpriteFX(Object.Frame,FX_FLIP,Object.XPos,Object.YPos)
+end event
+
+
+event ObjectStartup
+	LoadSpriteSheet("R3/Objects.gif")
+	SpriteFrame(-24,-16,48,16,67,34)
+	SpriteFrame(-24,-12,48,16,116,34)
+	SpriteFrame(-24,-8,48,16,165,34)
+	SpriteFrame(-24,-4,48,16,67,51)
+	SpriteFrame(-24,-4,48,16,116,51)
+	SpriteFrame(-24,-12,48,16,67,51)
+	SpriteFrame(-24,-12,48,16,165,34)
+	SpriteFrame(-24,-12,48,16,116,34)
+	SpriteFrame(-24,-16,48,16,67,34)
+	SpriteFrame(-24,-8,48,8,165,18)
+	ArrayPos0=32
+	while ArrayPos0<1056
+		if Object[ArrayPos0].Type==TypeName[RotatingDrum]
+			Object[ArrayPos0].Priority=3
+			Object[ArrayPos0].Value3=Object[ArrayPos0].YPos
+			Object[ArrayPos0].State=Object[ArrayPos0].PropertyValue
+		end if
+		ArrayPos0++
+	loop
+end event
+
+event RSDK
+	LoadSpriteSheet("Global/Display.gif")
+	SpriteFrame(-16, -16, 32, 32, 1, 143)
+end event

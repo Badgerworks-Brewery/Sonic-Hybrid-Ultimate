@@ -1,0 +1,122 @@
+//------------Sonic CD Crumble Ledge 1 Script-------------//
+//--------Scripted by Christian Whitehead 'The Taxman'--------//
+//-------Unpacked By Rubberduckycooly's Script Unpacker-------//
+//-----Adapted to RSDKv4 by Luciano (Xeeynamo) Ciccariello----//
+
+//-------Aliases-------//
+#alias 52: TYPE_CRUMBLELEDGE1
+
+
+event ObjectMain
+	switch Object.State
+	case 1
+		if Object.Value0>0
+			Object.Value0--
+		else
+			Object.Value1+=20480
+			Object.YPos+=Object.Value1
+		end if
+		if Object.OutOfBounds==1
+			Object.Type=TypeName[BlankObject]
+		end if
+		break
+	case 2
+		if Object.OutOfBounds==1
+			Object.State=0
+			Object.Priority=0
+		end if
+		break
+
+	end switch
+	
+	foreach (GROUP_PLAYERS, currentPlayer, ACTIVE_ENTITIES)
+		switch Object.PropertyValue
+		case 0
+			if Object.State==0
+				BoxCollisionTest(C_PLATFORM, object.entityPos,-40,-24,40,-8, currentPlayer, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO)
+				if CheckResult==1
+					Object.Priority=0
+					Object.Type=TypeName[BlankObject]
+					temp0=1
+					temp1=0
+					temp4=Object.XPos
+					temp4-=2097152
+					while temp1<5
+						temp2=0
+						temp5=Object.YPos
+						temp5+=2097152
+						switch temp1
+						case 0
+							temp3=10
+							break
+						case 1
+							temp3=22
+							break
+						case 2
+							temp3=34
+							break
+						case 3
+							temp3=46
+							break
+						case 4
+							temp3=58
+							break
+
+						end switch
+						while temp2<5
+							CreateTempObject(TypeName[CrumbleLedge1],temp0,temp4,temp5)
+							Object[TempObjectPos].Value0=temp3
+							Object[TempObjectPos].State=1
+							temp3+=5
+							temp0++
+							temp2++
+							temp5-=1048576
+						loop
+						temp3-=8
+						temp1++
+						temp4+=1048576
+					loop
+					//PlayStageSfx(0,0) // TODO
+				end if
+			end if
+			break
+		case 4
+		case 9
+		case 14
+		case 19
+		case 24
+			if Object.Value0>0
+				BoxCollisionTest(C_PLATFORM, object.entityPos,-8,-8,8,8, currentPlayer, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO)
+			end if
+			break
+
+		end switch
+	next
+end event
+
+
+event ObjectDraw
+	if Object.State<2
+		DrawSprite(Object.PropertyValue)
+	end if
+end event
+
+
+event ObjectStartup
+	LoadSpriteSheet("R1/Objects2.gif")
+	SpriteFrame(-40,-40,80,80,1,1)
+	temp1=1
+	while temp1<80
+		temp0=65
+		while temp0>0
+			SpriteFrame(-8,-8,16,16,temp1,temp0)
+			temp0-=16
+		loop
+		temp1+=16
+	loop
+end event
+
+event RSDK
+	LoadSpriteSheet("Global/Display.gif")
+	SpriteFrame(-16, -16, 32, 32, 1, 143)
+end event

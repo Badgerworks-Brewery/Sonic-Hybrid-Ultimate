@@ -1,0 +1,110 @@
+//------------Sonic CD Eggman Script-------------//
+//--------Scripted by Christian Whitehead 'The Taxman'--------//
+//-------Unpacked By Rubberduckycooly's Script Unpacker-------//
+//-----Adapted to RSDKv4 by Luciano (Xeeynamo) Ciccariello----//
+
+//-------Aliases-------//
+#alias 51: TYPE_EGGMAN
+
+
+event ObjectMain
+	switch Object.State
+	case 0
+		Object.Value0++
+		Object.Value0%=40
+		break
+	case 1
+		if Object.Value1<41
+			Object.Value1++
+		else
+			Object.Value1=0
+			Object.Value0=0
+			if Object[+1].State<5
+				Object.State=0
+			else
+				Object.State=2
+			end if
+		end if
+		break
+	case 2
+		Object.Value0++
+		Object.Value0&=31
+		break
+	case 3
+		Object.Value0++
+		Object.Value0&=7
+		break
+
+	end switch
+end event
+
+
+event ObjectDraw
+	switch Object.State
+	case 0
+		DrawSprite(4)
+		temp0=Object.Value0
+		temp0/=10
+		DrawSprite(temp0)
+		break
+	case 1
+		temp1=Object.Value1
+		temp1<<=8
+		temp1/=40
+		Sin(temp0,temp1)
+		temp0<<=11
+		FlipSign(temp0)
+		temp0+=Object.YPos
+		temp1=Object.Value1
+		temp1&=15
+		temp1>>=3
+		temp1+=7
+		DrawSpriteXY(temp1,Object.XPos,temp0)
+		temp0=Object[+1].Value5
+		temp0&=1
+		temp0+=4
+		DrawSprite(temp0)
+		DrawSprite(6)
+		break
+	case 2
+		temp0=Object.Value0
+		temp0>>=4
+		temp0+=9
+		DrawSprite(temp0)
+		break
+	case 3
+		temp0=Object.Value0
+		temp0>>=2
+		temp0+=11
+		DrawSprite(temp0)
+		Object.XPos+=262144
+		if Object.OutOfBounds==1
+			ResetObjectEntity(Object.entityPos,TypeName[BlankObject],0,0,0)
+		end if
+		break
+
+	end switch
+end event
+
+
+event ObjectStartup
+	LoadSpriteSheet("R3/Objects2.gif")
+	SpriteFrame(-24,-56,48,24,1,166)
+	SpriteFrame(-24,-56,48,24,50,166)
+	SpriteFrame(-24,-56,48,24,148,174)
+	SpriteFrame(-24,-56,48,24,99,166)
+	SpriteFrame(-24,-32,48,16,148,107)
+	SpriteFrame(-24,-32,48,16,148,124)
+	SpriteFrame(-16,-48,32,16,84,50)
+	SpriteFrame(-32,-67,56,64,199,134)
+	SpriteFrame(-23,-67,56,64,199,69)
+	SpriteFrame(-24,-56,48,56,197,199)
+	SpriteFrame(-24,-56,48,56,147,199)
+	SpriteFrame(-16,-56,72,64,1,191)
+	SpriteFrame(-16,-56,72,64,74,191)
+end event
+
+event RSDK
+	LoadSpriteSheet("Global/Display.gif")
+	SpriteFrame(-16, -16, 32, 32, 1, 143)
+end event

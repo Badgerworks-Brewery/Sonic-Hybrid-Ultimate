@@ -1,0 +1,33 @@
+//------------Sonic CD BoosterCartridge Script-------------//
+//--------Scripted by Christian Whitehead 'The Taxman'--------//
+//-------Unpacked By Rubberduckycooly's Script Unpacker-------//
+//-----Adapted to RSDKv4 by Luciano (Xeeynamo) Ciccariello----//
+
+//-------Aliases-------//
+#alias 41: TYPE_BOOSTERCARTRIDGE
+
+
+event ObjectMain
+	Object.XPos+=Object.Value1
+	Object.YPos+=Object.Value2
+	Object.Value2+=16384
+	if Object.OutOfBounds==1
+		Object.Type=TypeName[BlankObject]
+	end if
+end event
+
+
+event ObjectDraw
+	DrawSpriteFX(Object.Frame,FX_FLIP,Object.XPos,Object.YPos)
+end event
+
+
+event ObjectStartup
+	LoadSpriteSheet("R7/Objects.gif")
+	SpriteFrame(-8,-4,16,8,90,43)
+end event
+
+event RSDK
+	LoadSpriteSheet("Global/Display.gif")
+	SpriteFrame(-16, -16, 32, 32, 1, 143)
+end event

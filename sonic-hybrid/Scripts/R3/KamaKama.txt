@@ -1,0 +1,240 @@
+//------------Sonic CD Kama Kama Script-------------//
+//--------Scripted by Christian Whitehead 'The Taxman'--------//
+//-------Unpacked By Rubberduckycooly's Script Unpacker-------//
+//-----Adapted to RSDKv4 by Luciano (Xeeynamo) Ciccariello----//
+
+//-------Aliases-------//
+#alias 50: TYPE_KAMAKAMA
+
+
+event ObjectMain
+	Object.Value1++
+	Object.Value1&=15
+	switch Object.State
+	case 0
+		ObjectTileGrip(0,0,19,0)
+		if Object.XPos>object[0].XPos
+			Object.Direction=FACING_RIGHT
+		else
+			Object.Direction=FACING_LEFT
+		end if
+
+		foreach (GROUP_PLAYERS, currentPlayer, ACTIVE_ENTITIES)
+			BoxCollisionTest(C_TOUCH, object.entityPos, -96, -48, 96, 48, currentPlayer, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO)
+			if CheckResult==1
+				Object.State=1
+				Object.Priority=1
+				if Object.PropertyValue==0
+					CreateTempObject(TypeName[KamaKamaBlade],24,Object.XPos,Object.YPos)
+					Object[TempObjectPos].Direction=Object.Direction
+					Object[TempObjectPos].iYPos-=6
+					Object[TempObjectPos].Value2=Object.entityPos
+					if Object.Direction==FACING_RIGHT
+						Object[TempObjectPos].iXPos-=8
+					else
+						Object[TempObjectPos].iXPos+=8
+					end if
+					CreateTempObject(TypeName[KamaKamaBlade],56,Object.XPos,Object.YPos)
+					Object[TempObjectPos].Direction=Object.Direction
+					Object[TempObjectPos].iYPos-=4
+					Object[TempObjectPos].Value2=Object.entityPos
+					if Object.Direction==FACING_RIGHT
+						Object[TempObjectPos].iXPos-=16
+					else
+						Object[TempObjectPos].iXPos+=16
+					end if
+				end if
+			end if
+		next
+
+		break
+	case 1
+		if Object.Value0<110
+			Object.Value0++
+		else
+			Object.State=2
+			Object.Value0=0
+		end if
+		break
+	case 2
+		if Object.Value0<48
+			Object.Value0++
+		else
+			Object.State=3
+			Object.Value0=0
+			Object.Frame=0
+			if Object.Direction==FACING_RIGHT
+				Object.Value2=-65536
+			else
+				Object.Value2=65536
+			end if
+			if Object.PropertyValue>0
+				Object.Value2>>=1
+			end if
+		end if
+		break
+	case 3
+		Object.Frame++
+		Object.Frame&=31
+		Object.XPos+=Object.Value2
+		ObjectTileGrip(0,0,19,0)
+		if CheckResult==0
+			Object.State=4
+			Object.Value0=60
+		end if
+		break
+	case 4
+		Object.Frame++
+		Object.Frame&=31
+		if Object.Value0>0
+			Object.Value0--
+		else
+			Object.State=3
+			FlipSign(Object.Value2)
+			if Object.Direction==FACING_RIGHT
+				Object.Direction=FACING_LEFT
+			else
+				Object.Direction=FACING_RIGHT
+			end if
+		end if
+		break
+
+	end switch
+	if Object.OutOfBounds==1
+		Object.Priority=0
+		Object.State=0
+		Object.Value0=0
+		Object.Value1=0
+		Object.Frame=0
+		Object.XPos=Object.Value3
+		Object.YPos=Object.Value4
+	end if
+	CallFunction(StageSetup_CheckGoodFuture)
+	
+	foreach (GROUP_PLAYERS, currentPlayer, ACTIVE_ENTITIES)
+		BoxCollisionTest(C_TOUCH, object.entityPos, -16, -16, 16, 20, currentPlayer, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO)
+		if CheckResult==1
+			CallFunction(PlayerObject_BadnikBreak)
+		end if
+	next
+end event
+
+
+event ObjectDraw
+	switch Object.State
+	case 0
+		temp0=Object.Value1
+		temp0>>=3
+		DrawSpriteFX(temp0,FX_FLIP,Object.XPos,Object.YPos)
+		if Object.PropertyValue==0
+			temp1=temp0
+			temp1+=4
+			DrawSpriteFX(temp1,FX_FLIP,Object.XPos,Object.YPos)
+			temp1+=12
+			DrawSpriteFX(temp1,FX_FLIP,Object.XPos,Object.YPos)
+			temp1-=10
+			DrawSpriteFX(temp1,FX_FLIP,Object.XPos,Object.YPos)
+		else
+			temp1=temp0
+			temp1+=10
+			DrawSpriteFX(temp1,FX_FLIP,Object.XPos,Object.YPos)
+			temp1+=2
+			DrawSpriteFX(temp1,FX_FLIP,Object.XPos,Object.YPos)
+		end if
+		break
+	case 1
+		temp0=Object.Value1
+		temp0>>=3
+		DrawSpriteFX(temp0,FX_FLIP,Object.XPos,Object.YPos)
+		if Object.PropertyValue==0
+			temp1=temp0
+			temp1+=4
+			DrawSpriteFX(temp1,FX_FLIP,Object.XPos,Object.YPos)
+			temp1+=2
+			DrawSpriteFX(temp1,FX_FLIP,Object.XPos,Object.YPos)
+		else
+			temp1=temp0
+			temp1+=10
+			DrawSpriteFX(temp1,FX_FLIP,Object.XPos,Object.YPos)
+			temp1+=2
+			DrawSpriteFX(temp1,FX_FLIP,Object.XPos,Object.YPos)
+		end if
+		break
+	case 2
+		temp0=Object.Value1
+		temp0>>=3
+		DrawSpriteFX(temp0,FX_FLIP,Object.XPos,Object.YPos)
+		if Object.PropertyValue==0
+			temp1=temp0
+			temp1+=4
+			DrawSpriteFX(temp1,FX_FLIP,Object.XPos,Object.YPos)
+			temp1+=4
+			DrawSpriteFX(temp1,FX_FLIP,Object.XPos,Object.YPos)
+		else
+			temp1=temp0
+			temp1+=10
+			DrawSpriteFX(temp1,FX_FLIP,Object.XPos,Object.YPos)
+			temp1+=4
+			DrawSpriteFX(temp1,FX_FLIP,Object.XPos,Object.YPos)
+		end if
+		break
+	case 3
+	case 4
+		temp0=Object.Frame
+		temp0>>=3
+		DrawSpriteFX(temp0,FX_FLIP,Object.XPos,Object.YPos)
+		temp0=Object.Value1
+		temp0>>=3
+		if Object.PropertyValue==0
+			temp1=temp0
+			temp1+=4
+			DrawSpriteFX(temp1,FX_FLIP,Object.XPos,Object.YPos)
+			temp1+=2
+			DrawSpriteFX(temp1,FX_FLIP,Object.XPos,Object.YPos)
+		else
+			temp1=temp0
+			temp1+=10
+			DrawSpriteFX(temp1,FX_FLIP,Object.XPos,Object.YPos)
+			temp1+=2
+			DrawSpriteFX(temp1,FX_FLIP,Object.XPos,Object.YPos)
+		end if
+		break
+
+	end switch
+end event
+
+
+event ObjectStartup
+	LoadSpriteSheet("R3/Objects.gif")
+	ArrayPos0=32
+	while ArrayPos0<1056
+		if Object[ArrayPos0].Type==TypeName[KamaKama]
+			Object[ArrayPos0].Value3=Object[ArrayPos0].XPos
+			Object[ArrayPos0].Value4=Object[ArrayPos0].YPos
+		end if
+		ArrayPos0++
+	loop
+	SpriteFrame(0,4,16,16,198,119)
+	SpriteFrame(0,4,16,16,215,119)
+	SpriteFrame(0,4,16,16,232,119)
+	SpriteFrame(0,4,16,16,215,119)
+	SpriteFrame(-10,-4,24,16,215,102)
+	SpriteFrame(-10,-3,24,16,215,102)
+	SpriteFrame(-16,-20,16,16,198,102)
+	SpriteFrame(-16,-19,16,16,198,102)
+	SpriteFrame(-16,-20,16,16,198,136)
+	SpriteFrame(-16,-19,16,16,198,102)
+	SpriteFrame(-10,-4,24,16,232,136)
+	SpriteFrame(-10,-3,24,16,198,153)
+	SpriteFrame(-16,-20,16,16,215,136)
+	SpriteFrame(-16,-19,16,16,240,102)
+	SpriteFrame(-16,-20,16,16,198,136)
+	SpriteFrame(-16,-19,16,16,240,102)
+	SpriteFrame(-22,-14,24,20,173,101)
+	SpriteFrame(-22,-14,24,20,173,122)
+end event
+
+event RSDK
+	LoadSpriteSheet("Global/Display.gif")
+	SpriteFrame(-16, -16, 32, 32, 1, 143)
+end event

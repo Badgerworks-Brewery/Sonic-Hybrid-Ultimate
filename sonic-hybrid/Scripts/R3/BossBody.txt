@@ -1,0 +1,397 @@
+//------------Sonic CD Boss Body Script-------------//
+//--------Scripted by Christian Whitehead 'The Taxman'--------//
+//-------Unpacked By Rubberduckycooly's Script Unpacker-------//
+//-----Adapted to RSDKv4 by Luciano (Xeeynamo) Ciccariello----//
+
+//-------Aliases-------//
+#alias 50: TYPE_BOSSBODY
+
+// Function declarations
+#function BossBody_Function49
+
+function BossBody_Function49
+	temp0=object[0].YPos
+	temp0-=Object.YPos
+	if temp0<37748736
+		CreateTempObject(TypeName[PinballBomb],0,Object.XPos,Object.YPos)
+		Rand(Object[TempObjectPos].Value1,1024)
+		Object[TempObjectPos].Value1<<=8
+		if Object.Value4<128
+			FlipSign(Object[TempObjectPos].Value1)
+			Object[TempObjectPos].XPos-=524288
+		else
+			Object[TempObjectPos].XPos+=524288
+		end if
+		Object[TempObjectPos].YPos+=1572864
+		Object[TempObjectPos].Value2=196608
+		Object[TempObjectPos].DrawOrder=2
+	end if
+end function
+
+
+event ObjectMain
+	switch Object.State
+	case 0
+		Object.YPos=object[0].YPos
+		Object.YPos&=-65536
+		if Object.YPos<Object.Value1
+			Object.YPos=Object.Value1
+			Object.Frame=0
+		end if
+		if Object.YPos>Object.Value2
+			Object.YPos=Object.Value2
+			Object.Frame=0
+			Object.State=1
+			Object.Priority=1
+		end if
+		if Object.YPos!=Object.Value3
+			Object.Value3=Object.YPos
+			Object.Frame++
+			Object.Frame%=9
+		end if
+		Object[-1].YPos=Object.YPos
+		Object.Value4++
+		Object.Value4&=255
+		if Object.Value4==0
+			CallFunction(BossBody_Function49)
+		end if
+		if Object.Value4==128
+			CallFunction(BossBody_Function49)
+		end if
+		break
+	case 1
+		Object[-1].YPos=Object.YPos
+		if Object[+1].Value2<8
+			Object.Value4++
+			Object.Value4&=255
+		else
+			Object.Value4=32
+		end if
+		if Object.Value4==0
+			CallFunction(BossBody_Function49)
+		end if
+		if Object.Value4==128
+			CallFunction(BossBody_Function49)
+		end if
+		break
+	case 2
+		if Object.YPos>Object.Value2
+			Object.YPos-=163840
+			Object.Frame++
+			Object.Frame%=9
+		else
+			Object.YPos=Object.Value2
+			Object.Frame=0
+			Object.State=3
+		end if
+		Object[-1].YPos=Object.YPos
+		if Object.Value5==2
+			CreateTempObject(TypeName[Explosion],0,Object.XPos,Object.YPos)
+			Object[TempObjectPos].iXPos-=32
+			Object[TempObjectPos].iYPos+=10
+		end if
+		if Object.Value5==3
+			CreateTempObject(TypeName[Explosion],0,Object.XPos,Object.YPos)
+			Object[TempObjectPos].iXPos+=32
+			Object[TempObjectPos].iYPos+=6
+		end if
+		if Object.Value5==4
+			CreateTempObject(TypeName[Explosion],0,Object.XPos,Object.YPos)
+			Object[TempObjectPos].iYPos+=4
+		end if
+		break
+	case 3
+		Object[-1].YPos=Object.YPos
+		break
+	case 4
+		if Object.YPos>Object.Value2
+			Object.YPos-=163840
+			Object.Frame++
+			Object.Frame%=9
+		else
+			Object.YPos=Object.Value2
+			Object.Frame=0
+			Object.State=5
+		end if
+		Object[-1].YPos=Object.YPos
+		if Object.Value5==2
+			CreateTempObject(TypeName[Explosion],0,Object.XPos,Object.YPos)
+			Object[TempObjectPos].iXPos-=32
+			Object[TempObjectPos].iYPos-=48
+		end if
+		if Object.Value5==3
+			CreateTempObject(TypeName[Explosion],0,Object.XPos,Object.YPos)
+			Object[TempObjectPos].iXPos+=32
+			Object[TempObjectPos].iYPos-=52
+		end if
+		if Object.Value5==4
+			CreateTempObject(TypeName[Explosion],0,Object.XPos,Object.YPos)
+			Object[TempObjectPos].iYPos-=56
+		end if
+		break
+	case 5
+		Object[-1].YPos=Object.YPos
+		break
+	case 6
+		if Object.YPos>Object.Value2
+			Object.YPos-=163840
+			Object.Frame++
+			Object.Frame%=9
+			Music.Volume--
+		else
+			Object.YPos=Object.Value2
+			Object.Frame=0
+			Object.State=7
+			Object.Value0=0
+			Object.Priority=1
+		end if
+		if Object.Value5>0
+			Object[-1].YPos=Object.Value5
+			Object[-1].YPos<<=17
+			FlipSign(Object[-1].YPos)
+			Object[-1].YPos+=Object.YPos
+		else
+			if Object[-1].State==0
+				Object[-1].State=3
+				Object[-1].Priority=1
+				Object[-1].Value0&=7
+			end if
+			if Object[-1].State==2
+				Object[-1].State=3
+				Object[-1].Priority=1
+				Object[-1].Value0&=7
+			end if
+		end if
+		if Object.Value5==2
+			CreateTempObject(TypeName[Explosion],0,Object.XPos,Object.YPos)
+			Object[TempObjectPos].iXPos-=16
+			Object[TempObjectPos].iYPos-=52
+		end if
+		if Object.Value5==3
+			CreateTempObject(TypeName[Explosion],0,Object.XPos,Object.YPos)
+			Object[TempObjectPos].iXPos+=16
+			Object[TempObjectPos].iYPos-=56
+		end if
+		break
+	case 7
+		temp0=Object.Value0
+		temp0&=3
+		if temp0==0
+			Rand(temp0,128)
+			temp0-=64
+			temp0<<=16
+			temp0+=Object.XPos
+			Rand(temp1,48)
+			temp1-=24
+			temp1<<=16
+			temp1+=Object.YPos
+			CreateTempObject(TypeName[Explosion],0,temp0,temp1)
+			PlaySfx(SfxName[Boss Hit], 0)
+		end if
+		Object.Value0++
+		if Object.Value0==80
+			Player.Score+=1000
+			ResetObjectEntity(Object.entityPos,TypeName[BlankObject],0,0,0)
+			PlayMusic(0)
+		end if
+		break
+
+	end switch
+
+	switch Object.State
+	case 1
+	case 3
+		foreach (GROUP_PLAYERS, currentPlayer, ACTIVE_ENTITIES)
+			BoxCollisionTest(C_TOUCH, object.entityPos, -64,-16,64,16, currentPlayer, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO)
+			if CheckResult==1
+				object[currentPlayer].yvel=0
+				Object.Value2-=4718592
+				Object.Value5=1
+				Object.State++
+				Object[-1].State=1
+				PlaySfx(SfxName[Boss Hit], 0)
+			end if
+		next
+		break
+	case 5
+		foreach (GROUP_PLAYERS, currentPlayer, ACTIVE_ENTITIES)
+			BoxCollisionTest(C_TOUCH, object.entityPos, -64,-16,64,16, currentPlayer, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO)
+			if CheckResult==1
+				object[currentPlayer].yvel=0
+				Object.Value2-=8388608
+				Object.Value5=1
+				Object.State++
+				PlaySfx(SfxName[Boss Hit], 0)
+			end if
+		next
+		break
+
+	end switch
+end event
+
+
+event ObjectDraw
+	switch Object.State
+	case 0
+	case 1
+		DrawSprite(4)
+		DrawSprite(5)
+		if Object.Value4<128
+			if Object.Value4<8
+				temp0=Object.Value4
+				temp0>>=1
+				temp0+=7
+			else
+				temp0=8
+			end if
+			DrawSprite(temp0)
+			DrawSprite(12)
+		else
+			if Object.Value4<136
+				temp0=Object.Value4
+				temp0-=128
+				temp0>>=1
+				temp0+=11
+			else
+				temp0=12
+			end if
+			DrawSprite(8)
+			DrawSprite(temp0)
+		end if
+		DrawSprite(6)
+		DrawSprite(3)
+		temp0=Object.Frame
+		temp0/=3
+		DrawSprite(temp0)
+		break
+	case 2
+	case 3
+	case 4
+		temp0=Object.Value5
+		temp0&=1
+		if temp0==0
+			DrawSprite(4)
+			DrawSprite(5)
+			DrawSprite(3)
+		else
+			DrawSprite(16)
+			DrawSprite(17)
+			DrawSprite(15)
+		end if
+		if Object.Value5>0
+			Object.Value5++
+			Object.Value5&=15
+		end if
+		temp0=Object.Frame
+		temp0/=3
+		DrawSprite(temp0)
+		break
+	case 5
+		temp0=Object.Value5
+		temp0&=1
+		temp1=Object.YPos
+		temp1+=Object.Value6
+		if temp0==0
+			DrawSprite(4)
+			DrawSprite(5)
+			DrawSpriteXY(18,Object.XPos,temp1)
+			DrawSprite(3)
+		else
+			DrawSprite(16)
+			DrawSprite(17)
+			DrawSpriteXY(19,Object.XPos,temp1)
+			DrawSprite(15)
+		end if
+		if Object[-1].State==2
+			if Object.Value6<1048576
+				Object.Value6+=32768
+			end if
+		end if
+		if Object.Value5>0
+			Object.Value5++
+			Object.Value5&=15
+		end if
+		temp0=Object.Frame
+		temp0/=3
+		DrawSprite(temp0)
+		break
+	case 6
+		temp0=Object.YPos
+		temp0-=2097152
+		if temp0<Object.Value2
+			DrawSprite(16)
+			DrawSprite(17)
+			DrawSprite(3)
+		else
+			temp0=Object.Value5
+			temp0&=1
+			temp1=Object.YPos
+			temp1+=Object.Value6
+			if temp0==0
+				DrawSprite(4)
+				DrawSprite(5)
+				DrawSprite(3)
+			else
+				DrawSprite(16)
+				DrawSprite(17)
+				DrawSprite(15)
+			end if
+			if Object.Value6<1048576
+				Object.Value6+=32768
+			end if
+		end if
+		if Object.Value5>0
+			Object.Value5++
+			Object.Value5&=15
+		end if
+		temp0=Object.Frame
+		temp0/=3
+		DrawSprite(temp0)
+		break
+	case 7
+		DrawSprite(3)
+		DrawSprite(0)
+		break
+
+	end switch
+end event
+
+
+event ObjectStartup
+	LoadSpriteSheet("R3/Objects2.gif")
+	ArrayPos0=32
+	while ArrayPos0<1056
+		if Object[ArrayPos0].Type==TypeName[BossBody]
+			Object[ArrayPos0].Value1=Object[ArrayPos0].YPos
+			Object[ArrayPos0].Value3=Object[ArrayPos0].YPos
+			Object[ArrayPos0].Value2=Object[ArrayPos0].YPos
+			Object[ArrayPos0].Value2+=14942208
+		end if
+		ArrayPos0++
+	loop
+	SpriteFrame(-80,-16,32,32,134,0)
+	SpriteFrame(-80,-16,32,32,167,0)
+	SpriteFrame(-80,-16,32,32,200,0)
+	SpriteFrame(-64,-16,128,32,1,67)
+	SpriteFrame(-48,-32,32,32,1,100)
+	SpriteFrame(16,-32,32,32,34,100)
+	SpriteFrame(-24,16,48,8,148,141)
+	SpriteFrame(-24,24,24,24,148,149)
+	SpriteFrame(-24,16,24,24,148,149)
+	SpriteFrame(-24,8,24,24,148,149)
+	SpriteFrame(-24,16,24,24,148,149)
+	SpriteFrame(0,24,24,24,172,149)
+	SpriteFrame(0,16,24,24,172,149)
+	SpriteFrame(0,8,24,24,172,149)
+	SpriteFrame(0,16,24,24,172,149)
+	SpriteFrame(-64,-16,128,32,117,33)
+	SpriteFrame(-48,-32,32,32,1,133)
+	SpriteFrame(16,-32,32,32,34,133)
+	SpriteFrame(-24,-32,48,16,148,107)
+	SpriteFrame(-24,-32,48,16,148,124)
+end event
+
+event RSDK
+	LoadSpriteSheet("Global/Display.gif")
+	SpriteFrame(-16, -16, 32, 32, 1, 143)
+end event

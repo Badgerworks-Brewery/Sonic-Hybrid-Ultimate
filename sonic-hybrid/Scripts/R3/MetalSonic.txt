@@ -1,0 +1,170 @@
+//------------Sonic CD Metal Sonic Script-------------//
+//--------Scripted by Christian Whitehead 'The Taxman'--------//
+//-------Unpacked By Rubberduckycooly's Script Unpacker-------//
+//-----Adapted to RSDKv4 by Luciano (Xeeynamo) Ciccariello----//
+
+//-------Aliases-------//
+#alias 61: TYPE_METALSONIC
+
+
+event ObjectMain
+	switch Object.State
+	case 1
+		Object.XPos-=196608
+		Object.Frame++
+		Object.Frame&=1
+		temp0=0
+		ArrayPos0=Object.entityPos
+		ArrayPos0++
+		while temp0<3
+			if Object[ArrayPos0].Type>TypeName[BlankObject]
+				temp1=Object[ArrayPos0].XPos
+				temp1+=2359296
+				if Object.XPos<temp1
+					Object[ArrayPos0].Type=TypeName[BlankObject]
+					temp2=Object[ArrayPos0].PropertyValue
+					temp2<<=2
+					CreateTempObject(TypeName[SpikeDebris],temp2,Object[ArrayPos0].XPos,Object[ArrayPos0].YPos)
+					Object[TempObjectPos].iXPos-=9
+					Object[TempObjectPos].iYPos-=9
+					Object[TempObjectPos].Value0=-65536
+					Object[TempObjectPos].Value1=-196608
+					temp2++
+					CreateTempObject(TypeName[SpikeDebris],temp2,Object[ArrayPos0].XPos,Object[ArrayPos0].YPos)
+					Object[TempObjectPos].iXPos+=8
+					Object[TempObjectPos].iYPos-=9
+					Object[TempObjectPos].Value0=65536
+					Object[TempObjectPos].Value1=-196608
+					temp2++
+					CreateTempObject(TypeName[SpikeDebris],temp2,Object[ArrayPos0].XPos,Object[ArrayPos0].YPos)
+					Object[TempObjectPos].iXPos-=9
+					Object[TempObjectPos].iYPos+=8
+					Object[TempObjectPos].Value0=-65536
+					Object[TempObjectPos].Value1=-98304
+					temp2++
+					CreateTempObject(TypeName[SpikeDebris],temp2,Object[ArrayPos0].XPos,Object[ArrayPos0].YPos)
+					Object[TempObjectPos].iXPos+=8
+					Object[TempObjectPos].iYPos+=8
+					Object[TempObjectPos].Value0=65536
+					Object[TempObjectPos].Value1=-98304
+					temp2++
+					//PlayStageSfx(8,0) // TODO
+				end if
+			end if
+			ArrayPos0++
+			temp0++
+		loop
+		temp0=Object[-1].XPos
+		temp0+=2097152
+		if Object.XPos<temp0
+			Object.State=2
+			Object.Frame=2
+			Object.Value1=Object.YPos
+			Object[-1].Frame=8
+			Object[-1].State=4
+			//PlayStageSfx(9,0) // TODO
+		end if
+		break
+	case 2
+		if Object.Value0>8
+			foreach (GROUP_PLAYERS, currentPlayer, ACTIVE_ENTITIES)
+				if object[currentPlayer].XPos<Object.XPos
+					Object.Direction=FACING_LEFT
+				else
+					Object.Direction=FACING_RIGHT
+				end if
+			next
+		end if
+		Sin(Object.YPos,Object.Value0)
+		Object.YPos<<=9
+		Object.YPos+=Object.Value1
+		Object.Value0+=8
+		if Object.Value0>607
+			Object.State=3
+			Object.Value0=0
+		end if
+		break
+	case 3
+		foreach (GROUP_PLAYERS, currentPlayer, ACTIVE_ENTITIES)
+			if object[currentPlayer].XPos<Object.XPos
+				Object.Direction=FACING_LEFT
+			else
+				Object.Direction=FACING_RIGHT
+			end if
+		next
+		if Object.Value0<40
+			Object.Value0++
+			Object.Value1-=131072
+			Object.YPos-=131072
+		else
+			Object.State=4
+			Object.Value0=256
+		end if
+		break
+	case 4
+		foreach (GROUP_PLAYERS, currentPlayer, ACTIVE_ENTITIES)
+			if object[currentPlayer].XPos<Object.XPos
+				Object.Direction=FACING_LEFT
+			else
+				Object.Direction=FACING_RIGHT
+			end if
+		next
+		Sin(Object.YPos,Object.Value0)
+		Object.YPos<<=9
+		Object.YPos+=Object.Value1
+		Object.Value0+=8
+		if Object.Value0>976
+			Object.State=5
+			Object.Direction=FACING_RIGHT
+		end if
+		break
+	case 5
+		if Object.Value3<393216
+			Object.Value3+=8192
+		end if
+		Object.XPos+=Object.Value3
+		if Object.OutOfBounds==1
+			temp0=Object.entityPos
+			ResetObjectEntity(temp0,TypeName[BlankObject],0,0,0)
+			temp0--
+			ResetObjectEntity(temp0,TypeName[BlankObject],0,0,0)
+		end if
+		break
+
+	end switch
+end event
+
+
+event ObjectDraw
+	if Object.State<2
+		DrawSprite(Object.Frame)
+	else
+		Object[-1].XPos=Object.XPos
+		Object[-1].YPos=Object.YPos
+		Object[-1].Direction=Object.Direction
+		temp0=Object.Value4
+		temp0>>=1
+		temp0+=3
+		DrawSpriteFX(temp0,FX_FLIP,Object.XPos,Object.YPos)
+		Object.Value4++
+		Object.Value4&=7
+		DrawSpriteFX(Object.Frame,FX_FLIP,Object.XPos,Object.YPos)
+	end if
+end event
+
+
+event ObjectStartup
+	LoadSpriteSheet("R3/Objects.gif")
+	SpriteFrame(-24,-16,48,32,67,68)
+	SpriteFrame(-24,-16,48,32,116,68)
+	SpriteFrame(-16,-24,32,48,1,108)
+	SpriteFrame(-24,-12,24,24,214,43)
+	SpriteFrame(0,0,2,2,165,68)
+	SpriteFrame(-28,-16,32,32,165,68)
+	SpriteFrame(0,0,2,2,165,68)
+end event
+
+event RSDK
+	LoadSpriteSheet("Global/Display.gif")
+	SpriteFrame(-16, -16, 32, 32, 1, 143)
+end event

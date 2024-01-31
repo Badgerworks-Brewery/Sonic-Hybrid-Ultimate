@@ -1,0 +1,249 @@
+//------------Sonic CD R3 Setup Script-------------//
+//--------Scripted by Christian Whitehead 'The Taxman'--------//
+//-------Unpacked By Rubberduckycooly's Script Unpacker-------//
+//-----Adapted to RSDKv4 by Luciano (Xeeynamo) Ciccariello----//
+
+//-------Aliases-------//
+#alias 45: TYPE_R3SETUP
+
+
+event ObjectMain
+	if Object.Value3==0
+		if Object.Value2<3145728
+			Object.Value2+=65536
+		else
+			Object.Value3=1
+		end if
+	else
+		if Object.Value2>-3145728
+			Object.Value2-=65536
+		else
+			Object.Value3=0
+		end if
+	end if
+	if Object[24].PropertyValue!=1
+		RotatingDrum_Timer++
+		RotatingDrum_Timer%=20
+	end if
+	
+	foreach (GROUP_PLAYERS, currentPlayer, ACTIVE_ENTITIES)
+		temp2=object[currentPlayer].XPos
+		temp2>>=16
+		temp4=temp2
+		temp2-=8
+		temp4+=8
+		temp3=object[currentPlayer].YPos
+		temp3>>=16
+		if object[currentPlayer].yvel>=0
+			temp3+=object[currentPlayer].CollisionBottom
+			temp3-=2
+		else
+			temp3+=object[currentPlayer].CollisionTop
+			temp3+=2
+		end if
+	next
+
+	temp5=temp3
+	temp7=0
+	Get16x16TileInfo(temp0,temp2,temp3,6)
+	switch temp0
+	case 1
+		temp7=1
+		break
+	case 3
+		temp7=3
+		Get16x16TileInfo(temp6,temp2,temp3,1)
+		break
+	case 5
+		temp7=2
+		break
+
+	end switch
+	Get16x16TileInfo(temp0,temp4,temp5,6)
+	switch temp0
+	case 1
+		temp7=1
+		break
+	case 3
+		temp7=3
+		Get16x16TileInfo(temp6,temp4,temp5,1)
+		break
+	case 5
+		temp7=2
+		break
+
+	end switch
+
+	foreach (GROUP_PLAYERS, currentPlayer, ACTIVE_ENTITIES)
+		switch temp7
+		case 1
+			if object[currentPlayer].yvel>=0
+				object[currentPlayer].Gravity=1
+				//PlayStageSfx(1,0) // TODO
+				if object[currentPlayer].State==PlayerObject_HandleTailsFlight
+					object[currentPlayer].yvel=-262144
+				else
+					object[currentPlayer].yvel=-458752
+				end if
+				if object[currentPlayer].State==PlayerObject_Knockback
+					object[currentPlayer].State=PlayerObject_HandleAir
+					object[currentPlayer].value1=0
+				end if
+			else
+				if object[currentPlayer].Gravity==1
+					object[currentPlayer].yvel=262144
+					//PlayStageSfx(1,0) // TODO
+				end if
+			end if
+			break
+		case 2
+			if object[currentPlayer].Gravity==1
+				//PlayStageSfx(6,0) // TODO
+				if object[currentPlayer].yvel>=0
+					object[currentPlayer].yvel=-262144
+				else
+					object[currentPlayer].yvel=262144
+				end if
+			end if
+			break
+		case 3
+			if object[currentPlayer].Gravity==1
+				//PlayStageSfx(1,0) // TODO
+				if object[currentPlayer].yvel>=0
+					if object[currentPlayer].State==PlayerObject_HandleTailsFlight
+						object[currentPlayer].yvel=-262144
+					else
+						object[currentPlayer].yvel=-458752
+					end if
+				else
+					object[currentPlayer].yvel=262144
+				end if
+				if temp6==0
+					if object[currentPlayer].xvel>0
+						FlipSign(object[currentPlayer].xvel)
+						object[currentPlayer].xvel*=5
+						object[currentPlayer].xvel>>=2
+						if object[currentPlayer].xvel>-131072
+							object[currentPlayer].xvel=-131072
+						end if
+					else
+						if object[currentPlayer].xvel>-131072
+							object[currentPlayer].xvel=-131072
+						end if
+					end if
+				else
+					if object[currentPlayer].xvel<0
+						FlipSign(object[currentPlayer].xvel)
+						object[currentPlayer].xvel*=5
+						object[currentPlayer].xvel>>=2
+						if object[currentPlayer].xvel<131072
+							object[currentPlayer].xvel=131072
+						end if
+					else
+						if object[currentPlayer].xvel<131072
+							object[currentPlayer].xvel=131072
+						end if
+					end if
+				end if
+				object[currentPlayer].Speed=object[currentPlayer].xvel
+			end if
+			break
+
+		end switch
+		temp3=object[currentPlayer].YPos
+		temp3>>=16
+		temp5=temp3
+		temp3-=6
+		temp5+=6
+		temp2=object[currentPlayer].XPos
+		temp2>>=16
+		if object[currentPlayer].xvel>0
+			temp2+=8
+		else
+			temp2-=8
+		end if
+	next
+
+	temp4=temp2
+	temp7=0
+	Get16x16TileInfo(temp0,temp2,temp3,6)
+	switch temp0
+	case 3
+		temp7=1
+		break
+	case 5
+		temp7=2
+		break
+	case 7
+		temp7=1
+		break
+
+	end switch
+	Get16x16TileInfo(temp0,temp4,temp5,6)
+	switch temp0
+	case 3
+		temp7=1
+		break
+	case 5
+		temp7=2
+		break
+	case 7
+		temp7=1
+		break
+
+	end switch
+
+	foreach (GROUP_PLAYERS, currentPlayer, ACTIVE_ENTITIES)
+		switch temp7
+		case 1
+			if object[currentPlayer].xvel>0
+				object[currentPlayer].xvel=-327680
+			else
+				object[currentPlayer].xvel=327680
+			end if
+			object[currentPlayer].Speed=object[currentPlayer].xvel
+			//PlayStageSfx(1,0) // TODO
+			break
+		case 2
+			if object[currentPlayer].xvel>0
+				object[currentPlayer].xvel=-262144
+			else
+				object[currentPlayer].xvel=262144
+			end if
+			object[currentPlayer].Speed=object[currentPlayer].xvel
+			//PlayStageSfx(6,0) // TODO
+			break
+
+		end switch
+	next
+end event
+
+
+event ObjectDraw
+	Object.Value0++
+	if Object.Value0>3
+		TileLayer[0].DeformationOffsetW++
+		TileLayer[1].DeformationOffset++
+		Object.Value0=0
+	end if
+end event
+
+
+event ObjectStartup
+	Object[29].Type=TypeName[R3Setup]
+	Object[29].Priority=1
+	Object[29].DrawOrder=0
+	SetLayerDeformation(2,128,6,0,0,0)
+	SetLayerDeformation(1,64,4,0,0,0)
+	Stage.WaterLevel=1472
+	if Object[24].PropertyValue==1
+		RotatingDrum_Timer=1
+	else
+		RotatingDrum_Timer=0
+	end if
+end event
+
+event RSDK
+	LoadSpriteSheet("Global/Display.gif")
+	SpriteFrame(-16, -16, 32, 32, 1, 143)
+end event

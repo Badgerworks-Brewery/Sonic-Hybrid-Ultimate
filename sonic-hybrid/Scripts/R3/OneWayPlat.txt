@@ -1,0 +1,42 @@
+//------------Sonic CD One Way Platform Script-------------//
+//--------Scripted by Christian Whitehead 'The Taxman'--------//
+//-------Unpacked By Rubberduckycooly's Script Unpacker-------//
+//-----Adapted to RSDKv4 by Luciano (Xeeynamo) Ciccariello----//
+
+//-------Aliases-------//
+#alias 38: TYPE_ONEWAYPLATFORM
+
+
+event ObjectMain
+	foreach (GROUP_PLAYERS, currentPlayer, ACTIVE_ENTITIES)
+		BoxCollisionTest(C_PLATFORM, object.entityPos, -32, -8, 32, 8, currentPlayer, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO, HITBOX_AUTO)
+	next
+end event
+
+
+event ObjectDraw
+	if object[0].YPos<Object.YPos
+		if Object.Value0<4194304
+			Object.Value0+=1048576
+		end if
+	else
+		if Object.Value0>0
+			Object.Value0-=1048576
+		end if
+	end if
+
+	temp0=Object.XPos
+	temp0+=Object.Value0
+	DrawSpriteXY(0,temp0,Object.YPos)
+end event
+
+
+event ObjectStartup
+	LoadSpriteSheet("R3/Objects.gif")
+	SpriteFrame(-96,-8,64,16,165,1)
+end event
+
+event RSDK
+	LoadSpriteSheet("Global/Display.gif")
+	SpriteFrame(-16, -16, 32, 32, 1, 143)
+end event
