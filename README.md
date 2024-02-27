@@ -11,7 +11,8 @@ Sonic 3 AIR.
 
 Sonic Hybrid RSDK plus logic from RSDKV4/RSDKV3.
 
-And a custom script runner/executor 
+And a custom script runner/executor.
+
 When sonic 2 ends the Hybrid RSDK entity will send a message to the custom script executing entity which in turn stops running the RSDK stuff & starts running the main script of 3 air
 
 ## WARNING: DOES NOT WORK YET!
