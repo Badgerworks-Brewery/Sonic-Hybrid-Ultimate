@@ -1,149 +1,46 @@
 
+#ifndef BOOST_MPL_VECTOR_VECTOR10_C_HPP_INCLUDED
+#define BOOST_MPL_VECTOR_VECTOR10_C_HPP_INCLUDED
+
 // Copyright Aleksey Gurtovoy 2000-2004
 //
 // Distributed under the Boost Software License, Version 1.0. 
 // (See accompanying file LICENSE_1_0.txt or copy at 
 // http://www.boost.org/LICENSE_1_0.txt)
 //
+// See http://www.boost.org/libs/mpl for documentation.
 
-// Preprocessed version of "boost/mpl/vector/vector10_c.hpp" header
-// -- DO NOT modify by hand!
+// $Id$
+// $Date$
+// $Revision$
+
+#if !defined(BOOST_MPL_PREPROCESSING_MODE)
+#   include <boost/mpl/vector/vector0_c.hpp>
+#   include <boost/mpl/vector/vector10.hpp>
+#endif
+
+#include <boost/mpl/aux_/config/use_preprocessed.hpp>
+
+#if !defined(BOOST_MPL_CFG_NO_PREPROCESSED_HEADERS) \
+    && !defined(BOOST_MPL_PREPROCESSING_MODE)
+
+#   define BOOST_MPL_PREPROCESSED_HEADER vector10_c.hpp
+#   include <boost/mpl/vector/aux_/include_preprocessed.hpp>
+
+#else
+
+#   include <boost/mpl/aux_/config/typeof.hpp>
+#   include <boost/mpl/aux_/config/ctps.hpp>
+#   include <boost/preprocessor/iterate.hpp>
 
 namespace boost { namespace mpl {
 
-template<
-      typename T
-    , T C0
-    >
-struct vector1_c
-    : vector1< integral_c< T,C0 > >
-{
-    typedef vector1_c type;
-    typedef T value_type;
-};
-
-template<
-      typename T
-    , T C0, T C1
-    >
-struct vector2_c
-    : vector2< integral_c< T,C0 >, integral_c< T,C1 > >
-{
-    typedef vector2_c type;
-    typedef T value_type;
-};
-
-template<
-      typename T
-    , T C0, T C1, T C2
-    >
-struct vector3_c
-    : vector3< integral_c< T,C0 >, integral_c< T,C1 >, integral_c< T,C2 > >
-{
-    typedef vector3_c type;
-    typedef T value_type;
-};
-
-template<
-      typename T
-    , T C0, T C1, T C2, T C3
-    >
-struct vector4_c
-    : vector4<
-          integral_c< T,C0 >, integral_c< T,C1 >, integral_c< T,C2 >, integral_c<T
-        , C3> 
- >
-{
-    typedef vector4_c type;
-    typedef T value_type;
-};
-
-template<
-      typename T
-    , T C0, T C1, T C2, T C3, T C4
-    >
-struct vector5_c
-    : vector5<
-          integral_c< T,C0 >, integral_c< T,C1 >, integral_c< T,C2 >
-        , integral_c< T,C3 >, integral_c< T,C4 > 
- >
-{
-    typedef vector5_c type;
-    typedef T value_type;
-};
-
-template<
-      typename T
-    , T C0, T C1, T C2, T C3, T C4, T C5
-    >
-struct vector6_c
-    : vector6<
-          integral_c< T,C0 >, integral_c< T,C1 >, integral_c< T,C2 >
-        , integral_c< T,C3 >, integral_c< T,C4 >, integral_c< T,C5 > 
- >
-{
-    typedef vector6_c type;
-    typedef T value_type;
-};
-
-template<
-      typename T
-    , T C0, T C1, T C2, T C3, T C4, T C5, T C6
-    >
-struct vector7_c
-    : vector7<
-          integral_c< T,C0 >, integral_c< T,C1 >, integral_c< T,C2 >
-        , integral_c< T,C3 >, integral_c< T,C4 >, integral_c< T,C5 >, integral_c<T
-        , C6> 
- >
-{
-    typedef vector7_c type;
-    typedef T value_type;
-};
-
-template<
-      typename T
-    , T C0, T C1, T C2, T C3, T C4, T C5, T C6, T C7
-    >
-struct vector8_c
-    : vector8<
-          integral_c< T,C0 >, integral_c< T,C1 >, integral_c< T,C2 >
-        , integral_c< T,C3 >, integral_c< T,C4 >, integral_c< T,C5 >, integral_c< T,C6 >
-        , integral_c< T,C7 > 
- >
-{
-    typedef vector8_c type;
-    typedef T value_type;
-};
-
-template<
-      typename T
-    , T C0, T C1, T C2, T C3, T C4, T C5, T C6, T C7, T C8
-    >
-struct vector9_c
-    : vector9<
-          integral_c< T,C0 >, integral_c< T,C1 >, integral_c< T,C2 >
-        , integral_c< T,C3 >, integral_c< T,C4 >, integral_c< T,C5 >, integral_c< T,C6 >
-        , integral_c< T,C7 >, integral_c< T,C8 > 
- >
-{
-    typedef vector9_c type;
-    typedef T value_type;
-};
-
-template<
-      typename T
-    , T C0, T C1, T C2, T C3, T C4, T C5, T C6, T C7, T C8, T C9
-    >
-struct vector10_c
-    : vector10<
-          integral_c< T,C0 >, integral_c< T,C1 >, integral_c< T,C2 >
-        , integral_c< T,C3 >, integral_c< T,C4 >, integral_c< T,C5 >, integral_c< T,C6 >
-        , integral_c< T,C7 >, integral_c< T,C8 >, integral_c< T,C9 > 
- >
-{
-    typedef vector10_c type;
-    typedef T value_type;
-};
+#   define BOOST_PP_ITERATION_PARAMS_1 \
+    (3,(1, 10, <boost/mpl/vector/aux_/numbered_c.hpp>))
+#   include BOOST_PP_ITERATE()
 
 }}
+
+#endif // BOOST_MPL_CFG_NO_PREPROCESSED_HEADERS
+
+#endif // BOOST_MPL_VECTOR_VECTOR10_C_HPP_INCLUDED

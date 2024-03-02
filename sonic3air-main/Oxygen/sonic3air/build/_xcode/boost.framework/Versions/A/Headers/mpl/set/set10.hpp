@@ -1,4 +1,7 @@
 
+#ifndef BOOST_MPL_SET_SET10_HPP_INCLUDED
+#define BOOST_MPL_SET_SET10_HPP_INCLUDED
+
 // Copyright Aleksey Gurtovoy 2000-2004
 // Copyright David Abrahams 2003-2004
 //
@@ -6,135 +9,36 @@
 // (See accompanying file LICENSE_1_0.txt or copy at 
 // http://www.boost.org/LICENSE_1_0.txt)
 //
+// See http://www.boost.org/libs/mpl for documentation.
 
-// Preprocessed version of "boost/mpl/set/set10.hpp" header
-// -- DO NOT modify by hand!
+// $Id$
+// $Date$
+// $Revision$
+
+#if !defined(BOOST_MPL_PREPROCESSING_MODE)
+#   include <boost/mpl/set/set0.hpp>
+#endif
+
+#include <boost/mpl/aux_/config/use_preprocessed.hpp>
+
+#if !defined(BOOST_MPL_CFG_NO_PREPROCESSED_HEADERS) \
+    && !defined(BOOST_MPL_PREPROCESSING_MODE)
+
+#   define BOOST_MPL_PREPROCESSED_HEADER set10.hpp
+#   include <boost/mpl/set/aux_/include_preprocessed.hpp>
+
+#else
+
+#   include <boost/preprocessor/iterate.hpp>
 
 namespace boost { namespace mpl {
 
-template<
-      typename T0
-    >
-struct set1
-    : s_item<
-          T0
-        , typename set0<  >::item_
-        >
-{
-    typedef set1 type;
-};
-
-template<
-      typename T0, typename T1
-    >
-struct set2
-    : s_item<
-          T1
-        , typename set1<T0>::item_
-        >
-{
-    typedef set2 type;
-};
-
-template<
-      typename T0, typename T1, typename T2
-    >
-struct set3
-    : s_item<
-          T2
-        , typename set2< T0,T1 >::item_
-        >
-{
-    typedef set3 type;
-};
-
-template<
-      typename T0, typename T1, typename T2, typename T3
-    >
-struct set4
-    : s_item<
-          T3
-        , typename set3< T0,T1,T2 >::item_
-        >
-{
-    typedef set4 type;
-};
-
-template<
-      typename T0, typename T1, typename T2, typename T3, typename T4
-    >
-struct set5
-    : s_item<
-          T4
-        , typename set4< T0,T1,T2,T3 >::item_
-        >
-{
-    typedef set5 type;
-};
-
-template<
-      typename T0, typename T1, typename T2, typename T3, typename T4
-    , typename T5
-    >
-struct set6
-    : s_item<
-          T5
-        , typename set5< T0,T1,T2,T3,T4 >::item_
-        >
-{
-    typedef set6 type;
-};
-
-template<
-      typename T0, typename T1, typename T2, typename T3, typename T4
-    , typename T5, typename T6
-    >
-struct set7
-    : s_item<
-          T6
-        , typename set6< T0,T1,T2,T3,T4,T5 >::item_
-        >
-{
-    typedef set7 type;
-};
-
-template<
-      typename T0, typename T1, typename T2, typename T3, typename T4
-    , typename T5, typename T6, typename T7
-    >
-struct set8
-    : s_item<
-          T7
-        , typename set7< T0,T1,T2,T3,T4,T5,T6 >::item_
-        >
-{
-    typedef set8 type;
-};
-
-template<
-      typename T0, typename T1, typename T2, typename T3, typename T4
-    , typename T5, typename T6, typename T7, typename T8
-    >
-struct set9
-    : s_item<
-          T8
-        , typename set8< T0,T1,T2,T3,T4,T5,T6,T7 >::item_
-        >
-{
-    typedef set9 type;
-};
-
-template<
-      typename T0, typename T1, typename T2, typename T3, typename T4
-    , typename T5, typename T6, typename T7, typename T8, typename T9
-    >
-struct set10
-    : s_item<
-          T9
-        , typename set9< T0,T1,T2,T3,T4,T5,T6,T7,T8 >::item_
-        >
-{
-    typedef set10 type;
-};
+#   define BOOST_PP_ITERATION_PARAMS_1 \
+    (3,(0, 10, <boost/mpl/set/aux_/numbered.hpp>))
+#   include BOOST_PP_ITERATE()
 
 }}
+
+#endif // BOOST_MPL_CFG_NO_PREPROCESSED_HEADERS
+
+#endif // BOOST_MPL_SET_SET10_HPP_INCLUDED

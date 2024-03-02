@@ -1,6 +1,6 @@
 
-#ifndef BOOST_MPL_MULTISET_AUX_MULTISET0_HPP_INCLUDED
-#define BOOST_MPL_MULTISET_AUX_MULTISET0_HPP_INCLUDED
+#ifndef BOOST_MPL_MULTISET_MULTISET0_HPP_INCLUDED
+#define BOOST_MPL_MULTISET_MULTISET0_HPP_INCLUDED
 
 // Copyright Aleksey Gurtovoy 2003-2004
 //
@@ -14,21 +14,23 @@
 // $Date$
 // $Revision$
 
+//#include <boost/mpl/multiset/aux_/at.hpp>
+//#include <boost/mpl/multiset/aux_/front.hpp>
+//#include <boost/mpl/multiset/aux_/push_front.hpp>
+//#include <boost/mpl/multiset/aux_/pop_front.hpp>
+//#include <boost/mpl/multiset/aux_/back.hpp>
+//#include <boost/mpl/multiset/aux_/clear.hpp>
+//#include <boost/mpl/multiset/aux_/O1_size.hpp>
+//#include <boost/mpl/multiset/aux_/size.hpp>
+//#include <boost/mpl/multiset/aux_/empty.hpp>
+//#include <boost/mpl/multiset/aux_/empty.hpp>
+#include <boost/mpl/multiset/aux_/insert_impl.hpp>
+#include <boost/mpl/multiset/aux_/count_impl.hpp>
+//#include <boost/mpl/multiset/aux_/has_key_impl.hpp>
+//#include <boost/mpl/multiset/aux_/begin_end_impl.hpp>
+//#include <boost/mpl/multiset/aux_/iterator.hpp>
+#include <boost/mpl/multiset/aux_/item.hpp>
+#include <boost/mpl/multiset/aux_/multiset0.hpp>
 #include <boost/mpl/multiset/aux_/tag.hpp>
-#include <boost/mpl/int.hpp>
 
-namespace boost { namespace mpl {
-
-template< int dummy_ = 0 >
-struct multiset0
-{
-    typedef aux::multiset_tag tag;
-
-    typedef int_<1> count_;
-    static char (& key_count(...) )[count_::value];
-    static char (& ref_key_count(...) )[count_::value];
-};
-
-}}
-
-#endif // BOOST_MPL_MULTISET_AUX_MULTISET0_HPP_INCLUDED
+#endif // BOOST_MPL_MULTISET_MULTISET0_HPP_INCLUDED
