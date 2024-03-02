@@ -1,6 +1,6 @@
 
-#ifndef BOOST_MPL_AUX_RANGE_C_BACK_HPP_INCLUDED
-#define BOOST_MPL_AUX_RANGE_C_BACK_HPP_INCLUDED
+#ifndef BOOST_MPL_BACK_HPP_INCLUDED
+#define BOOST_MPL_BACK_HPP_INCLUDED
 
 // Copyright Aleksey Gurtovoy 2000-2004
 //
@@ -15,20 +15,25 @@
 // $Revision$
 
 #include <boost/mpl/back_fwd.hpp>
-#include <boost/mpl/prior.hpp>
-#include <boost/mpl/aux_/range_c/tag.hpp>
+#include <boost/mpl/aux_/back_impl.hpp>
+#include <boost/mpl/sequence_tag.hpp>
+#include <boost/mpl/aux_/na_spec.hpp>
+#include <boost/mpl/aux_/lambda_support.hpp>
 
 namespace boost { namespace mpl {
 
-template<>
-struct back_impl< aux::half_open_range_tag >
+template<
+      typename BOOST_MPL_AUX_NA_PARAM(Sequence)
+    >
+struct back
+    : back_impl< typename sequence_tag<Sequence>::type >
+        ::template apply< Sequence >
 {
-    template< typename Range > struct apply
-    {
-        typedef typename prior< typename Range::finish >::type type;
-    };
+    BOOST_MPL_AUX_LAMBDA_SUPPORT(1,back,(Sequence))
 };
+
+BOOST_MPL_AUX_NA_SPEC(1, back)
 
 }}
 
-#endif // BOOST_MPL_AUX_RANGE_C_BACK_HPP_INCLUDED
+#endif // BOOST_MPL_BACK_HPP_INCLUDED

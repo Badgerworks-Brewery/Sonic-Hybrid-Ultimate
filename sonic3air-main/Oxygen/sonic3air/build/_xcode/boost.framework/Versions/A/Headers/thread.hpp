@@ -1,20 +1,26 @@
-/*
- * Copyright 2017 Andrey Semashev
- *
- * Distributed under the Boost Software License, Version 1.0.
- * See http://www.boost.org/LICENSE_1_0.txt
- *
- * This header is deprecated, use boost/winapi/thread.hpp instead.
- */
+// Copyright (C) 2001-2003
+// William E. Kempf
+// (C) Copyright 2008-9 Anthony Williams
+//
+// Distributed under the Boost Software License, Version 1.0. (See accompanying 
+// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
-#ifndef BOOST_DETAIL_WINAPI_THREAD_HPP
-#define BOOST_DETAIL_WINAPI_THREAD_HPP
+//  See www.boost.org/libs/thread for documentation.
 
-#include <boost/winapi/thread.hpp>
-#include <boost/detail/winapi/detail/deprecated_namespace.hpp>
+#if !defined(BOOST_THREAD_WEK01082003_HPP)
+#define BOOST_THREAD_WEK01082003_HPP
 
-#ifdef BOOST_HAS_PRAGMA_ONCE
-#pragma once
+#include <boost/thread/thread.hpp>
+#include <boost/thread/condition_variable.hpp>
+#include <boost/thread/exceptions.hpp>
+#include <boost/thread/mutex.hpp>
+#include <boost/thread/once.hpp>
+#include <boost/thread/recursive_mutex.hpp>
+#include <boost/thread/tss.hpp>
+#include <boost/thread/thread_time.hpp>
+#include <boost/thread/locks.hpp>
+#include <boost/thread/shared_mutex.hpp>
+#include <boost/thread/barrier.hpp>
+#include <boost/thread/future.hpp>
+
 #endif
-
-#endif // BOOST_DETAIL_WINAPI_THREAD_HPP
