@@ -13,30 +13,6 @@
 # PARTICULAR PURPOSE.
 
 @SET_MAKE@
-
-#***************************************************************************
-#                                  _   _ ____  _
-#  Project                     ___| | | |  _ \| |
-#                             / __| | | | |_) | |
-#                            | (__| |_| |  _ <| |___
-#                             \___|\___/|_| \_\_____|
-#
-# Copyright (C) 1998 - 2022, Daniel Stenberg, <daniel@haxx.se>, et al.
-#
-# This software is licensed as described in the file COPYING, which
-# you should have received as part of this distribution. The terms
-# are also available at https://curl.se/docs/copyright.html.
-#
-# You may opt to use, copy, modify, merge, publish, distribute and/or sell
-# copies of the Software, and permit persons to whom the Software is
-# furnished to do so, under the terms of the COPYING file.
-#
-# This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
-# KIND, either express or implied.
-#
-# SPDX-License-Identifier: curl
-#
-###########################################################################
 VPATH = @srcdir@
 am__is_gnu_make = { \
   if test -z '$(MAKELEVEL)'; then \
@@ -111,7 +87,7 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-subdir = tests
+subdir = tests/certs
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_compile_check_sizeof.m4 \
 	$(top_srcdir)/m4/curl-amissl.m4 \
@@ -199,7 +175,8 @@ am__define_uniq_tagged_files = \
   unique=`for i in $$list; do \
     if test -f "$$i"; then echo $$i; else echo $(srcdir)/$$i; fi; \
   done | $(am__uniquify_input)`
-am__DIST_COMMON = $(srcdir)/Makefile.in README.md
+DIST_SUBDIRS = $(SUBDIRS)
+am__DIST_COMMON = $(srcdir)/Makefile.in
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 am__relativize = \
   dir0=`pwd`; \
@@ -440,50 +417,99 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-HTMLPAGES = testcurl.html runtests.html
-PDFPAGES = testcurl.pdf runtests.pdf
-MANDISTPAGES = runtests.1.dist testcurl.1.dist
-EXTRA_DIST = ftpserver.pl httpserver.pl secureserver.pl runtests.pl           \
- getpart.pm FILEFORMAT.md README.md stunnel.pem memanalyze.pl testcurl.pl     \
- valgrind.pm ftp.pm sshserver.pl sshhelp.pm pathhelp.pm testcurl.1 runtests.1 \
- serverhelp.pm tftpserver.pl rtspserver.pl directories.pm symbol-scan.pl      \
- CMakeLists.txt mem-include-scan.pl valgrind.supp extern-scan.pl              \
- manpage-scan.pl nroff-scan.pl http2-server.pl dictserver.py                  \
- negtelnetserver.py smbserver.py util.py                                      \
- disable-scan.pl manpage-syntax.pl error-codes.pl badsymbols.pl               \
- azure.pm appveyor.pm version-scan.pl options-scan.pl
 
-DISTCLEANFILES = configurehelp.pm
-@BUILD_UNITTESTS_FALSE@BUILD_UNIT = 
+#***************************************************************************
+#                                  _   _ ____  _
+#  Project                     ___| | | |  _ \| |
+#                             / __| | | | |_) | |
+#                            | (__| |_| |  _ <| |___
+#                             \___|\___/|_| \_\_____|
+#
+# Copyright (C) 1998 - 2020, Daniel Stenberg, <daniel@haxx.se>, et al.
+#
+# This software is licensed as described in the file COPYING, which
+# you should have received as part of this distribution. The terms
+# are also available at https://curl.se/docs/copyright.html.
+#
+# You may opt to use, copy, modify, merge, publish, distribute and/or sell
+# copies of the Software, and permit persons to whom the Software is
+# furnished to do so, under the terms of the COPYING file.
+#
+# This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
+# KIND, either express or implied.
+#
+# SPDX-License-Identifier: curl
+#
+###########################################################################
+AUTOMAKE_OPTIONS = foreign
+SUBDIRS = scripts
+CERTCONFIGS = \
+  EdelCurlRoot-ca.prm \
+  EdelCurlRoot-ca.cnf \
+  Server-localhost-sv.prm \
+  Server-localhost.nn-sv.prm \
+  Server-localhost0h-sv.prm
 
-# we have two variables here to make sure DIST_SUBDIRS won't get 'unit'
-# added twice as then targets such as 'distclean' misbehave and try to
-# do things twice in that subdir at times (and thus fails).
-@BUILD_UNITTESTS_TRUE@BUILD_UNIT = unit
-@BUILD_UNITTESTS_FALSE@DIST_UNIT = unit
-@BUILD_UNITTESTS_TRUE@DIST_UNIT = 
-SUBDIRS = certs data server libtest $(BUILD_UNIT)
-DIST_SUBDIRS = $(SUBDIRS) $(DIST_UNIT)
-PERLFLAGS = -I$(srcdir)
-CLEANFILES = .http.pid .https.pid .ftp.pid .ftps.pid $(MANDISTPAGES)
-MAN2HTML = roffit $< >$@
-@CROSSCOMPILING_FALSE@TEST = srcdir=$(srcdir) $(PERL) $(PERLFLAGS) $(srcdir)/runtests.pl
-@CROSSCOMPILING_TRUE@TEST = @echo "NOTICE: we can't run the tests when cross-compiling!"
-@CROSSCOMPILING_FALSE@TEST_Q = -a -s
-@CROSSCOMPILING_FALSE@TEST_AM = -a -am
-@CROSSCOMPILING_FALSE@TEST_F = -a -p -r
-@CROSSCOMPILING_FALSE@TEST_T = -a -t
-@CROSSCOMPILING_FALSE@TEST_E = -a -e
+GENERATEDCERTS = \
+  EdelCurlRoot-ca.cacert \
+  EdelCurlRoot-ca.crt \
+  EdelCurlRoot-ca.csr \
+  EdelCurlRoot-ca.der \
+  EdelCurlRoot-ca.key \
+  Server-localhost-sv.crl \
+  Server-localhost-sv.crt \
+  Server-localhost-sv.csr \
+  Server-localhost-sv.der \
+  Server-localhost-sv.dhp \
+  Server-localhost-sv.key \
+  Server-localhost-sv.pem \
+  Server-localhost-sv.pub.der \
+  Server-localhost-sv.pub.pem \
+  Server-localhost.nn-sv.crl \
+  Server-localhost.nn-sv.crt \
+  Server-localhost.nn-sv.csr \
+  Server-localhost.nn-sv.der \
+  Server-localhost.nn-sv.dhp \
+  Server-localhost.nn-sv.key \
+  Server-localhost.nn-sv.pem \
+  Server-localhost.nn-sv.pub.der \
+  Server-localhost.nn-sv.pub.pem \
+  Server-localhost0h-sv.crl \
+  Server-localhost0h-sv.crt \
+  Server-localhost0h-sv.csr \
+  Server-localhost0h-sv.der \
+  Server-localhost0h-sv.dhp \
+  Server-localhost0h-sv.key \
+  Server-localhost0h-sv.pem \
+  Server-localhost0h-sv.pub.der \
+  Server-localhost0h-sv.pub.pem \
+  Server-localhost-firstSAN-sv.crl \
+  Server-localhost-firstSAN-sv.crt \
+  Server-localhost-firstSAN-sv.csr \
+  Server-localhost-firstSAN-sv.der \
+  Server-localhost-firstSAN-sv.dhp \
+  Server-localhost-firstSAN-sv.key \
+  Server-localhost-firstSAN-sv.pem \
+  Server-localhost-firstSAN-sv.pub.der \
+  Server-localhost-firstSAN-sv.pub.pem \
+  Server-localhost-lastSAN-sv.crl \
+  Server-localhost-lastSAN-sv.crt \
+  Server-localhost-lastSAN-sv.csr \
+  Server-localhost-lastSAN-sv.der \
+  Server-localhost-lastSAN-sv.dhp \
+  Server-localhost-lastSAN-sv.key \
+  Server-localhost-lastSAN-sv.pem \
+  Server-localhost-lastSAN-sv.pub.der \
+  Server-localhost-lastSAN-sv.pub.pem
 
-# !flaky means that it'll skip all tests using the flaky keyword
-@CROSSCOMPILING_FALSE@TEST_NF = -a -p !flaky
+SRPFILES = \
+  srp-verifier-conf \
+  srp-verifier-db
 
-# special CI target derived from nonflaky with CI-specific flags
-@CROSSCOMPILING_FALSE@TEST_CI = $(TEST_NF) -r -rm
+EXTRA_DIST = $(CERTCONFIGS) $(GENERATEDCERTS) $(SRPFILES)
 all: all-recursive
 
 .SUFFIXES:
-.SUFFIXES: .1 .html .pdf
 $(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am  $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
@@ -493,9 +519,9 @@ $(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am  $(am__confi
 	      exit 1;; \
 	  esac; \
 	done; \
-	echo ' cd $(top_srcdir) && $(AUTOMAKE) --gnu tests/Makefile'; \
+	echo ' cd $(top_srcdir) && $(AUTOMAKE) --foreign tests/certs/Makefile'; \
 	$(am__cd) $(top_srcdir) && \
-	  $(AUTOMAKE) --gnu tests/Makefile
+	  $(AUTOMAKE) --foreign tests/certs/Makefile
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	@case '$?' in \
 	  *config.status*) \
@@ -678,8 +704,7 @@ distdir-am: $(DISTFILES)
 	done
 check-am: all-am
 check: check-recursive
-@CURLDEBUG_FALSE@all-local:
-all-am: Makefile all-local
+all-am: Makefile
 installdirs: installdirs-recursive
 installdirs-am:
 install: install-recursive
@@ -704,12 +729,10 @@ install-strip:
 mostlyclean-generic:
 
 clean-generic:
-	-test -z "$(CLEANFILES)" || rm -f $(CLEANFILES)
 
 distclean-generic:
 	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)
 	-test . = "$(srcdir)" || test -z "$(CONFIG_CLEAN_VPATH_FILES)" || rm -f $(CONFIG_CLEAN_VPATH_FILES)
-	-test -z "$(DISTCLEANFILES)" || rm -f $(DISTCLEANFILES)
 
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
@@ -782,9 +805,9 @@ uninstall-am:
 
 .MAKE: $(am__recursive_targets) install-am install-strip
 
-.PHONY: $(am__recursive_targets) CTAGS GTAGS TAGS all all-am all-local \
-	check check-am clean clean-generic clean-libtool cscopelist-am \
-	ctags ctags-am distclean distclean-generic distclean-libtool \
+.PHONY: $(am__recursive_targets) CTAGS GTAGS TAGS all all-am check \
+	check-am clean clean-generic clean-libtool cscopelist-am ctags \
+	ctags-am distclean distclean-generic distclean-libtool \
 	distclean-tags distdir dvi dvi-am html html-am info info-am \
 	install install-am install-data install-data-am install-dvi \
 	install-dvi-am install-exec install-exec-am install-html \
@@ -798,54 +821,32 @@ uninstall-am:
 .PRECIOUS: Makefile
 
 
-curl:
-	@cd $(top_builddir) && $(MAKE)
+# Rebuild the certificates
 
-# make sure that PERL is pointing to an executable
-perlcheck:
-	@if ! test -x "$(PERL)"; then echo "No perl!"; exit 2; fi
+clean-certs:
+	cd $(srcdir); rm -f $(GENERATEDCERTS)
 
-test: perlcheck all
-	$(TEST) $(TFLAGS)
+build-certs: $(srcdir)/EdelCurlRoot-ca.cacert $(srcdir)/Server-localhost-sv.pem \
+	$(srcdir)/Server-localhost.nn-sv.pem $(srcdir)/Server-localhost0h-sv.pem \
+	$(srcdir)/Server-localhost-firstSAN-sv.pem $(srcdir)/Server-localhost-lastSAN-sv.pem
 
-quiet-test: perlcheck all
-	$(TEST) $(TEST_Q) $(TFLAGS)
+$(srcdir)/EdelCurlRoot-ca.cacert:
+	cd $(srcdir); scripts/genroot.sh EdelCurlRoot
 
-am-test: perlcheck all
-	$(TEST) $(TEST_AM) $(TFLAGS)
+$(srcdir)/Server-localhost-sv.pem: $(srcdir)/EdelCurlRoot-ca.cacert
+	cd $(srcdir); scripts/genserv.sh Server-localhost EdelCurlRoot
 
-ci-test: perlcheck all
-	$(TEST) $(TEST_CI) $(TFLAGS)
+$(srcdir)/Server-localhost.nn-sv.pem: $(srcdir)/EdelCurlRoot-ca.cacert
+	cd $(srcdir); scripts/genserv.sh Server-localhost.nn EdelCurlRoot
 
-full-test: perlcheck all
-	$(TEST) $(TEST_F) $(TFLAGS)
+$(srcdir)/Server-localhost0h-sv.pem: $(srcdir)/EdelCurlRoot-ca.cacert
+	cd $(srcdir); scripts/genserv.sh Server-localhost0h EdelCurlRoot
 
-nonflaky-test: perlcheck all
-	$(TEST) $(TEST_NF) $(TFLAGS)
+$(srcdir)/Server-localhost-firstSAN-sv.pem: $(srcdir)/EdelCurlRoot-ca.cacert
+	cd $(srcdir); scripts/genserv.sh Server-localhost-firstSAN EdelCurlRoot
 
-torture-test: perlcheck all
-	$(TEST) $(TEST_T) $(TFLAGS)
-
-event-test: perlcheck all
-	$(TEST) $(TEST_E) $(TFLAGS)
-
-.1.html:
-	$(MAN2HTML)
-
-.1.pdf:
-	@(foo=`echo $@ | sed -e 's/\.[0-9]$$//g'`; \
-	groff -Tps -man $< >$$foo.ps; \
-	ps2pdf $$foo.ps $@; \
-	rm $$foo.ps; \
-	echo "converted $< to $@")
-
-checksrc:
-	cd libtest && $(MAKE) checksrc
-	cd unit && $(MAKE) checksrc
-	cd server && $(MAKE) checksrc
-
-# for debug builds, we scan the sources on all regular make invokes
-@CURLDEBUG_TRUE@all-local: checksrc
+$(srcdir)/Server-localhost-lastSAN-sv.pem: $(srcdir)/EdelCurlRoot-ca.cacert
+	cd $(srcdir); scripts/genserv.sh Server-localhost-firstSAN EdelCurlRoot
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

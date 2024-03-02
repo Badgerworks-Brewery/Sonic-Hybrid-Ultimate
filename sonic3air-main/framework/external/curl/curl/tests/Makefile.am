@@ -5,7 +5,7 @@
 #                            | (__| |_| |  _ <| |___
 #                             \___|\___/|_| \_\_____|
 #
-# Copyright (C) 1998 - 2022, Daniel Stenberg, <daniel@haxx.se>, et al.
+# Copyright (C) 1998 - 2020, Daniel Stenberg, <daniel@haxx.se>, et al.
 #
 # This software is licensed as described in the file COPYING, which
 # you should have received as part of this distribution. The terms
@@ -21,107 +21,98 @@
 # SPDX-License-Identifier: curl
 #
 ###########################################################################
+AUTOMAKE_OPTIONS = foreign
 
-HTMLPAGES = testcurl.html runtests.html
-PDFPAGES = testcurl.pdf runtests.pdf
-MANDISTPAGES = runtests.1.dist testcurl.1.dist
+SUBDIRS = scripts
 
-EXTRA_DIST = ftpserver.pl httpserver.pl secureserver.pl runtests.pl           \
- getpart.pm FILEFORMAT.md README.md stunnel.pem memanalyze.pl testcurl.pl     \
- valgrind.pm ftp.pm sshserver.pl sshhelp.pm pathhelp.pm testcurl.1 runtests.1 \
- serverhelp.pm tftpserver.pl rtspserver.pl directories.pm symbol-scan.pl      \
- CMakeLists.txt mem-include-scan.pl valgrind.supp extern-scan.pl              \
- manpage-scan.pl nroff-scan.pl http2-server.pl dictserver.py                  \
- negtelnetserver.py smbserver.py util.py                                      \
- disable-scan.pl manpage-syntax.pl error-codes.pl badsymbols.pl               \
- azure.pm appveyor.pm version-scan.pl options-scan.pl
+CERTCONFIGS = \
+  EdelCurlRoot-ca.prm \
+  EdelCurlRoot-ca.cnf \
+  Server-localhost-sv.prm \
+  Server-localhost.nn-sv.prm \
+  Server-localhost0h-sv.prm
 
-DISTCLEANFILES = configurehelp.pm
+GENERATEDCERTS = \
+  EdelCurlRoot-ca.cacert \
+  EdelCurlRoot-ca.crt \
+  EdelCurlRoot-ca.csr \
+  EdelCurlRoot-ca.der \
+  EdelCurlRoot-ca.key \
+  Server-localhost-sv.crl \
+  Server-localhost-sv.crt \
+  Server-localhost-sv.csr \
+  Server-localhost-sv.der \
+  Server-localhost-sv.dhp \
+  Server-localhost-sv.key \
+  Server-localhost-sv.pem \
+  Server-localhost-sv.pub.der \
+  Server-localhost-sv.pub.pem \
+  Server-localhost.nn-sv.crl \
+  Server-localhost.nn-sv.crt \
+  Server-localhost.nn-sv.csr \
+  Server-localhost.nn-sv.der \
+  Server-localhost.nn-sv.dhp \
+  Server-localhost.nn-sv.key \
+  Server-localhost.nn-sv.pem \
+  Server-localhost.nn-sv.pub.der \
+  Server-localhost.nn-sv.pub.pem \
+  Server-localhost0h-sv.crl \
+  Server-localhost0h-sv.crt \
+  Server-localhost0h-sv.csr \
+  Server-localhost0h-sv.der \
+  Server-localhost0h-sv.dhp \
+  Server-localhost0h-sv.key \
+  Server-localhost0h-sv.pem \
+  Server-localhost0h-sv.pub.der \
+  Server-localhost0h-sv.pub.pem \
+  Server-localhost-firstSAN-sv.crl \
+  Server-localhost-firstSAN-sv.crt \
+  Server-localhost-firstSAN-sv.csr \
+  Server-localhost-firstSAN-sv.der \
+  Server-localhost-firstSAN-sv.dhp \
+  Server-localhost-firstSAN-sv.key \
+  Server-localhost-firstSAN-sv.pem \
+  Server-localhost-firstSAN-sv.pub.der \
+  Server-localhost-firstSAN-sv.pub.pem \
+  Server-localhost-lastSAN-sv.crl \
+  Server-localhost-lastSAN-sv.crt \
+  Server-localhost-lastSAN-sv.csr \
+  Server-localhost-lastSAN-sv.der \
+  Server-localhost-lastSAN-sv.dhp \
+  Server-localhost-lastSAN-sv.key \
+  Server-localhost-lastSAN-sv.pem \
+  Server-localhost-lastSAN-sv.pub.der \
+  Server-localhost-lastSAN-sv.pub.pem
 
-# we have two variables here to make sure DIST_SUBDIRS won't get 'unit'
-# added twice as then targets such as 'distclean' misbehave and try to
-# do things twice in that subdir at times (and thus fails).
-if BUILD_UNITTESTS
-BUILD_UNIT = unit
-DIST_UNIT =
-else
-BUILD_UNIT =
-DIST_UNIT = unit
-endif
+SRPFILES = \
+  srp-verifier-conf \
+  srp-verifier-db
 
-SUBDIRS = certs data server libtest $(BUILD_UNIT)
-DIST_SUBDIRS = $(SUBDIRS) $(DIST_UNIT)
+EXTRA_DIST = $(CERTCONFIGS) $(GENERATEDCERTS) $(SRPFILES)
 
-PERLFLAGS = -I$(srcdir)
+# Rebuild the certificates
 
-CLEANFILES = .http.pid .https.pid .ftp.pid .ftps.pid $(MANDISTPAGES)
+clean-certs:
+	cd $(srcdir); rm -f $(GENERATEDCERTS)
 
-MAN2HTML= roffit $< >$@
+build-certs: $(srcdir)/EdelCurlRoot-ca.cacert $(srcdir)/Server-localhost-sv.pem \
+	$(srcdir)/Server-localhost.nn-sv.pem $(srcdir)/Server-localhost0h-sv.pem \
+	$(srcdir)/Server-localhost-firstSAN-sv.pem $(srcdir)/Server-localhost-lastSAN-sv.pem
 
-curl:
-	@cd $(top_builddir) && $(MAKE)
+$(srcdir)/EdelCurlRoot-ca.cacert:
+	cd $(srcdir); scripts/genroot.sh EdelCurlRoot
 
-if CROSSCOMPILING
-TEST = @echo "NOTICE: we can't run the tests when cross-compiling!"
-else # if not cross-compiling:
-TEST = srcdir=$(srcdir) $(PERL) $(PERLFLAGS) $(srcdir)/runtests.pl
-TEST_Q = -a -s
-TEST_AM = -a -am
-TEST_F = -a -p -r
-TEST_T = -a -t
-TEST_E = -a -e
+$(srcdir)/Server-localhost-sv.pem: $(srcdir)/EdelCurlRoot-ca.cacert
+	cd $(srcdir); scripts/genserv.sh Server-localhost EdelCurlRoot
 
-# !flaky means that it'll skip all tests using the flaky keyword
-TEST_NF = -a -p !flaky
+$(srcdir)/Server-localhost.nn-sv.pem: $(srcdir)/EdelCurlRoot-ca.cacert
+	cd $(srcdir); scripts/genserv.sh Server-localhost.nn EdelCurlRoot
 
-# special CI target derived from nonflaky with CI-specific flags
-TEST_CI = $(TEST_NF) -r -rm
-endif
+$(srcdir)/Server-localhost0h-sv.pem: $(srcdir)/EdelCurlRoot-ca.cacert
+	cd $(srcdir); scripts/genserv.sh Server-localhost0h EdelCurlRoot
 
-# make sure that PERL is pointing to an executable
-perlcheck:
-	@if ! test -x "$(PERL)"; then echo "No perl!"; exit 2; fi
+$(srcdir)/Server-localhost-firstSAN-sv.pem: $(srcdir)/EdelCurlRoot-ca.cacert
+	cd $(srcdir); scripts/genserv.sh Server-localhost-firstSAN EdelCurlRoot
 
-test: perlcheck all
-	$(TEST) $(TFLAGS)
-
-quiet-test: perlcheck all
-	$(TEST) $(TEST_Q) $(TFLAGS)
-
-am-test: perlcheck all
-	$(TEST) $(TEST_AM) $(TFLAGS)
-
-ci-test: perlcheck all
-	$(TEST) $(TEST_CI) $(TFLAGS)
-
-full-test: perlcheck all
-	$(TEST) $(TEST_F) $(TFLAGS)
-
-nonflaky-test: perlcheck all
-	$(TEST) $(TEST_NF) $(TFLAGS)
-
-torture-test: perlcheck all
-	$(TEST) $(TEST_T) $(TFLAGS)
-
-event-test: perlcheck all
-	$(TEST) $(TEST_E) $(TFLAGS)
-
-.1.html:
-	$(MAN2HTML)
-
-.1.pdf:
-	@(foo=`echo $@ | sed -e 's/\.[0-9]$$//g'`; \
-	groff -Tps -man $< >$$foo.ps; \
-	ps2pdf $$foo.ps $@; \
-	rm $$foo.ps; \
-	echo "converted $< to $@")
-
-checksrc:
-	cd libtest && $(MAKE) checksrc
-	cd unit && $(MAKE) checksrc
-	cd server && $(MAKE) checksrc
-
-if CURLDEBUG
-# for debug builds, we scan the sources on all regular make invokes
-all-local: checksrc
-endif
+$(srcdir)/Server-localhost-lastSAN-sv.pem: $(srcdir)/EdelCurlRoot-ca.cacert
+	cd $(srcdir); scripts/genserv.sh Server-localhost-firstSAN EdelCurlRoot

@@ -22,15 +22,17 @@
 #
 ###########################################################################
 
-DIR=/sys/include/ape/curl
-HFILES=`{ls curl/*.h}
+</sys/src/ape/config
 
-all:V: $HFILES
+DIRS=\
+	lib\
+	src\
+	include\
 
-install:V: all
-	mkdir -p $DIR
-	cp curl/*.h $DIR/
+default:V: all
 
-clean:V: $HFILES  # do nothing
-
-nuke:V: clean
+all install clean nuke:V:
+	for(i in $DIRS) @{
+		cd $i
+		mk $target
+	}

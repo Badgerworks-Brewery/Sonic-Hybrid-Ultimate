@@ -9,31 +9,20 @@
 #
 # /* See http://www.boost.org for most recent version. */
 #
-# ifndef BOOST_PREPROCESSOR_VARIADIC_DETAIL_HAS_OPT_HPP
-# define BOOST_PREPROCESSOR_VARIADIC_DETAIL_HAS_OPT_HPP
+# ifndef BOOST_PREPROCESSOR_VARIADIC_HAS_OPT_HPP
+# define BOOST_PREPROCESSOR_VARIADIC_HAS_OPT_HPP
 #
 # include <boost/preprocessor/config/config.hpp>
 #
+# /* BOOST_PP_VARIADIC_HAS_OPT */
+#
 # if BOOST_PP_VARIADICS && defined(__cplusplus) && __cplusplus > 201703L
-#
-# if BOOST_PP_VARIADICS_MSVC
-# include <boost/preprocessor/cat.hpp>
-# endif
-#
-# define BOOST_PP_VARIADIC_HAS_OPT_FUNCTION(...) \
-    __VA_OPT__(,) , 1, 0 \
+# include <boost/preprocessor/variadic/detail/has_opt.hpp>
+# define BOOST_PP_VARIADIC_HAS_OPT() \
+  BOOST_PP_VARIADIC_HAS_OPT_ELEM2(BOOST_PP_VARIADIC_HAS_OPT_FUNCTION(?),) \
 /**/
-#
-# if BOOST_PP_VARIADICS_MSVC
-# define BOOST_PP_VARIADIC_HAS_OPT_ELEM0(e0, ...) BOOST_PP_CAT(BOOST_PP_VARIADIC_HAS_OPT_ELEM_0(e0,__VA_ARGS__),)
-# define BOOST_PP_VARIADIC_HAS_OPT_ELEM2(e0, ...) BOOST_PP_CAT(BOOST_PP_VARIADIC_HAS_OPT_ELEM_2(e0,__VA_ARGS__),)
 # else
-# define BOOST_PP_VARIADIC_HAS_OPT_ELEM0(e0, ...) BOOST_PP_VARIADIC_HAS_OPT_ELEM_0(e0,__VA_ARGS__)
-# define BOOST_PP_VARIADIC_HAS_OPT_ELEM2(e0, ...) BOOST_PP_VARIADIC_HAS_OPT_ELEM_2(e0,__VA_ARGS__)
-# endif
-# define BOOST_PP_VARIADIC_HAS_OPT_ELEM_0(e0, ...) e0
-# define BOOST_PP_VARIADIC_HAS_OPT_ELEM_2(e0, e1, e2, ...) e2
-#
+# define BOOST_PP_VARIADIC_HAS_OPT() 0
 # endif
 #
 # endif

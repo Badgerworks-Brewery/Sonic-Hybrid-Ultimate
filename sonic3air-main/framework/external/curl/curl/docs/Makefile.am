@@ -24,107 +24,57 @@
 
 AUTOMAKE_OPTIONS = foreign no-dependencies
 
-# EXTRA_DIST breaks with $(abs_builddir) so build it using this variable
-# but distribute it (using the relative file name) in the next variable
-man_MANS = $(abs_builddir)/curl.1
-noinst_man_MANS = curl.1 mk-ca-bundle.1
-dist_man_MANS = curl-config.1
-GENHTMLPAGES = curl.html curl-config.html mk-ca-bundle.html
-PDFPAGES = curl.pdf curl-config.pdf mk-ca-bundle.pdf
-MANDISTPAGES = curl.1.dist curl-config.1.dist
+SUBDIRS = opts
 
-HTMLPAGES = $(GENHTMLPAGES)
+include Makefile.inc
 
-# Build targets in this file (.) before cmdline-opts to ensure that
-# the curl.1 rule below runs first
-SUBDIRS = . cmdline-opts
-DIST_SUBDIRS = $(SUBDIRS) examples libcurl
+man_DISTMANS = $(man_MANS:.3=.3.dist)
 
-CLEANFILES = $(GENHTMLPAGES) $(PDFPAGES) $(MANDISTPAGES) curl.1
+HTMLPAGES = $(man_MANS:.3=.html)
 
-EXTRA_DIST =                                    \
- $(noinst_man_MANS)                             \
- ALTSVC.md                                      \
- BINDINGS.md                                    \
- BUFREF.md                                      \
- BUG-BOUNTY.md                                  \
- BUGS.md                                        \
- CHECKSRC.md                                    \
- CIPHERS.md                                     \
- CMakeLists.txt                                 \
- CODE_OF_CONDUCT.md                             \
- CODE_REVIEW.md                                 \
- CODE_STYLE.md                                  \
- CONTRIBUTE.md                                  \
- CURL-DISABLE.md                                \
- DEPRECATE.md                                   \
- DYNBUF.md                                      \
- EXPERIMENTAL.md                                \
- FAQ                                            \
- FEATURES.md                                    \
- GOVERNANCE.md                                  \
- HELP-US.md                                     \
- HISTORY.md                                     \
- HSTS.md                                        \
- HTTP-COOKIES.md                                \
- HTTP2.md                                       \
- HTTP3.md                                       \
- HYPER.md                                       \
- INSTALL                                        \
- INSTALL.cmake                                  \
- INSTALL.md                                     \
- INTERNALS.md                                   \
- KNOWN_BUGS                                     \
- MAIL-ETIQUETTE                                 \
- MQTT.md                                        \
- NEW-PROTOCOL.md                                \
- options-in-versions                            \
- PARALLEL-TRANSFERS.md                          \
- README.md                                      \
- RELEASE-PROCEDURE.md                           \
- RUSTLS.md                                      \
- ROADMAP.md                                     \
- SECURITY-PROCESS.md                            \
- SSL-PROBLEMS.md                                \
- SSLCERTS.md                                    \
- THANKS                                         \
- TODO                                           \
- TheArtOfHttpScripting.md                       \
- URL-SYNTAX.md                                  \
- VERSIONS.md
+PDFPAGES = $(man_MANS:.3=.pdf)
 
-MAN2HTML= roffit $< >$@
+m4macrodir = $(datadir)/aclocal
+dist_m4macro_DATA = libcurl.m4
 
-SUFFIXES = .1 .html .pdf
+CLEANFILES = $(HTMLPAGES) $(PDFPAGES) $(TESTS) $(man_DISTMANS) \
+  libcurl-symbols.3
 
-# $(abs_builddir) is to disable VPATH when searching for this file, which
-# would otherwise find the copy in $(srcdir) which breaks the $(HUGE)
-# rule in src/Makefile.am in out-of-tree builds that references the file in the
-# build directory.
-#
-# First, seed the used copy of curl.1 with the prebuilt copy (in an out-of-tree
-# build), then run make recursively to rebuild it only if its dependencies
-# have changed.
-$(abs_builddir)/curl.1:
-	if test "$(top_builddir)x" != "$(top_srcdir)x" -a -e "$(srcdir)/curl.1"; then \
-		$(INSTALL_DATA) "$(srcdir)/curl.1" $@; fi
-	cd cmdline-opts && $(MAKE)
+EXTRA_DIST = $(man_MANS) ABI.md symbols-in-versions symbols.pl  \
+  mksymbolsmanpage.pl CMakeLists.txt
+MAN2HTML= roffit --mandir=. $< >$@
+
+SUFFIXES = .3 .html
+
+libcurl-symbols.3: $(srcdir)/symbols-in-versions $(srcdir)/mksymbolsmanpage.pl
+	perl $(srcdir)/mksymbolsmanpage.pl < $(srcdir)/symbols-in-versions > $@
 
 html: $(HTMLPAGES)
-	cd libcurl && $(MAKE) html
+	cd opts && $(MAKE) html
 
-pdf: $(PDFPAGES)
-	cd libcurl && $(MAKE) pdf
-
-.1.html:
+.3.html:
 	$(MAN2HTML)
 
-.1.pdf:
+pdf: $(PDFPAGES)
+	cd opts && $(MAKE) pdf
+
+.3.pdf:
 	@(foo=`echo $@ | sed -e 's/\.[0-9]$$//g'`; \
 	groff -Tps -man $< >$$foo.ps; \
 	ps2pdf $$foo.ps $@; \
 	rm $$foo.ps; \
 	echo "converted $< to $@")
 
-distclean:
-	rm -f $(CLEANFILES)
+# Make sure each option man page is referenced in the main man page
+TESTS = check-easy check-multi
+LOG_COMPILER = $(PERL)
+# The test fails if the log file contains any text
+AM_LOG_FLAGS = -p -e 'die "$$_" if ($$_);'
+
+check-easy: $(srcdir)/curl_easy_setopt.3 $(srcdir)/opts/CURLOPT*.3
+	OPTS="$$(ls $(srcdir)/opts/CURLOPT*.3 | $(SED) -e 's,^.*/,,' -e 's,\.3$$,,')" && \
+	for opt in $$OPTS; do grep "^\.IP $$opt$$" $(srcdir)/curl_easy_setopt.3 >/dev/null || echo Missing $$opt; done > $@
+
+check-multi: $(srcdir)/curl_multi_setopt.3 $(srcdir)/opts/CURLMOPT*.3
+	OPTS="$$(ls $(srcdir)/opts/CURLMOPT*.3 | $(SED) -e 's,^.*/,,' -e 's,\.3$$,,')" && \
+	for opt in $$OPTS; do grep "^\.IP $$opt$$" $(srcdir)/curl_multi_setopt.3 >/dev/null || echo Missing $$opt; done > $@
