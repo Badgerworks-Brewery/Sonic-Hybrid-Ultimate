@@ -1,295 +1,43 @@
 
+#ifndef BOOST_MPL_AUX_ITER_FOLD_BACKWARD_IMPL_HPP_INCLUDED
+#define BOOST_MPL_AUX_ITER_FOLD_BACKWARD_IMPL_HPP_INCLUDED
+
 // Copyright Aleksey Gurtovoy 2000-2004
 //
 // Distributed under the Boost Software License, Version 1.0. 
 // (See accompanying file LICENSE_1_0.txt or copy at 
 // http://www.boost.org/LICENSE_1_0.txt)
 //
+// See http://www.boost.org/libs/mpl for documentation.
 
-// *Preprocessed* version of the main "reverse_iter_fold_impl.hpp" header
-// -- DO NOT modify by hand!
+// $Id$
+// $Date$
+// $Revision$
 
-namespace boost { namespace mpl { namespace aux {
+#if !defined(BOOST_MPL_PREPROCESSING_MODE)
+#   include <boost/mpl/next_prior.hpp>
+#   include <boost/mpl/apply.hpp>
+#   include <boost/mpl/aux_/config/ctps.hpp>
+#   if defined(BOOST_NO_TEMPLATE_PARTIAL_SPECIALIZATION) \
+    || defined(BOOST_MPL_CFG_NO_NONTYPE_TEMPLATE_PARTIAL_SPEC)
+#       include <boost/mpl/if.hpp>
+#       include <boost/type_traits/is_same.hpp>
+#   endif
+#endif
 
-/// forward declaration
+#include <boost/mpl/aux_/config/use_preprocessed.hpp>
 
-template<
-      long N
-    , typename First
-    , typename Last
-    , typename State
-    , typename BackwardOp
-    , typename ForwardOp
-    >
-struct reverse_iter_fold_impl;
+#if !defined(BOOST_MPL_CFG_NO_PREPROCESSED_HEADERS) \
+    && !defined(BOOST_MPL_PREPROCESSING_MODE)
 
-template< long N >
-struct reverse_iter_fold_chunk;
+#   define BOOST_MPL_PREPROCESSED_HEADER reverse_iter_fold_impl.hpp
+#   include <boost/mpl/aux_/include_preprocessed.hpp>
 
-template<> struct reverse_iter_fold_chunk<0>
-{
-    template<
-          typename First
-        , typename Last
-        , typename State
-        , typename BackwardOp
-        , typename ForwardOp
-        >
-    struct result_
-    {
-        typedef First iter0;
-        typedef State fwd_state0;
-        typedef fwd_state0 bkwd_state0;
-        typedef bkwd_state0 state;
-        typedef iter0 iterator;
-    };
-};
+#else
 
-template<> struct reverse_iter_fold_chunk<1>
-{
-    template<
-          typename First
-        , typename Last
-        , typename State
-        , typename BackwardOp
-        , typename ForwardOp
-        >
-    struct result_
-    {
-        typedef First iter0;
-        typedef State fwd_state0;
-        typedef typename apply2< ForwardOp,fwd_state0,iter0 >::type fwd_state1;
-        typedef typename mpl::next<iter0>::type iter1;
-        
+#   define AUX778076_FOLD_IMPL_OP(iter) iter
+#   define AUX778076_FOLD_IMPL_NAME_PREFIX reverse_iter_fold
+#   include <boost/mpl/aux_/reverse_fold_impl_body.hpp>
 
-        typedef fwd_state1 bkwd_state1;
-        typedef typename apply2< BackwardOp,bkwd_state1,iter0 >::type bkwd_state0;
-        typedef bkwd_state0 state;
-        typedef iter1 iterator;
-    };
-};
-
-template<> struct reverse_iter_fold_chunk<2>
-{
-    template<
-          typename First
-        , typename Last
-        , typename State
-        , typename BackwardOp
-        , typename ForwardOp
-        >
-    struct result_
-    {
-        typedef First iter0;
-        typedef State fwd_state0;
-        typedef typename apply2< ForwardOp,fwd_state0,iter0 >::type fwd_state1;
-        typedef typename mpl::next<iter0>::type iter1;
-        typedef typename apply2< ForwardOp,fwd_state1,iter1 >::type fwd_state2;
-        typedef typename mpl::next<iter1>::type iter2;
-        
-
-        typedef fwd_state2 bkwd_state2;
-        typedef typename apply2< BackwardOp,bkwd_state2,iter1 >::type bkwd_state1;
-        typedef typename apply2< BackwardOp,bkwd_state1,iter0 >::type bkwd_state0;
-        
-
-        typedef bkwd_state0 state;
-        typedef iter2 iterator;
-    };
-};
-
-template<> struct reverse_iter_fold_chunk<3>
-{
-    template<
-          typename First
-        , typename Last
-        , typename State
-        , typename BackwardOp
-        , typename ForwardOp
-        >
-    struct result_
-    {
-        typedef First iter0;
-        typedef State fwd_state0;
-        typedef typename apply2< ForwardOp,fwd_state0,iter0 >::type fwd_state1;
-        typedef typename mpl::next<iter0>::type iter1;
-        typedef typename apply2< ForwardOp,fwd_state1,iter1 >::type fwd_state2;
-        typedef typename mpl::next<iter1>::type iter2;
-        typedef typename apply2< ForwardOp,fwd_state2,iter2 >::type fwd_state3;
-        typedef typename mpl::next<iter2>::type iter3;
-        
-
-        typedef fwd_state3 bkwd_state3;
-        typedef typename apply2< BackwardOp,bkwd_state3,iter2 >::type bkwd_state2;
-        typedef typename apply2< BackwardOp,bkwd_state2,iter1 >::type bkwd_state1;
-        typedef typename apply2< BackwardOp,bkwd_state1,iter0 >::type bkwd_state0;
-        
-
-        typedef bkwd_state0 state;
-        typedef iter3 iterator;
-    };
-};
-
-template<> struct reverse_iter_fold_chunk<4>
-{
-    template<
-          typename First
-        , typename Last
-        , typename State
-        , typename BackwardOp
-        , typename ForwardOp
-        >
-    struct result_
-    {
-        typedef First iter0;
-        typedef State fwd_state0;
-        typedef typename apply2< ForwardOp,fwd_state0,iter0 >::type fwd_state1;
-        typedef typename mpl::next<iter0>::type iter1;
-        typedef typename apply2< ForwardOp,fwd_state1,iter1 >::type fwd_state2;
-        typedef typename mpl::next<iter1>::type iter2;
-        typedef typename apply2< ForwardOp,fwd_state2,iter2 >::type fwd_state3;
-        typedef typename mpl::next<iter2>::type iter3;
-        typedef typename apply2< ForwardOp,fwd_state3,iter3 >::type fwd_state4;
-        typedef typename mpl::next<iter3>::type iter4;
-        
-
-        typedef fwd_state4 bkwd_state4;
-        typedef typename apply2< BackwardOp,bkwd_state4,iter3 >::type bkwd_state3;
-        typedef typename apply2< BackwardOp,bkwd_state3,iter2 >::type bkwd_state2;
-        typedef typename apply2< BackwardOp,bkwd_state2,iter1 >::type bkwd_state1;
-        typedef typename apply2< BackwardOp,bkwd_state1,iter0 >::type bkwd_state0;
-        
-
-        typedef bkwd_state0 state;
-        typedef iter4 iterator;
-    };
-};
-
-template< long N >
-struct reverse_iter_fold_chunk
-{
-    template<
-          typename First
-        , typename Last
-        , typename State
-        , typename BackwardOp
-        , typename ForwardOp
-        >
-    struct result_
-    {
-        typedef First iter0;
-        typedef State fwd_state0;
-        typedef typename apply2< ForwardOp,fwd_state0,iter0 >::type fwd_state1;
-        typedef typename mpl::next<iter0>::type iter1;
-        typedef typename apply2< ForwardOp,fwd_state1,iter1 >::type fwd_state2;
-        typedef typename mpl::next<iter1>::type iter2;
-        typedef typename apply2< ForwardOp,fwd_state2,iter2 >::type fwd_state3;
-        typedef typename mpl::next<iter2>::type iter3;
-        typedef typename apply2< ForwardOp,fwd_state3,iter3 >::type fwd_state4;
-        typedef typename mpl::next<iter3>::type iter4;
-        
-
-        typedef reverse_iter_fold_impl<
-              ( (N - 4) < 0 ? 0 : N - 4 )
-            , iter4
-            , Last
-            , fwd_state4
-            , BackwardOp
-            , ForwardOp
-            > nested_chunk;
-
-        typedef typename nested_chunk::state bkwd_state4;
-        typedef typename apply2< BackwardOp,bkwd_state4,iter3 >::type bkwd_state3;
-        typedef typename apply2< BackwardOp,bkwd_state3,iter2 >::type bkwd_state2;
-        typedef typename apply2< BackwardOp,bkwd_state2,iter1 >::type bkwd_state1;
-        typedef typename apply2< BackwardOp,bkwd_state1,iter0 >::type bkwd_state0;
-        
-
-        typedef bkwd_state0 state;
-        typedef typename nested_chunk::iterator iterator;
-    };
-};
-
-template<
-      typename First
-    , typename Last
-    , typename State
-    , typename BackwardOp
-    , typename ForwardOp
-    >
-struct reverse_iter_fold_step;
-
-template<
-      typename Last
-    , typename State
-    >
-struct reverse_iter_fold_null_step
-{
-    typedef Last iterator;
-    typedef State state;
-};
-
-template<>
-struct reverse_iter_fold_chunk< -1 >
-{
-    template<
-          typename First
-        , typename Last
-        , typename State
-        , typename BackwardOp
-        , typename ForwardOp
-        >
-    struct result_
-    {
-        typedef typename if_<
-              typename is_same< First,Last >::type
-            , reverse_iter_fold_null_step< Last,State >
-            , reverse_iter_fold_step< First,Last,State,BackwardOp,ForwardOp >
-            >::type res_;
-
-        typedef typename res_::state state;
-        typedef typename res_::iterator iterator;
-    };
-};
-
-template<
-      typename First
-    , typename Last
-    , typename State
-    , typename BackwardOp
-    , typename ForwardOp
-    >
-struct reverse_iter_fold_step
-{
-    typedef reverse_iter_fold_chunk< -1 >::template result_<
-          typename mpl::next<First>::type
-        , Last
-        , typename apply2< ForwardOp,State,First >::type
-        , BackwardOp
-        , ForwardOp
-        > nested_step;
-
-    typedef typename apply2<
-          BackwardOp
-        , typename nested_step::state
-        , First
-        >::type state;
-
-    typedef typename nested_step::iterator iterator;
-};
-
-template<
-      long N
-    , typename First
-    , typename Last
-    , typename State
-    , typename BackwardOp
-    , typename ForwardOp
-    >
-struct reverse_iter_fold_impl
-    : reverse_iter_fold_chunk<N>
-        ::template result_< First,Last,State,BackwardOp,ForwardOp >
-{
-};
-
-}}}
+#endif // BOOST_MPL_CFG_NO_PREPROCESSED_HEADERS
+#endif // BOOST_MPL_AUX_ITER_FOLD_BACKWARD_IMPL_HPP_INCLUDED

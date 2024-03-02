@@ -1,6 +1,6 @@
 
-#ifndef BOOST_MPL_AUX_CONFIG_HAS_APPLY_HPP_INCLUDED
-#define BOOST_MPL_AUX_CONFIG_HAS_APPLY_HPP_INCLUDED
+#ifndef BOOST_MPL_AUX_HAS_APPLY_HPP_INCLUDED
+#define BOOST_MPL_AUX_HAS_APPLY_HPP_INCLUDED
 
 // Copyright Aleksey Gurtovoy 2004
 //
@@ -14,19 +14,19 @@
 // $Date$
 // $Revision$
 
-#include <boost/mpl/aux_/config/has_xxx.hpp>
-#include <boost/mpl/aux_/config/msvc.hpp>
-#include <boost/mpl/aux_/config/workaround.hpp>
+#include <boost/mpl/has_xxx.hpp>
+#include <boost/mpl/aux_/config/has_apply.hpp>
 
-#if !defined(BOOST_MPL_CFG_NO_HAS_APPLY) \
-    && (   defined(BOOST_MPL_CFG_NO_HAS_XXX) \
-        || BOOST_WORKAROUND(__EDG_VERSION__, < 300) \
-        || BOOST_WORKAROUND(BOOST_MSVC, <= 1300) \
-        || BOOST_WORKAROUND(__MWERKS__, BOOST_TESTED_AT(0x3202)) \
-        )
-
-#   define BOOST_MPL_CFG_NO_HAS_APPLY
-
+namespace boost { namespace mpl { namespace aux {
+#if !defined(BOOST_MPL_CFG_NO_HAS_APPLY)
+BOOST_MPL_HAS_XXX_TRAIT_NAMED_DEF(has_apply, apply, false)
+#else
+template< typename T, typename fallback_ = false_ >
+struct has_apply
+    : fallback_
+{
+};
 #endif
+}}}
 
-#endif // BOOST_MPL_AUX_CONFIG_HAS_APPLY_HPP_INCLUDED
+#endif // BOOST_MPL_AUX_HAS_APPLY_HPP_INCLUDED
