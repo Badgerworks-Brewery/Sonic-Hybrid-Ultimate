@@ -1,6 +1,6 @@
 
-#ifndef BOOST_MPL_AUX_RANGE_C_EMPTY_HPP_INCLUDED
-#define BOOST_MPL_AUX_RANGE_C_EMPTY_HPP_INCLUDED
+#ifndef BOOST_MPL_EMPTY_HPP_INCLUDED
+#define BOOST_MPL_EMPTY_HPP_INCLUDED
 
 // Copyright Aleksey Gurtovoy 2000-2004
 //
@@ -15,23 +15,25 @@
 // $Revision$
 
 #include <boost/mpl/empty_fwd.hpp>
-#include <boost/mpl/equal_to.hpp>
-#include <boost/mpl/aux_/range_c/tag.hpp>
+#include <boost/mpl/sequence_tag.hpp>
+#include <boost/mpl/aux_/empty_impl.hpp>
+#include <boost/mpl/aux_/na_spec.hpp>
+#include <boost/mpl/aux_/lambda_support.hpp>
 
 namespace boost { namespace mpl {
 
-template<>
-struct empty_impl< aux::half_open_range_tag >
+template<
+      typename BOOST_MPL_AUX_NA_PARAM(Sequence)
+    >
+struct empty
+    : empty_impl< typename sequence_tag<Sequence>::type >
+        ::template apply< Sequence >
 {
-    template< typename Range > struct apply
-        : equal_to<
-              typename Range::start
-            , typename Range::finish
-            >
-    {
-    };
+    BOOST_MPL_AUX_LAMBDA_SUPPORT(1,empty,(Sequence))
 };
+
+BOOST_MPL_AUX_NA_SPEC(1, empty)
 
 }}
 
-#endif // BOOST_MPL_AUX_RANGE_C_EMPTY_HPP_INCLUDED
+#endif // BOOST_MPL_EMPTY_HPP_INCLUDED

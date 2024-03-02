@@ -1,69 +1,61 @@
 
+#ifndef BOOST_MPL_OR_HPP_INCLUDED
+#define BOOST_MPL_OR_HPP_INCLUDED
+
 // Copyright Aleksey Gurtovoy 2000-2004
 //
 // Distributed under the Boost Software License, Version 1.0. 
 // (See accompanying file LICENSE_1_0.txt or copy at 
 // http://www.boost.org/LICENSE_1_0.txt)
 //
+// See http://www.boost.org/libs/mpl for documentation.
 
-// *Preprocessed* version of the main "or.hpp" header
-// -- DO NOT modify by hand!
+// $Id$
+// $Date$
+// $Revision$
 
-namespace boost { namespace mpl {
+#include <boost/mpl/aux_/config/use_preprocessed.hpp>
 
-namespace aux {
+#if !defined(BOOST_MPL_CFG_NO_PREPROCESSED_HEADERS) \
+    && !defined(BOOST_MPL_PREPROCESSING_MODE)
 
-template< bool C_, typename T1, typename T2, typename T3, typename T4 >
-struct or_impl
-    : true_
-{
-};
+#   include <boost/mpl/bool.hpp>
+#   include <boost/mpl/aux_/nested_type_wknd.hpp>
+#   include <boost/mpl/aux_/na_spec.hpp>
+#   include <boost/mpl/aux_/lambda_support.hpp>
+#   include <boost/mpl/aux_/config/msvc.hpp>
 
-template< typename T1, typename T2, typename T3, typename T4 >
-struct or_impl< false,T1,T2,T3,T4 >
-    : or_impl<
-          BOOST_MPL_AUX_NESTED_TYPE_WKND(T1)::value
-        , T2, T3, T4
-        , false_
-        >
-{
-};
+// agurt, 19/may/04: workaround a conflict with <iso646.h> header's 
+// 'or' and 'and' macros, see http://tinyurl.com/3et69; 'defined(or)'
+// has to be checked in a separate condition, otherwise GCC complains 
+// about 'or' being an alternative token
+#if defined(_MSC_VER) && !defined(__clang__)
+#ifndef __GCCXML__
+#if defined(or)
+#   pragma push_macro("or")
+#   undef or
+#   define or(x)
+#endif
+#endif
+#endif
 
-template<>
-struct or_impl<
-          false
-        , false_, false_, false_, false_
-        >
-    : false_
-{
-};
+#   define BOOST_MPL_PREPROCESSED_HEADER or.hpp
+#   include <boost/mpl/aux_/include_preprocessed.hpp>
 
-} // namespace aux
+#if defined(_MSC_VER) && !defined(__clang__)
+#ifndef __GCCXML__
+#if defined(or)
+#   pragma pop_macro("or")
+#endif
+#endif
+#endif
 
-template<
-      typename BOOST_MPL_AUX_NA_PARAM(T1)
-    , typename BOOST_MPL_AUX_NA_PARAM(T2)
-    , typename T3 = false_, typename T4 = false_, typename T5 = false_
-    >
-struct or_
+#else
 
-    : aux::or_impl<
-          BOOST_MPL_AUX_NESTED_TYPE_WKND(T1)::value
-        , T2, T3, T4, T5
-        >
+#   define AUX778076_OP_NAME or_
+#   define AUX778076_OP_VALUE1 true
+#   define AUX778076_OP_VALUE2 false
+#   include <boost/mpl/aux_/logical_op.hpp>
 
-{
-    BOOST_MPL_AUX_LAMBDA_SUPPORT(
-          5
-        , or_
-        , ( T1, T2, T3, T4, T5)
-        )
-};
-
-BOOST_MPL_AUX_NA_SPEC2(
-      2
-    , 5
-    , or_
-    )
-
-}}
+#endif // BOOST_MPL_CFG_NO_PREPROCESSED_HEADERS
+#endif // BOOST_MPL_OR_HPP_INCLUDED

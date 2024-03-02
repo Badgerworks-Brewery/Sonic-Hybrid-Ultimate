@@ -1,328 +1,60 @@
 
+#ifndef BOOST_MPL_SET_C_HPP_INCLUDED
+#define BOOST_MPL_SET_C_HPP_INCLUDED
+
 // Copyright Aleksey Gurtovoy 2000-2004
 //
 // Distributed under the Boost Software License, Version 1.0. 
 // (See accompanying file LICENSE_1_0.txt or copy at 
 // http://www.boost.org/LICENSE_1_0.txt)
 //
+// See http://www.boost.org/libs/mpl for documentation.
 
-// *Preprocessed* version of the main "set_c.hpp" header
-// -- DO NOT modify by hand!
+// $Id$
+// $Date$
+// $Revision$
 
-namespace boost { namespace mpl {
+#if !defined(BOOST_MPL_PREPROCESSING_MODE)
+#   include <boost/mpl/limits/set.hpp>
+#   include <boost/mpl/aux_/nttp_decl.hpp>
+#   include <boost/mpl/aux_/config/preprocessor.hpp>
 
-template<
-      typename T, long C0 = LONG_MAX, long C1 = LONG_MAX, long C2 = LONG_MAX
-    , long C3 = LONG_MAX, long C4 = LONG_MAX, long C5 = LONG_MAX
-    , long C6 = LONG_MAX, long C7 = LONG_MAX, long C8 = LONG_MAX
-    , long C9 = LONG_MAX, long C10 = LONG_MAX, long C11 = LONG_MAX
-    , long C12 = LONG_MAX, long C13 = LONG_MAX, long C14 = LONG_MAX
-    , long C15 = LONG_MAX, long C16 = LONG_MAX, long C17 = LONG_MAX
-    , long C18 = LONG_MAX, long C19 = LONG_MAX
-    >
-struct set_c;
+#   include <boost/preprocessor/inc.hpp>
+#   include <boost/preprocessor/cat.hpp>
+#   include <boost/preprocessor/stringize.hpp>
 
-template<
-      typename T
-    >
-struct set_c<
-          T, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX
-        , LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX
-        , LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX
-        >
-    : set0_c<T>
-{
-    typedef typename set0_c<T>::type type;
-};
+#if !defined(BOOST_NEEDS_TOKEN_PASTING_OP_FOR_TOKENS_JUXTAPOSING)
+#   define AUX778076_SET_C_HEADER \
+    BOOST_PP_CAT(BOOST_PP_CAT(set,BOOST_MPL_LIMIT_SET_SIZE),_c).hpp \
+    /**/
+#else
+#   define AUX778076_SET_C_HEADER \
+    BOOST_PP_CAT(BOOST_PP_CAT(set,BOOST_MPL_LIMIT_SET_SIZE),_c)##.hpp \
+    /**/
+#endif
 
-template<
-      typename T, long C0
-    >
-struct set_c<
-          T, C0, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX
-        , LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX
-        , LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX
-        >
-    : set1_c< T,C0 >
-{
-    typedef typename set1_c< T,C0 >::type type;
-};
+#   include BOOST_PP_STRINGIZE(boost/mpl/set/AUX778076_SET_C_HEADER)
+#   undef AUX778076_SET_C_HEADER
+#   include <climits>
+#endif
 
-template<
-      typename T, long C0, long C1
-    >
-struct set_c<
-          T, C0, C1, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX
-        , LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX
-        , LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX
-        >
-    : set2_c< T,C0,C1 >
-{
-    typedef typename set2_c< T,C0,C1 >::type type;
-};
+#include <boost/mpl/aux_/config/use_preprocessed.hpp>
 
-template<
-      typename T, long C0, long C1, long C2
-    >
-struct set_c<
-          T, C0, C1, C2, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX
-        , LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX
-        , LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX
-        >
-    : set3_c< T,C0,C1,C2 >
-{
-    typedef typename set3_c< T,C0,C1,C2 >::type type;
-};
+#if !defined(BOOST_MPL_CFG_NO_PREPROCESSED_HEADERS) \
+    && !defined(BOOST_MPL_PREPROCESSING_MODE)
 
-template<
-      typename T, long C0, long C1, long C2, long C3
-    >
-struct set_c<
-          T, C0, C1, C2, C3, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX
-        , LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX
-        , LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX
-        >
-    : set4_c< T,C0,C1,C2,C3 >
-{
-    typedef typename set4_c< T,C0,C1,C2,C3 >::type type;
-};
+#   define BOOST_MPL_PREPROCESSED_HEADER set_c.hpp
+#   include <boost/mpl/aux_/include_preprocessed.hpp>
 
-template<
-      typename T, long C0, long C1, long C2, long C3, long C4
-    >
-struct set_c<
-          T, C0, C1, C2, C3, C4, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX
-        , LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX
-        , LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX
-        >
-    : set5_c< T,C0,C1,C2,C3,C4 >
-{
-    typedef typename set5_c< T,C0,C1,C2,C3,C4 >::type type;
-};
+#else
 
-template<
-      typename T, long C0, long C1, long C2, long C3, long C4, long C5
-    >
-struct set_c<
-          T, C0, C1, C2, C3, C4, C5, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX
-        , LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX
-        , LONG_MAX, LONG_MAX, LONG_MAX
-        >
-    : set6_c< T,C0,C1,C2,C3,C4,C5 >
-{
-    typedef typename set6_c< T,C0,C1,C2,C3,C4,C5 >::type type;
-};
+#   include <boost/mpl/limits/set.hpp>
 
-template<
-      typename T, long C0, long C1, long C2, long C3, long C4, long C5
-    , long C6
-    >
-struct set_c<
-          T, C0, C1, C2, C3, C4, C5, C6, LONG_MAX, LONG_MAX, LONG_MAX
-        , LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX
-        , LONG_MAX, LONG_MAX, LONG_MAX
-        >
-    : set7_c< T,C0,C1,C2,C3,C4,C5,C6 >
-{
-    typedef typename set7_c< T,C0,C1,C2,C3,C4,C5,C6 >::type type;
-};
+#   define AUX778076_SEQUENCE_NAME set_c
+#   define AUX778076_SEQUENCE_LIMIT BOOST_MPL_LIMIT_SET_SIZE
+#   define AUX778076_SEQUENCE_NAME_N(n) BOOST_PP_CAT(BOOST_PP_CAT(set,n),_c)
+#   define AUX778076_SEQUENCE_INTEGRAL_WRAPPER
+#   include <boost/mpl/aux_/sequence_wrapper.hpp>
 
-template<
-      typename T, long C0, long C1, long C2, long C3, long C4, long C5
-    , long C6, long C7
-    >
-struct set_c<
-          T, C0, C1, C2, C3, C4, C5, C6, C7, LONG_MAX, LONG_MAX, LONG_MAX
-        , LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX
-        , LONG_MAX, LONG_MAX
-        >
-    : set8_c< T,C0,C1,C2,C3,C4,C5,C6,C7 >
-{
-    typedef typename set8_c< T,C0,C1,C2,C3,C4,C5,C6,C7 >::type type;
-};
-
-template<
-      typename T, long C0, long C1, long C2, long C3, long C4, long C5
-    , long C6, long C7, long C8
-    >
-struct set_c<
-          T, C0, C1, C2, C3, C4, C5, C6, C7, C8, LONG_MAX, LONG_MAX, LONG_MAX
-        , LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX
-        , LONG_MAX
-        >
-    : set9_c< T,C0,C1,C2,C3,C4,C5,C6,C7,C8 >
-{
-    typedef typename set9_c< T,C0,C1,C2,C3,C4,C5,C6,C7,C8 >::type type;
-};
-
-template<
-      typename T, long C0, long C1, long C2, long C3, long C4, long C5
-    , long C6, long C7, long C8, long C9
-    >
-struct set_c<
-          T, C0, C1, C2, C3, C4, C5, C6, C7, C8, C9, LONG_MAX, LONG_MAX
-        , LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX
-        , LONG_MAX
-        >
-    : set10_c< T,C0,C1,C2,C3,C4,C5,C6,C7,C8,C9 >
-{
-    typedef typename set10_c< T,C0,C1,C2,C3,C4,C5,C6,C7,C8,C9 >::type type;
-};
-
-template<
-      typename T, long C0, long C1, long C2, long C3, long C4, long C5
-    , long C6, long C7, long C8, long C9, long C10
-    >
-struct set_c<
-          T, C0, C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, LONG_MAX, LONG_MAX
-        , LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX
-        >
-    : set11_c< T,C0,C1,C2,C3,C4,C5,C6,C7,C8,C9,C10 >
-{
-    typedef typename set11_c< T,C0,C1,C2,C3,C4,C5,C6,C7,C8,C9,C10 >::type type;
-};
-
-template<
-      typename T, long C0, long C1, long C2, long C3, long C4, long C5
-    , long C6, long C7, long C8, long C9, long C10, long C11
-    >
-struct set_c<
-          T, C0, C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, LONG_MAX
-        , LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX
-        >
-    : set12_c< T,C0,C1,C2,C3,C4,C5,C6,C7,C8,C9,C10,C11 >
-{
-    typedef typename set12_c< T,C0,C1,C2,C3,C4,C5,C6,C7,C8,C9,C10,C11 >::type type;
-};
-
-template<
-      typename T, long C0, long C1, long C2, long C3, long C4, long C5
-    , long C6, long C7, long C8, long C9, long C10, long C11, long C12
-    >
-struct set_c<
-          T, C0, C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, LONG_MAX
-        , LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX
-        >
-    : set13_c< T,C0,C1,C2,C3,C4,C5,C6,C7,C8,C9,C10,C11,C12 >
-{
-    typedef typename set13_c< T,C0,C1,C2,C3,C4,C5,C6,C7,C8,C9,C10,C11,C12 >::type type;
-};
-
-template<
-      typename T, long C0, long C1, long C2, long C3, long C4, long C5
-    , long C6, long C7, long C8, long C9, long C10, long C11, long C12
-    , long C13
-    >
-struct set_c<
-          T, C0, C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13
-        , LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX
-        >
-    : set14_c<
-          T, C0, C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13
-        >
-{
-    typedef typename set14_c< T,C0,C1,C2,C3,C4,C5,C6,C7,C8,C9,C10,C11,C12,C13 >::type type;
-};
-
-template<
-      typename T, long C0, long C1, long C2, long C3, long C4, long C5
-    , long C6, long C7, long C8, long C9, long C10, long C11, long C12
-    , long C13, long C14
-    >
-struct set_c<
-          T, C0, C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14
-        , LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX
-        >
-    : set15_c<
-          T, C0, C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14
-        >
-{
-    typedef typename set15_c< T,C0,C1,C2,C3,C4,C5,C6,C7,C8,C9,C10,C11,C12,C13,C14 >::type type;
-};
-
-template<
-      typename T, long C0, long C1, long C2, long C3, long C4, long C5
-    , long C6, long C7, long C8, long C9, long C10, long C11, long C12
-    , long C13, long C14, long C15
-    >
-struct set_c<
-          T, C0, C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14
-        , C15, LONG_MAX, LONG_MAX, LONG_MAX, LONG_MAX
-        >
-    : set16_c<
-          T, C0, C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14
-        , C15
-        >
-{
-    typedef typename set16_c< T,C0,C1,C2,C3,C4,C5,C6,C7,C8,C9,C10,C11,C12,C13,C14,C15 >::type type;
-};
-
-template<
-      typename T, long C0, long C1, long C2, long C3, long C4, long C5
-    , long C6, long C7, long C8, long C9, long C10, long C11, long C12
-    , long C13, long C14, long C15, long C16
-    >
-struct set_c<
-          T, C0, C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14
-        , C15, C16, LONG_MAX, LONG_MAX, LONG_MAX
-        >
-    : set17_c<
-          T, C0, C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14
-        , C15, C16
-        >
-{
-    typedef typename set17_c< T,C0,C1,C2,C3,C4,C5,C6,C7,C8,C9,C10,C11,C12,C13,C14,C15,C16 >::type type;
-};
-
-template<
-      typename T, long C0, long C1, long C2, long C3, long C4, long C5
-    , long C6, long C7, long C8, long C9, long C10, long C11, long C12
-    , long C13, long C14, long C15, long C16, long C17
-    >
-struct set_c<
-          T, C0, C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14
-        , C15, C16, C17, LONG_MAX, LONG_MAX
-        >
-    : set18_c<
-          T, C0, C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14
-        , C15, C16, C17
-        >
-{
-    typedef typename set18_c< T,C0,C1,C2,C3,C4,C5,C6,C7,C8,C9,C10,C11,C12,C13,C14,C15,C16,C17 >::type type;
-};
-
-template<
-      typename T, long C0, long C1, long C2, long C3, long C4, long C5
-    , long C6, long C7, long C8, long C9, long C10, long C11, long C12
-    , long C13, long C14, long C15, long C16, long C17, long C18
-    >
-struct set_c<
-          T, C0, C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14
-        , C15, C16, C17, C18, LONG_MAX
-        >
-    : set19_c<
-          T, C0, C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14
-        , C15, C16, C17, C18
-        >
-{
-    typedef typename set19_c< T,C0,C1,C2,C3,C4,C5,C6,C7,C8,C9,C10,C11,C12,C13,C14,C15,C16,C17,C18 >::type type;
-};
-
-/// primary template (not a specialization!)
-
-template<
-      typename T, long C0, long C1, long C2, long C3, long C4, long C5
-    , long C6, long C7, long C8, long C9, long C10, long C11, long C12
-    , long C13, long C14, long C15, long C16, long C17, long C18, long C19
-    >
-struct set_c
-    : set20_c<
-          T, C0, C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14
-        , C15, C16, C17, C18, C19
-        >
-{
-    typedef typename set20_c< T,C0,C1,C2,C3,C4,C5,C6,C7,C8,C9,C10,C11,C12,C13,C14,C15,C16,C17,C18,C19 >::type type;
-};
-
-}}
-
+#endif // BOOST_MPL_CFG_NO_PREPROCESSED_HEADERS
+#endif // BOOST_MPL_SET_C_HPP_INCLUDED
