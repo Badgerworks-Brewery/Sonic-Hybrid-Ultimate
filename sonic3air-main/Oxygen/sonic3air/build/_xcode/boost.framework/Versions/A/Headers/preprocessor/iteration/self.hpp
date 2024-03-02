@@ -9,13 +9,11 @@
 #
 # /* See http://www.boost.org for most recent version. */
 #
-# if !defined(BOOST_PP_INDIRECT_SELF)
-#    error BOOST_PP_ERROR:  no indirect file to include
+# ifndef BOOST_PREPROCESSOR_ITERATION_SELF_HPP
+# define BOOST_PREPROCESSOR_ITERATION_SELF_HPP
+#
+# /* BOOST_PP_INCLUDE_SELF */
+#
+# define BOOST_PP_INCLUDE_SELF() <boost/preprocessor/iteration/detail/self.hpp>
+#
 # endif
-#
-# define BOOST_PP_IS_SELFISH 1
-#
-# include BOOST_PP_INDIRECT_SELF
-#
-# undef BOOST_PP_IS_SELFISH
-# undef BOOST_PP_INDIRECT_SELF
