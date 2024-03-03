@@ -15,6 +15,15 @@ And a custom script runner/executor.
 
 When sonic 2 ends the Hybrid RSDK entity will send a message to the custom script executing entity which in turn stops running the RSDK stuff & starts running the main script of 3 air
 
+## Completion Status:
+Hybrid-RSDK Debugging/Additons ?% (Hybrid-RSDK is still broken)
+
+
+Sonic 3 AIR (Oxygen) Integration 50% (All the source code is in the repo, but we havent done the neccessary changes yet)
+
+
+Custom Client 0% (debugging Hybrid RSDK is the priority)
+
 ## WARNING: DOES NOT WORK YET!
 Start from here:
 
