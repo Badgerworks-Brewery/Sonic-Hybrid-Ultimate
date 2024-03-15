@@ -1,15 +1,15 @@
-# Sonic RSDK + Oxygen Engine
+# Sonic RSDK + Oxygen Engine (Help Needed)
 
 Aims to mix different Sonic the Hedgehog games into a single big game. Acts as a legal but cheaper version of Sonic Origins for fans that dont want to get scammed.
 
 ![Sonic 1 in Sonic 2](docs/preview.png)
 
-## How it will work.
-Instead of mixing 3 AIR'S Engine (called Oxygen) with the RSDK/Retro engine, or compiling rsdk and 3 air as seperate EXEs to be laucnhed in one window, the project will have 3 (main) working parts:
+## How it's gonna work.
+Instead of mixing 3 AIR'S Engine (called Oxygen) with the RSDK/Retro engine, or compiling rsdk and 3 air as seperate EXEs to be laucnhed in one window which is what this project gets confused as, the project will have 3 (main) working parts:
 
-Sonic 3 AIR.
+Sonic 3 AIR/Oxygen.
 
-Sonic Hybrid RSDK plus logic from RSDKV4/RSDKV3.
+Sonic Hybrid RSDK plus RSDKV4/RSDKV3 (and maybe RSDKV5U).
 
 And a custom script runner/executor.
 
