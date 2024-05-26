@@ -97,4 +97,4 @@ The function `SonicHybridRsdk.Unpack12/DecryptData` was written by Giuseppe Gatt
 * Hybrid-RSDK by Xeeynamo.
 * Sonic 3 AIR by Eukaryot.
 * Conceived by Chaphidoesstuff aka @CCIGAMES.
-* Main Development By Pixel-1 Games, SomeRandomPerson_, Twanvanb1 (before misunderstanding the project and attempting to delete everything on the github and blocking me for no reasons other than "i dont like it"), FGSOFTWARE1 and more.
+* Main Development By Pixel-1 Games, SomeRandomPerson_, twanvanb1, FGSOFTWARE1 and more.
