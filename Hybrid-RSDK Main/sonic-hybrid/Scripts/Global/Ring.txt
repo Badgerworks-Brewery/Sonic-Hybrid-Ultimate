@@ -143,14 +143,17 @@ end event
 
 
 event ObjectDraw
+	Print("Debug: Ring ObjectDraw called for entity " + object.entityPos)
 	DrawSprite(ringFrame)
 end event
 
 
 event ObjectStartup
+	Print("Debug: Ring ObjectStartup called")
 	LoadSpriteSheet("Global/Items.gif")
 	foreach (TypeName[Ring], arrayPos0, ALL_ENTITIES)
 		object[arrayPos0].drawOrder = 4
+		Print("Debug: Ring initialized at position " + arrayPos0)
 	next
 	SpriteFrame(-8, -8, 16, 16, 1, 1)
 	SpriteFrame(-8, -8, 16, 16, 1, 18)
@@ -164,6 +167,7 @@ event ObjectStartup
 	SetTableValue(Ring_DebugDraw, DebugMode_ObjCount, DebugMode_DrawTable)
 	SetTableValue(Ring_DebugSpawn, DebugMode_ObjCount, DebugMode_SpawnTable)
 	DebugMode_ObjCount++
+	Print("Debug: Ring ObjectStartup completed")
 end event
 
 event RSDKDraw
