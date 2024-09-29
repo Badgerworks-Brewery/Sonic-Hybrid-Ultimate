@@ -173,6 +173,7 @@ end event
 
 
 event ObjectDraw
+	Print("Debug: Monitor ObjectDraw called for entity " + object.entityPos)
 	DrawSprite(0)
 	switch StageSetup_value22
 	case 0
@@ -193,6 +194,7 @@ end event
 
 
 event ObjectStartup
+	Print("Debug: Monitor ObjectStartup called")
 	LoadSpriteSheet("Global/ItemsHU.gif")
 	SpriteFrame(-16, -16, 32, 32, 18, 1)
 	SpriteFrame(-8, -9, 16, 14, 18, 51)
@@ -239,11 +241,13 @@ event ObjectStartup
 		object[arrayPos0].value31 = object[arrayPos0].propertyValue
 		object[arrayPos0].value31 >>= 4
 		object[arrayPos0].propertyValue &= 15
+		Print("Debug: Monitor initialized at position " + arrayPos0 + " with propertyValue " + object[arrayPos0].propertyValue)
 	next
 	if stage.playerListPos == PLAYER_TAILS
 		foreach (TypeName[Monitor], arrayPos0, ALL_ENTITIES)
 			if object[arrayPos0].propertyValue == 5
 				object[arrayPos0].propertyValue = 6
+				Print("Debug: Monitor at position " + arrayPos0 + " changed to Tails-specific monitor")
 			end if
 		next
 	end if
@@ -251,6 +255,7 @@ event ObjectStartup
 		foreach (TypeName[Monitor], arrayPos0, ALL_ENTITIES)
 			if object[arrayPos0].propertyValue == 5
 				object[arrayPos0].propertyValue = 7
+				Print("Debug: Monitor at position " + arrayPos0 + " changed to Knuckles-specific monitor")
 			end if
 		next
 	end if
@@ -258,6 +263,7 @@ event ObjectStartup
 		foreach (TypeName[Monitor], arrayPos0, ALL_ENTITIES)
 			if object[arrayPos0].propertyValue == 5
 				object[arrayPos0].type = TypeName[Blank Object]
+				Print("Debug: Monitor at position " + arrayPos0 + " changed to Blank Object due to game mode")
 			end if
 		next
 	end if
@@ -266,11 +272,13 @@ event ObjectStartup
 		case 1
 			foreach (TypeName[Monitor], arrayPos0, ALL_ENTITIES)
 				object[arrayPos0].propertyValue = 14
+				Print("Debug: Monitor at position " + arrayPos0 + " set to random item mode")
 			next
 			break
 		case 2
 			foreach (TypeName[Monitor], arrayPos0, ALL_ENTITIES)
 				object[arrayPos0].propertyValue = 13
+				Print("Debug: Monitor at position " + arrayPos0 + " set to teleport mode")
 			next
 			break
 		end switch
@@ -278,6 +286,7 @@ event ObjectStartup
 		if options.shieldType > 1
 			foreach (TypeName[Monitor], arrayPos0, ALL_ENTITIES)
 				object[arrayPos0].propertyValue = 14
+				Print("Debug: Monitor at position " + arrayPos0 + " set to random shield mode")
 			next
 		else
 			if options.shieldType == 0
@@ -286,8 +295,10 @@ event ObjectStartup
 						if object[arrayPos0].propertyValue <= 11
 							if object[arrayPos0].value31 == 0
 								object[arrayPos0].type = TypeName[Blank Object]
+								Print("Debug: Monitor at position " + arrayPos0 + " changed to Blank Object due to shield type")
 							else
 								object[arrayPos0].propertyValue = object[arrayPos0].value31
+								Print("Debug: Monitor at position " + arrayPos0 + " reverted to original propertyValue")
 							end if
 						end if
 					end if
@@ -298,7 +309,9 @@ event ObjectStartup
 	foreach (TypeName[Monitor], arrayPos0, ALL_ENTITIES)
 		object[arrayPos0].frame = object[arrayPos0].propertyValue
 		object[arrayPos0].frame += 2
+		Print("Debug: Monitor at position " + arrayPos0 + " final frame set to " + object[arrayPos0].frame)
 	next
+	Print("Debug: Monitor ObjectStartup completed")
 end event
 
 event RSDKDraw
