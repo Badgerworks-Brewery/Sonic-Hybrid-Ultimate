@@ -11,6 +11,11 @@ rsdk-source-data/*.rsdk
 rsdk-source-data/sonic*/
 sonic-hybrid/Data/
 
+# Sonic 3&K ROM files (various extensions)
+rsdk-source-data/*.bin
+rsdk-source-data/*.md
+rsdk-source-data/*.gen
+
 # Unwanted generated stuff
 sonic-hybrid/*Data.bin
 sonic-hybrid/Settings.*
