@@ -196,6 +196,10 @@ event ObjectMain
 		end if
 		currentPlayer--
 	loop
+
+	Print("Debug: Player 1 position: X=" + object[0].xpos + ", Y=" + object[0].ypos)
+	Print("Debug: Camera position: X=" + screen.cameraX + ", Y=" + screen.cameraY)
+	Print("Debug: Stage boundaries: X1=" + stage.curXBoundary1 + ", X2=" + stage.curXBoundary2 + ", Y1=" + stage.curYBoundary1 + ", Y2=" + stage.curYBoundary2)
 end event
 
 

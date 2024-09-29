@@ -530,12 +530,14 @@ end event
 
 
 event ObjectDraw
+	Print("Debug: RedSpring ObjectDraw called for entity " + object.entityPos)
 	GetTableValue(object.direction, object.frame, RedSpring_table16)
 	DrawSpriteFX(object.frame, FX_FLIP, object.xpos, object.ypos)
 end event
 
 
 event ObjectStartup
+	Print("Debug: RedSpring ObjectStartup called")
 	LoadSpriteSheet("Global/Items.gif")
 	foreach (TypeName[Red Spring], arrayPos0, ALL_ENTITIES)
 		temp0 = object[arrayPos0].propertyValue
@@ -544,6 +546,7 @@ event ObjectStartup
 			object[arrayPos0].propertyValue -= 8
 			object[arrayPos0].value7 = 1
 		end if
+		Print("Debug: RedSpring initialized at position " + arrayPos0 + " with propertyValue " + object[arrayPos0].propertyValue)
 	next
 	SpriteFrame(-16, -8, 32, 16, 52, 1)
 	SpriteFrame(-8, -16, 16, 32, 85, 1)
@@ -578,6 +581,7 @@ event ObjectStartup
 		DebugMode_ObjCount++
 		temp0++
 	loop
+	Print("Debug: RedSpring ObjectStartup completed")
 end event
 
 event RSDKDraw
