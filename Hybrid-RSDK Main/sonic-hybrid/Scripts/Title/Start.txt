@@ -60,7 +60,9 @@ event ObjectMain
 			specialStage.nextZone = 0
 			stage.activeList = REGULAR_STAGE
 			stage.listPos = 0
+			Print("Debug: About to call LoadStage() in case 1")
 			LoadStage()
+			Print("Debug: LoadStage() completed in case 1")
 		end if
 		SetScreenFade(0, 0, 0, object.value0)
 		break
@@ -78,7 +80,9 @@ event ObjectMain
 			specialStage.nextZone = 0
 			stage.activeList = PRESENTATION_STAGE
 			stage.listPos = 5
+			Print("Debug: About to call LoadStage() in case 2")
 			LoadStage()
+			Print("Debug: LoadStage() completed in case 2")
 		end if
 		SetScreenFade(0, 0, 0, object.value0)
 		break
@@ -87,7 +91,9 @@ event ObjectMain
 		if object.value0 == 320
 			options.attractMode = 0
 			stage.listPos = 4
+			Print("Debug: About to call LoadStage() in case 3")
 			LoadStage()
+			Print("Debug: LoadStage() completed in case 3")
 		end if
 		SetScreenFade(0, 0, 0, object.value0)
 		break
@@ -109,7 +115,9 @@ event ObjectMain
 			attract.stage &= 3
 			options.attractMode = 1
 			credits.screen = 0
+			Print("Debug: About to call LoadStage() in case 4")
 			LoadStage()
+			Print("Debug: LoadStage() completed in case 4")
 		end if
 		SetScreenFade(0, 0, 0, object.value0)
 		break
