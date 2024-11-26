@@ -106,6 +106,7 @@ function bool Game.isTimeAttack()
 function void Game.onTimeAttackFinish()
 {
 	// Ignore this function call
+    // Integration point for Hybrid RSDK
 }
 
 function void Game.changePlanePatternRectAtex(u16 px, u16 py, u16 width, u16 height, u8 planeIndex, u8 atex)
