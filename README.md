@@ -1,3 +1,9 @@
+# Build Process
+
+To build the project, ensure that all necessary project files are present in the repository. If you encounter the error `MSB1009: Project file does not exist`, verify the project file paths in the build scripts and ensure all required files are included.
+
+Run the build command from the project's root directory.
+
 # Sonic RSDK + Oxygen Engine (Help Needed)
 
 Aims to mix different Sonic the Hedgehog games into a single big game. Acts as a legal but cheaper version of Sonic Origins for fans that dont want to get scammed.
