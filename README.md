@@ -1,5 +1,7 @@
 # Sonic RSDK + Oxygen Engine (Help Needed)
 
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/b4239a9cea4a44da83a2361685c2d09a)](https://app.codacy.com/gh/Badgerworks-Brewery/Sonic-Hybrid-Ultimate?utm_source=github.com&utm_medium=referral&utm_content=Badgerworks-Brewery/Sonic-Hybrid-Ultimate&utm_campaign=Badge_Grade)
+
 Aims to mix different Sonic the Hedgehog games into a single big game. Acts as a legal but cheaper version of Sonic Origins for fans that dont want to get scammed.
 
 ![Sonic 1 in Sonic 2](docs/preview.png)
