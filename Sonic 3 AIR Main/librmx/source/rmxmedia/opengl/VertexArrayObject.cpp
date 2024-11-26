@@ -21,6 +21,25 @@ namespace opengl
 		}
 	}
 
+	/**
+	 * Sets up the Vertex Array Object (VAO) with the specified format.
+	 * 
+	 * This method initializes or reconfigures the VAO based on the given format.
+	 * It handles the creation of necessary OpenGL objects, binding of buffers,
+	 * and configuration of vertex attribute pointers. The method supports
+	 * different vertex formats including position-only, position-color,
+	 * and position-texture coordinates.
+	 * 
+	 * @param format The format specifying the structure of vertex data.
+	 *               Supported formats are:
+	 *               - Format::P2: 2D position only
+	 *               - Format::P2_C3: 2D position with RGB color
+	 *               - Format::P2_C4: 2D position with RGBA color
+	 *               - Format::P2_T2: 2D position with 2D texture coordinates
+	 * @return void
+	 * 
+	 * @throws RMX_ERROR If an unrecognized or invalid format is provided.
+	 */
 	void VertexArrayObject::setup(Format format)
 	{
 		const bool needsInitialization = (mHandle == 0);
@@ -92,6 +111,19 @@ namespace opengl
 		}
 	}
 
+	/**
+	 * Updates the vertex data of the Vertex Array Object (VAO).
+	 * 
+	 * This method updates the vertex buffer associated with the VAO using the provided vertex data.
+	 * It binds the VAO and Vertex Buffer Object (VBO), then uploads the new data to the GPU.
+	 * The method assumes that the VAO has been previously set up with a valid format.
+	 * 
+	 * @param vertexData Pointer to the new vertex data to be uploaded
+	 * @param numVertices The number of vertices in the provided data
+	 * @return void
+	 * 
+	 * @throws AssertionError if the VAO has not been set up with a format before calling this method
+	 */
 	void VertexArrayObject::updateVertexData(const float* vertexData, size_t numVertices)
 	{
 		if (mHandle == 0)
@@ -106,6 +138,15 @@ namespace opengl
 		mNumBufferedVertices = numVertices;
 	}
 
+	/**
+	 * Binds the Vertex Array Object (VAO) if it has a valid handle.
+	 * 
+	 * This method binds the VAO to the OpenGL context if the internal handle (mHandle) is non-zero.
+	 * Binding a VAO sets it as the current VAO for subsequent vertex attribute operations.
+	 * 
+	 * @throws None
+	 * @return void
+	 */
 	void VertexArrayObject::bind()
 	{
 		if (mHandle != 0)
@@ -119,6 +160,16 @@ namespace opengl
 		glBindVertexArray(0);
 	}
 
+	/**
+	 * Draws the vertex array object using the specified drawing mode.
+	 * 
+	 * This method binds the vertex array object and draws its vertices using OpenGL.
+	 * The drawing will only occur if the handle is valid (non-zero) and there are
+	 * vertices buffered.
+	 * 
+	 * @param mode The OpenGL drawing mode to use (e.g., GL_TRIANGLES, GL_LINES)
+	 * @return void
+	 */
 	void VertexArrayObject::draw(GLenum mode)
 	{
 		if (mHandle != 0 && mNumBufferedVertices > 0)
