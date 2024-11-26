@@ -26,6 +26,7 @@ Hybrid-RSDK Debugging/Additons ?% (Hybrid-RSDK is still broken)
 
 
 Sonic 3 AIR (Oxygen) Integration 50% (All the source code is in the repo, but we havent done the neccessary changes yet)
+Integration with Hybrid RSDK is in progress, focusing on resolving loading issues and graphical corruption.
 
 
 Custom Client 0% (debugging Hybrid RSDK is the priority)
