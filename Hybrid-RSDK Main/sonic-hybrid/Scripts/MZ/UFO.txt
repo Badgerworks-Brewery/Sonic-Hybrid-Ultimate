@@ -110,6 +110,7 @@ end event
 event RSDKDraw
 	DrawSprite(0)
 end event
+    // Integration point for Oxygen framework
 
 event RSDKLoad
 	LoadSpriteSheet("Global/Display.gif")
