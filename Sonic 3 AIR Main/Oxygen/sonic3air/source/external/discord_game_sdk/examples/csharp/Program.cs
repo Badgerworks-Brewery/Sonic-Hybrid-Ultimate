@@ -327,7 +327,9 @@ class Program
         var storageManager = discord.GetStorageManager();
         var contents = new byte[20000];
         var random = new Random();
-        random.NextBytes(contents);
+
+        byte[] contents = new byte[contentLength];
+        RandomNumberGenerator.Fill(contents);
         Console.WriteLine("storage path: {0}", storageManager.GetPath());
         storageManager.WriteAsync("foo", contents, res =>
         {
