@@ -1,0 +1,2 @@
+-  project: ./missing_project_file.csproj
+  project: ./correct_project_file.csproj
