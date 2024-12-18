@@ -1,76 +1,97 @@
+using System;
+using System.IO;
 using System.Text;
+using System.Diagnostics;
 
 namespace SonicHybridUltimate.CustomClient
 {
-    public static class Logger
+    public enum LogLevel
     {
-        private static readonly string LogFile = "hybrid_client.log";
-        private static bool enableDebugLogging = false;
-        private static readonly object lockObj = new object();
+        Debug,
+        Information,
+        Warning,
+        Error
+    }
 
-        public static void Initialize(bool enableDebug)
+    public interface ILogger
+    {
+        void Log(LogLevel level, string message);
+        void LogError(string message, Exception? exception = null);
+    }
+
+    public class Logger : ILogger
+    {
+        private readonly string _name;
+        private readonly Action<string> _logAction;
+        private readonly string _logFile;
+        private static readonly object _lock = new object();
+
+        public Logger(string name, Action<string> logAction)
         {
-            enableDebugLogging = enableDebug;
-            // Clear log file on startup
-            if (File.Exists(LogFile))
-                File.WriteAllText(LogFile, string.Empty);
-            
-            Log("Logger initialized");
+            _name = name;
+            _logAction = logAction;
+            _logFile = "hybrid_client.log";
+
+            // Create or clear log file
+            File.WriteAllText(_logFile, string.Empty);
         }
 
-        public static void Log(string message, bool isDebug = false)
+        public void Log(LogLevel level, string message)
         {
-            if (isDebug && !enableDebugLogging)
-                return;
+            var logMessage = FormatMessage(level, message);
+            WriteLog(logMessage);
+        }
 
-            var logMessage = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {(isDebug ? "[DEBUG] " : "")}{message}";
+        public void LogError(string message, Exception? exception = null)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine(FormatMessage(LogLevel.Error, message));
             
-            lock (lockObj)
+            if (exception != null)
+            {
+                sb.AppendLine($"Exception: {exception.GetType().Name}");
+                sb.AppendLine($"Message: {exception.Message}");
+                sb.AppendLine($"Stack Trace: {exception.StackTrace}");
+            }
+
+            WriteLog(sb.ToString());
+        }
+
+        private string FormatMessage(LogLevel level, string message)
+        {
+            return $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [{level}] [{_name}] {message}";
+        }
+
+        private void WriteLog(string message)
+        {
+            lock (_lock)
             {
                 try
                 {
-                    File.AppendAllText(LogFile, logMessage + Environment.NewLine);
-                    Debug.WriteLine(logMessage);
+                    File.AppendAllText(_logFile, message + Environment.NewLine);
+                    _logAction(message);
+                    Trace.WriteLine(message);
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"Failed to write to log file: {ex.Message}");
+                    Trace.WriteLine($"Failed to write to log: {ex.Message}");
                 }
             }
         }
+    }
 
-        public static void LogError(string message, Exception? ex = null)
+    public class LoggerProvider
+    {
+        private readonly Action<string> _logAction;
+
+        public LoggerProvider(Action<string> logAction)
         {
-            var sb = new StringBuilder();
-            sb.AppendLine($"[ERROR] {message}");
-            
-            if (ex != null)
-            {
-                sb.AppendLine($"Exception: {ex.GetType().Name}");
-                sb.AppendLine($"Message: {ex.Message}");
-                sb.AppendLine($"Stack Trace: {ex.StackTrace}");
-            }
-
-            Log(sb.ToString());
+            _logAction = logAction;
         }
 
-        public static string[] GetRecentLogs(int lines = 100)
+        public ILogger CreateLogger(string categoryName)
         {
-            try
-            {
-                if (!File.Exists(LogFile))
-                    return Array.Empty<string>();
-
-                return File.ReadAllLines(LogFile)
-                    .Reverse()
-                    .Take(lines)
-                    .Reverse()
-                    .ToArray();
-            }
-            catch
-            {
-                return Array.Empty<string>();
-            }
+            return new Logger(categoryName, _logAction);
         }
     }
 }

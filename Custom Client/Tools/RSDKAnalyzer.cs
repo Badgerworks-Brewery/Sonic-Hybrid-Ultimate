@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Text;
 using System.Collections.Generic;
+using Microsoft.Extensions.Logging;
 
 namespace SonicHybridUltimate.Tools
 {
