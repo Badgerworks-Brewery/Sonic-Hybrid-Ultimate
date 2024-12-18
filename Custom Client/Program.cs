@@ -254,10 +254,39 @@ namespace SonicHybridUltimate
             engineRunning = true;
         }
 
+        private bool IsDeathEggDefeated()
+        {
+            // Check all required conditions for Death Egg completion
+            return IsInDeathEggZone() && 
+                   GetDeathEggRobotState() == 1 && 
+                   GetDeathEggExplosionTimer() > 0;
+        }
+
+        private bool IsInDeathEggZone()
+        {
+            // Memory address for current zone ID
+            const int ADDR_CURRENT_ZONE = 0x203A40;
+            byte zoneId = Marshal.ReadByte(new IntPtr(ADDR_CURRENT_ZONE));
+            return zoneId == 0x0B; // Death Egg Zone ID
+        }
+
+        private int GetDeathEggRobotState()
+        {
+            // Memory address for Death Egg Robot state
+            const int ADDR_ROBOT_STATE = 0x203A44;
+            return Marshal.ReadByte(new IntPtr(ADDR_ROBOT_STATE));
+        }
+
+        private int GetDeathEggExplosionTimer()
+        {
+            // Memory address for explosion timer
+            const int ADDR_EXPLOSION_TIMER = 0x203A48;
+            return Marshal.ReadByte(new IntPtr(ADDR_EXPLOSION_TIMER));
+        }
+
         private void GameLoop(object? sender, EventArgs e)
         {
-            if (!engineRunning)
-                return;
+            if (!engineRunning) return;
 
             try
             {
@@ -265,13 +294,16 @@ namespace SonicHybridUltimate
                 {
                     UpdateRSDKv4();
                     
-                    // Check for Death Egg completion
+                    // Check for Sonic 2 completion
                     if (IsDeathEggDefeated())
                     {
+                        LogMessage("Death Egg Zone completed! Transitioning to Sonic 3...");
+                        SaveGameState();
+                        CleanupRSDKv4();
                         StartSonic3();
                     }
                 }
-                else if (currentGame == "SONIC3")
+                else if (currentGame == "Sonic3")
                 {
                     UpdateOxygenEngine();
                 }
@@ -281,40 +313,6 @@ namespace SonicHybridUltimate
                 LogMessage($"Error in game loop: {ex.Message}");
                 engineRunning = false;
             }
-        }
-
-        private bool IsDeathEggDefeated()
-        {
-            // Check if we're in Death Egg Zone
-            if (!IsInDeathEggZone()) return false;
-
-            // Check if Death Egg Robot is in defeat state (state 13 or 14)
-            var robotState = GetDeathEggRobotState();
-            if (robotState >= 13)
-            {
-                // Wait for explosion sequence to finish
-                var explosionTimer = GetDeathEggExplosionTimer();
-                return explosionTimer >= 270; // Explosion sequence is complete
-            }
-            return false;
-        }
-
-        private bool IsInDeathEggZone()
-        {
-            // Check current zone/stage info from RSDK
-            return true; // TODO: Implement actual zone check
-        }
-
-        private int GetDeathEggRobotState()
-        {
-            // Get Death Egg Robot's current state from RSDK memory
-            return 0; // TODO: Implement actual state check
-        }
-
-        private int GetDeathEggExplosionTimer()
-        {
-            // Get explosion sequence timer from RSDK memory
-            return 0; // TODO: Implement actual timer check
         }
 
         private void LogMessage(string message)
