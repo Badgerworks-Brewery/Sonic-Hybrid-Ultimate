@@ -1,0 +1,13 @@
+Explaining your tasks,
+
+RSDK Stuff: Hybrid RSDK is a project that unpacks all the RSDK files of Sonic 1, 2 and CD (the remastered Retro Engine versions) and smushes them together like 1 big game. RSDKV4 is the version of the engine that can be found here: https://github.com/RSDKModding/RSDKv4-Decompilation/tree/main/RSDKv4 and is the version that Sonic 1 and 2 uses for their remasters, sonic cd uses RSDKV3 (of which there is a rsdkv3-to-rsdv4.md file in the project and a repo for it's decomp which is here https://github.com/RSDKModding/RSDKv3-Decompilation), there is also a version that runs all versions of rsdk which could be very good to use: https://github.com/thesupersonic16/RSDKv5u-Origins/
+
+
+Sonic 3 AIR stuff: Sonic 3 AIR is 1/3 emulation, 1/3 it's own engine and 1/3 a native port of the 1994 Sonic 3K disassembly as a C++ sub-language called Lemonscript, unlike the RSDK projects which are remasters, this project uses the original Genesis version of the game, treating it's rom like how rsdk related projects treat data.rsdk files.
+
+Custom Client Stuff: I want you to make an EXE file that can contain most of RSDKV4, HYBRID-RSDK and Sonic 3 AIR, structured below/as a sub-direct/app/sub-whatever of this custom client, when Sonic 2 RSDK ends, the client then seamlessly transitions to Sonic 3 AIR's Beggining cutscene, starting angel island zone, all in the same window in the same app, effectively this client wedges itself into sonic 3 air and the rsdk stuff and talks to them, but sonic 3 air and rsdk stuff never talk directly
+
+Other future stuff: using the RSDVK5U-Origins decomp, add support for the RSDK remaster version of Sonic 3. using Genesis Plus GX Wide (https://github.com/libretro/Genesis-Plus-GX-Wide), as well as Sonic 3 AIR, Sonic 2 Community Cut (https://github.com/heyjoeway/s2cx) and the disasemblies for Sonic 1 (https://github.com/sonicretro/s1disasm), Sonic 2 (https://github.com/sonicretro/s2disasm), Sonic 3K (https://github.com/sonicretro/skdisasm) and Sonic CD (https://github.com/devon-artmeier/sonic_cd_disassembly) and other stuff to add support for the original genesis versions of the games.
+
+
+Anyways, this should catch you up, do all of this, now.
