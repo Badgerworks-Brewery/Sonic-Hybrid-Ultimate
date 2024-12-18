@@ -1,9 +1,20 @@
 cmake_minimum_required(VERSION 3.15)
-project(SonicHybridRSDK VERSION 1.0.0)
+project(HybridRSDK)
+
+# Force MSVC on Windows
+if(WIN32)
+    set(CMAKE_C_COMPILER "cl.exe")
+    set(CMAKE_CXX_COMPILER "cl.exe")
+endif()
 
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Output directories
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 # Dependencies
 find_package(SDL2 REQUIRED)
@@ -47,6 +58,37 @@ target_link_libraries(rsdk_core PUBLIC
     ${GLEW_LIBRARIES}
 )
 
+# Create Hybrid-RSDK library
+add_library(HybridRSDK SHARED
+    sonic-hybrid/HybridEngine.cpp
+    sonic-hybrid/StateManager.cpp
+    sonic-hybrid/TransitionManager.cpp
+)
+
+target_include_directories(HybridRSDK PRIVATE
+    RSDKV4/RSDKV4
+    sonic-hybrid
+    ${SDL2_INCLUDE_DIRS}
+    ${OPENGL_INCLUDE_DIR}
+    ${GLEW_INCLUDE_DIRS}
+)
+
+target_link_libraries(HybridRSDK PRIVATE
+    rsdk_core
+    ${SDL2_LIBRARIES}
+    ${OPENGL_LIBRARIES}
+    ${GLEW_LIBRARIES}
+)
+
+# Set Windows-specific properties
+if(WIN32)
+    target_compile_definitions(HybridRSDK PRIVATE
+        WIN32_LEAN_AND_MEAN
+        NOMINMAX
+        _CRT_SECURE_NO_WARNINGS
+    )
+endif()
+
 # RSDK V4 executable
 add_executable(rsdkv4
     RSDKV4/main.cpp
@@ -59,17 +101,14 @@ target_link_libraries(rsdkv4 PRIVATE
 # Hybrid RSDK executable
 add_executable(hybrid_rsdk
     sonic-hybrid/main.cpp
-    sonic-hybrid/HybridEngine.cpp
-    sonic-hybrid/StateManager.cpp
-    sonic-hybrid/TransitionManager.cpp
 )
 
 target_link_libraries(hybrid_rsdk PRIVATE
-    rsdk_core
+    HybridRSDK
 )
 
 # Install rules
-install(TARGETS rsdk_core rsdkv4 hybrid_rsdk
+install(TARGETS rsdk_core rsdkv4 hybrid_rsdk HybridRSDK
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib

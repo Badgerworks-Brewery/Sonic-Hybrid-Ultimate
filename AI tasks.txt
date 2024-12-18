@@ -1,13 +1,88 @@
-Explaining your tasks,
+# Sonic Hybrid Ultimate - Development Tasks
 
-RSDK Stuff: Hybrid RSDK is a project that unpacks all the RSDK files of Sonic 1, 2 and CD (the remastered Retro Engine versions) and smushes them together like 1 big game. RSDKV4 is the version of the engine that can be found here: https://github.com/RSDKModding/RSDKv4-Decompilation/tree/main/RSDKv4 and is the version that Sonic 1 and 2 uses for their remasters, sonic cd uses RSDKV3 (of which there is a rsdkv3-to-rsdv4.md file in the project and a repo for it's decomp which is here https://github.com/RSDKModding/RSDKv3-Decompilation), there is also a version that runs all versions of rsdk which could be very good to use: https://github.com/thesupersonic16/RSDKv5u-Origins/
+## Current Progress
 
+### 1. RSDK Integration (75% Complete)
+- [x] Basic RSDK integration with Custom Client
+- [x] Memory management system
+- [x] Death Egg completion detection
+- [x] State preservation
+- [ ] Debugging and optimization
+- [ ] RSDKv3 compatibility layer
 
-Sonic 3 AIR stuff: Sonic 3 AIR is 1/3 emulation, 1/3 it's own engine and 1/3 a native port of the 1994 Sonic 3K disassembly as a C++ sub-language called Lemonscript, unlike the RSDK projects which are remasters, this project uses the original Genesis version of the game, treating it's rom like how rsdk related projects treat data.rsdk files.
+### 2. Sonic 3 AIR Integration (25% Complete)
+- [x] Basic Oxygen engine wrapper
+- [ ] Lemonscript integration
+- [ ] ROM handling
+- [ ] State synchronization
+- [ ] Transition animations
 
-Custom Client Stuff: I want you to make an EXE file that can contain most of RSDKV4, HYBRID-RSDK and Sonic 3 AIR, structured below/as a sub-direct/app/sub-whatever of this custom client, when Sonic 2 RSDK ends, the client then seamlessly transitions to Sonic 3 AIR's Beggining cutscene, starting angel island zone, all in the same window in the same app, effectively this client wedges itself into sonic 3 air and the rsdk stuff and talks to them, but sonic 3 air and rsdk stuff never talk directly
+### 3. Custom Client (80% Complete)
+- [x] Core engine interface
+- [x] Window management
+- [x] Input handling
+- [x] State management
+- [x] Transition system
+- [ ] UI polish
+- [ ] Error handling
 
-Other future stuff: using the RSDVK5U-Origins decomp, add support for the RSDK remaster version of Sonic 3. using Genesis Plus GX Wide (https://github.com/libretro/Genesis-Plus-GX-Wide), as well as Sonic 3 AIR, Sonic 2 Community Cut (https://github.com/heyjoeway/s2cx) and the disasemblies for Sonic 1 (https://github.com/sonicretro/s1disasm), Sonic 2 (https://github.com/sonicretro/s2disasm), Sonic 3K (https://github.com/sonicretro/skdisasm) and Sonic CD (https://github.com/devon-artmeier/sonic_cd_disassembly) and other stuff to add support for the original genesis versions of the games.
+## Next Steps
 
+### Phase 1: Core Integration (Current)
+1. Complete Sonic 2 to Sonic 3 transition
+2. Implement Lemonscript integration
+3. Add ROM handling for Sonic 3
+4. Polish transition animations
 
-Anyways, this should catch you up, do all of this, now.
+### Phase 2: Extended Support
+1. Add RSDKv5U-Origins support
+2. Integrate Genesis Plus GX Wide
+3. Add support for:
+   - Sonic 2 Community Cut
+   - Original Genesis versions via disassemblies:
+     * Sonic 1 (s1disasm)
+     * Sonic 2 (s2disasm)
+     * Sonic 3K (skdisasm)
+     * Sonic CD
+
+### Phase 3: Polish & Features
+1. Add save state support
+2. Implement achievement system
+3. Add mod support
+4. Create configuration UI
+
+## Reference Links
+
+### RSDK Projects
+- RSDKv4 Decompilation: https://github.com/RSDKModding/RSDKv4-Decompilation/tree/main/RSDKv4
+- RSDKv3 Decompilation: https://github.com/RSDKModding/RSDKv3-Decompilation
+- RSDKv5U-Origins: https://github.com/thesupersonic16/RSDKv5u-Origins/
+
+### Genesis Projects
+- Genesis Plus GX Wide: https://github.com/libretro/Genesis-Plus-GX-Wide
+- Sonic 2 Community Cut: https://github.com/heyjoeway/s2cx
+- Sonic 1 Disassembly: https://github.com/sonicretro/s1disasm
+- Sonic 2 Disassembly: https://github.com/sonicretro/s2disasm
+- Sonic 3K Disassembly: https://github.com/sonicretro/skdisasm
+- Sonic CD Disassembly: https://github.com/devon-artmeier/sonic_cd_disassembly
+
+## Architecture Notes
+
+### Custom Client
+- Acts as a container for RSDK and Sonic 3 AIR
+- Manages transitions and state
+- No direct communication between RSDK and Sonic 3 AIR
+- All communication goes through the Custom Client
+
+### RSDK Integration
+- Uses RSDKv4 for Sonic 1 and 2
+- RSDKv3 compatibility layer for Sonic CD
+- Handles Data.rsdk files
+
+### Sonic 3 AIR Integration
+- Hybrid approach:
+  * 1/3 emulation
+  * 1/3 native engine
+  * 1/3 Lemonscript (C++ sub-language)
+- Uses original Genesis ROM
+- Treats ROM similar to Data.rsdk files
