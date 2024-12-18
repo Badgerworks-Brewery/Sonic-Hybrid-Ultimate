@@ -28,15 +28,17 @@ The project consists of three main components:
 - **Hybrid-RSDK**: 
   - [x] Basic RSDK integration
   - [x] File fetching system
-  - [ ] Memory management fixes
+  - [x] Memory management fixes
+  - [x] Sonic 2 completion detection
   - [ ] Debugging in progress
 
 - **Custom Client**:
   - [x] Engine interface
   - [x] Transition system
   - [x] State management
-  - [ ] Window management
-  - [ ] Input system
+  - [x] Window management
+  - [x] Input system
+  - [x] Death Egg completion detection
 
 - **Sonic 3 AIR Integration**:
   - [x] Basic Oxygen engine wrapper
@@ -46,60 +48,70 @@ The project consists of three main components:
 
 ## Setup Instructions
 
-1. Clone the repository
-2. Place the following files in `Hybrid-RSDK Main/Data`:
+1. Install required dependencies:
+   - Visual Studio 2022 with C++ support
+   - .NET 6.0 SDK or later
+   - CMake 3.15 or later
+
+2. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/Sonic-Hybrid-Ultimate.git
+   cd Sonic-Hybrid-Ultimate
+   ```
+
+3. Place the following files in `Hybrid-RSDK Main/Data`:
    - Sonic 1's `Data.rsdk` as `sonic1.rsdk`
    - Sonic 2's `Data.rsdk` as `sonic2.rsdk`
    - Sonic CD's `Data.rsdk` as `soniccd.rsdk`
    - Sonic 3&K ROM as `sonic3.bin`
 
-3. Install dependencies:
-   - Visual Studio 2022 with C++ support
-   - .NET 6.0 SDK
-   - CMake (latest version)
+4. Build the project using the provided build script:
+   ```powershell
+   # For debug build
+   .\build.ps1
 
-4. Build the project:
-```bash
-# Build Custom Client
-cd "Custom Client"
-dotnet build
+   # For release build
+   .\build.ps1 -Release
 
-# Build Hybrid-RSDK
-cd "../Hybrid-RSDK Main"
-cmake -B build
-cmake --build build
-```
+   # To clean and rebuild
+   .\build.ps1 -Clean
+   ```
 
 5. Run the Custom Client:
-```bash
-cd "Custom Client"
-dotnet run
-```
+   ```powershell
+   cd "Custom Client/bin/Debug/net6.0-windows"  # or Release instead of Debug
+   ./SonicHybridUltimate.exe
+   ```
 
 ## Development Status
 
-- **Priority**: Debugging Hybrid-RSDK integration
+- **Priority**: Sonic 3 AIR Integration
 - **Next Steps**: 
-  1. Complete memory management fixes
-  2. Implement Sonic 2 completion detection
-  3. Finalize transition system
-  4. Integrate Lemonscript
+  1. Complete Lemonscript integration
+  2. Implement ROM handling
+  3. Finalize state synchronization
+  4. Polish transition animations
+
+## Features
+
+- **Seamless Transitions**: Smooth transitions between RSDK and Oxygen engines
+- **State Preservation**: Maintains game state (rings, score, etc.) across transitions
+- **Death Egg Detection**: Accurate detection of Sonic 2's completion
+- **Modern UI**: Clean, user-friendly interface with real-time status updates
 
 ## Contributing
 
 Help is welcome! Current areas needing attention:
-- Hybrid-RSDK debugging
-- Memory management improvements
-- Transition system refinements
-- Lemonscript integration
+- Sonic 3 AIR integration
+- Lemonscript implementation
+- Transition animations
+- UI/UX improvements
 
 ## License
 
 This project is for educational purposes only. All Sonic the Hedgehog properties are owned by SEGA.
 
 ## Credits
-* Decompilation by Rubberduckycooly.
-* Hybrid-RSDK by Xeeynamo.
-* Sonic 3 AIR by Eukaryot.
-* Conceived by Chaphidoesstuff aka @CCIGAMES.
-* Main Development By Pixel-1 Games, SomeRandomPerson_, twanvanb1, FGSOFTWARE1 and more.
+- RSDK Decompilation by Rubberduckycooly
+- Sonic 3 AIR by Eukaryot
+- Original games by SEGA
