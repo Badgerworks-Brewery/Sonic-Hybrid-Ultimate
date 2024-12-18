@@ -1,3 +1,6 @@
+Bug Fixes and Features
+
+This document outlines the necessary bug fixes and features to be implemented in the project.
 
 # Simple DirectMedia Layer (SDL) Version 2.0
 
