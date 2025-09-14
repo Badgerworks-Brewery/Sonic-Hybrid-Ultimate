@@ -20,42 +20,46 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 find_package(SDL2 REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(GLEW REQUIRED)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(VORBIS REQUIRED vorbis vorbisfile)
 
 # RSDK Core library
 add_library(rsdk_core STATIC
-    RSDKV4/RetroEngine.cpp
-    RSDKV4/Scene.cpp
-    RSDKV4/Animation.cpp
-    RSDKV4/Drawing.cpp
-    RSDKV4/Palette.cpp
-    RSDKV4/Renderer.cpp
-    RSDKV4/Sprite.cpp
-    RSDKV4/Object.cpp
-    RSDKV4/Audio.cpp
-    RSDKV4/Input.cpp
-    RSDKV4/Script.cpp
-    RSDKV4/Networking.cpp
-    RSDKV4/Debug.cpp
-    RSDKV4/Math.cpp
-    RSDKV4/Collision.cpp
-    RSDKV4/ModAPI.cpp
-    RSDKV4/String.cpp
-    RSDKV4/Scene3D.cpp
-    RSDKV4/Reader.cpp
-    RSDKV4/Userdata.cpp
+    RSDKV4/RSDKV4/RetroEngine.cpp
+    RSDKV4/RSDKV4/Scene.cpp
+    RSDKV4/RSDKV4/Animation.cpp
+    RSDKV4/RSDKV4/Drawing.cpp
+    RSDKV4/RSDKV4/Palette.cpp
+    RSDKV4/RSDKV4/Renderer.cpp
+    RSDKV4/RSDKV4/Sprite.cpp
+    RSDKV4/RSDKV4/Object.cpp
+    RSDKV4/RSDKV4/Audio.cpp
+    RSDKV4/RSDKV4/Input.cpp
+    RSDKV4/RSDKV4/Script.cpp
+    RSDKV4/RSDKV4/Networking.cpp
+    RSDKV4/RSDKV4/Debug.cpp
+    RSDKV4/RSDKV4/Math.cpp
+    RSDKV4/RSDKV4/Collision.cpp
+    RSDKV4/RSDKV4/ModAPI.cpp
+    RSDKV4/RSDKV4/String.cpp
+    RSDKV4/RSDKV4/Scene3D.cpp
+    RSDKV4/RSDKV4/Reader.cpp
+    RSDKV4/RSDKV4/Userdata.cpp
 )
 
 target_include_directories(rsdk_core PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4
+    ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4/RSDKV4
     ${SDL2_INCLUDE_DIRS}
     ${OPENGL_INCLUDE_DIR}
     ${GLEW_INCLUDE_DIRS}
+    ${VORBIS_INCLUDE_DIRS}
 )
 
 target_link_libraries(rsdk_core PUBLIC
     ${SDL2_LIBRARIES}
     ${OPENGL_LIBRARIES}
     ${GLEW_LIBRARIES}
+    ${VORBIS_LIBRARIES}
 )
 
 # Create Hybrid-RSDK library
@@ -66,11 +70,12 @@ add_library(HybridRSDK SHARED
 )
 
 target_include_directories(HybridRSDK PRIVATE
-    RSDKV4/RSDKV4
-    sonic-hybrid
+    ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4/RSDKV4
+    ${CMAKE_CURRENT_SOURCE_DIR}/sonic-hybrid
     ${SDL2_INCLUDE_DIRS}
     ${OPENGL_INCLUDE_DIR}
     ${GLEW_INCLUDE_DIRS}
+    ${VORBIS_INCLUDE_DIRS}
 )
 
 target_link_libraries(HybridRSDK PRIVATE
@@ -78,6 +83,7 @@ target_link_libraries(HybridRSDK PRIVATE
     ${SDL2_LIBRARIES}
     ${OPENGL_LIBRARIES}
     ${GLEW_LIBRARIES}
+    ${VORBIS_LIBRARIES}
 )
 
 # Set Windows-specific properties
@@ -91,7 +97,7 @@ endif()
 
 # RSDK V4 executable
 add_executable(rsdkv4
-    RSDKV4/main.cpp
+    RSDKV4/RSDKV4/main.cpp
 )
 
 target_link_libraries(rsdkv4 PRIVATE
