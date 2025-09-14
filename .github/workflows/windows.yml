@@ -1,0 +1,45 @@
+name: Windows Build
+
+on:
+  push:
+    branches: [ "main", "gitauto/*" ]
+  pull_request:
+    branches: [ "main", "gitauto/*" ]
+
+jobs:
+  build:
+
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '6.0.x'
+
+    - name: Setup vcpkg
+      uses: microsoft/setup-msbuild@v1.1
+
+    - name: Install dependencies with vcpkg
+      run: |
+        vcpkg install sdl2:x64-windows
+        vcpkg install glew:x64-windows
+        vcpkg install libvorbis:x64-windows
+        vcpkg install tinyxml2:x64-windows
+        vcpkg integrate install
+
+    - name: Build project
+      run: .\build_all.ps1
+      shell: powershell
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: sonic-hybrid-ultimate-windows
+        path: |
+          Hybrid-RSDK Main/build/bin/
+          Custom Client/bin/
