@@ -14,11 +14,6 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: '6.0.x'
-
     - name: Install dependencies
       run: |
         sudo apt-get update
@@ -36,6 +31,6 @@ jobs:
       run: cmake --build .
       working-directory: "Hybrid-RSDK Main/build"
 
-    - name: Build Custom Client
-      run: dotnet build
-      working-directory: "Custom Client"
+    - name: List build artifacts
+      run: find build -type f -executable -o -name "*.so" -o -name "*.a"
+      working-directory: "Hybrid-RSDK Main"
