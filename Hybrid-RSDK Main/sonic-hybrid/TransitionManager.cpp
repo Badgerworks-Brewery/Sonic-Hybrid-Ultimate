@@ -2,7 +2,7 @@
 #include <cmath>
 
 namespace SonicHybrid {
-    void TransitionManager::Initialize(RSDK::RetroEngine* engine) {
+    void TransitionManager::Initialize(RetroEngine* engine) {
         rsdkEngine = engine;
         transitioning = false;
         progress = 0.0f;
@@ -91,12 +91,8 @@ namespace SonicHybrid {
         float renderScale = currentPoint.scale;
         float renderRotation = currentPoint.rotation;
 
-        // TODO: Implement actual rendering through RSDK
-        // This would involve:
-        // 1. Setting up a render target
-        // 2. Applying transformations (position, rotation, scale)
-        // 3. Drawing the game scene to the target
-        // 4. Applying any post-processing effects
-        // 5. Drawing the final result to the screen
+        // Placeholder implementation for rendering
+        // In a real implementation, this would render the transition effect
+        // using the RSDK's rendering system
     }
 }
