@@ -4,6 +4,8 @@
 #include "RetroEngine.hpp"
 #include "StateManager.hpp"
 #include "TransitionManager.hpp"
+#include <functional>
+#include <vector>
 #include <memory>
 
 namespace SonicHybrid {
