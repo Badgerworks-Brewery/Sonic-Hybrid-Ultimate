@@ -1,86 +1,9 @@
 using System;
-using System.IO;
-using System.Text;
-using System.Diagnostics;
+using Microsoft.Extensions.Logging;
 
-namespace SonicHybridUltimate.CustomClient
+namespace SonicHybridUltimate
 {
-    public enum LogLevel
-    {
-        Debug,
-        Information,
-        Warning,
-        Error
-    }
-
-    public interface ILogger
-    {
-        void Log(LogLevel level, string message);
-        void LogError(string message, Exception? exception = null);
-    }
-
-    public class Logger : ILogger
-    {
-        private readonly string _name;
-        private readonly Action<string> _logAction;
-        private readonly string _logFile;
-        private static readonly object _lock = new object();
-
-        public Logger(string name, Action<string> logAction)
-        {
-            _name = name;
-            _logAction = logAction;
-            _logFile = "hybrid_client.log";
-
-            // Create or clear log file
-            File.WriteAllText(_logFile, string.Empty);
-        }
-
-        public void Log(LogLevel level, string message)
-        {
-            var logMessage = FormatMessage(level, message);
-            WriteLog(logMessage);
-        }
-
-        public void LogError(string message, Exception? exception = null)
-        {
-            var sb = new StringBuilder();
-            sb.AppendLine(FormatMessage(LogLevel.Error, message));
-            
-            if (exception != null)
-            {
-                sb.AppendLine($"Exception: {exception.GetType().Name}");
-                sb.AppendLine($"Message: {exception.Message}");
-                sb.AppendLine($"Stack Trace: {exception.StackTrace}");
-            }
-
-            WriteLog(sb.ToString());
-        }
-
-        private string FormatMessage(LogLevel level, string message)
-        {
-            return $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [{level}] [{_name}] {message}";
-        }
-
-        private void WriteLog(string message)
-        {
-            lock (_lock)
-            {
-                try
-                {
-                    File.AppendAllText(_logFile, message + Environment.NewLine);
-                    _logAction(message);
-                    Trace.WriteLine(message);
-                }
-                catch (Exception ex)
-                {
-                    Trace.WriteLine($"Failed to write to log: {ex.Message}");
-                }
-            }
-        }
-    }
-
-    public class LoggerProvider
+    public class LoggerProvider : ILoggerProvider
     {
         private readonly Action<string> _logAction;
 
@@ -91,7 +14,58 @@ namespace SonicHybridUltimate.CustomClient
 
         public ILogger CreateLogger(string categoryName)
         {
-            return new Logger(categoryName, _logAction);
+            return new CustomLogger(categoryName, _logAction);
+        }
+
+        public void Dispose()
+        {
+            // Nothing to dispose
+        }
+    }
+
+    public class CustomLogger : ILogger
+    {
+        private readonly string _categoryName;
+        private readonly Action<string> _logAction;
+
+        public CustomLogger(string categoryName, Action<string> logAction)
+        {
+            _categoryName = categoryName;
+            _logAction = logAction;
+        }
+
+        public IDisposable BeginScope<TState>(TState state)
+        {
+            return new NoOpDisposable();
+        }
+
+        public bool IsEnabled(LogLevel logLevel)
+        {
+            return true;
+        }
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            if (!IsEnabled(logLevel))
+                return;
+
+            var message = formatter(state, exception);
+            var logMessage = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [{logLevel}] [{_categoryName}] {message}";
+
+            if (exception != null)
+            {
+                logMessage += Environment.NewLine + exception.ToString();
+            }
+
+            _logAction(logMessage);
+        }
+    }
+
+    internal class NoOpDisposable : IDisposable
+    {
+        public void Dispose()
+        {
+            // No-op
         }
     }
 }
