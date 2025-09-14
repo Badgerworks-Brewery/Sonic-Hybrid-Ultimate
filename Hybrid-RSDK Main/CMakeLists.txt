@@ -23,7 +23,18 @@ find_package(GLEW REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(VORBIS REQUIRED vorbis vorbisfile)
 
-# RSDK Core library
+# Check if RSDK decompilations exist
+if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/RSDKV3")
+    message(STATUS "RSDKv3 not found, fetching...")
+    execute_process(COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/../fetch_rsdkv3.sh)
+endif()
+
+if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/RSDKV5")
+    message(STATUS "RSDKv5 not found, fetching...")
+    execute_process(COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/../fetch_rsdkv5.sh)
+endif()
+
+# RSDK V4 Core library
 add_library(rsdk_core STATIC
     RSDKV4/RSDKV4/RetroEngine.cpp
     RSDKV4/RSDKV4/Scene.cpp
@@ -62,6 +73,52 @@ target_link_libraries(rsdk_core PUBLIC
     ${VORBIS_LIBRARIES}
 )
 
+# RSDK V3 Core library (for Sonic CD)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/RSDKV3")
+    file(GLOB_RECURSE RSDKV3_SOURCES "RSDKV3/*.cpp" "RSDKV3/*.c")
+    if(RSDKV3_SOURCES)
+        add_library(rsdkv3_core STATIC ${RSDKV3_SOURCES})
+
+        target_include_directories(rsdkv3_core PUBLIC
+            ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV3
+            ${SDL2_INCLUDE_DIRS}
+            ${OPENGL_INCLUDE_DIR}
+            ${GLEW_INCLUDE_DIRS}
+            ${VORBIS_INCLUDE_DIRS}
+        )
+
+        target_link_libraries(rsdkv3_core PUBLIC
+            ${SDL2_LIBRARIES}
+            ${OPENGL_LIBRARIES}
+            ${GLEW_LIBRARIES}
+            ${VORBIS_LIBRARIES}
+        )
+    endif()
+endif()
+
+# RSDK V5 Core library (Universal)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/RSDKV5")
+    file(GLOB_RECURSE RSDKV5_SOURCES "RSDKV5/*.cpp" "RSDKV5/*.c")
+    if(RSDKV5_SOURCES)
+        add_library(rsdkv5_core STATIC ${RSDKV5_SOURCES})
+
+        target_include_directories(rsdkv5_core PUBLIC
+            ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV5
+            ${SDL2_INCLUDE_DIRS}
+            ${OPENGL_INCLUDE_DIR}
+            ${GLEW_INCLUDE_DIRS}
+            ${VORBIS_INCLUDE_DIRS}
+        )
+
+        target_link_libraries(rsdkv5_core PUBLIC
+            ${SDL2_LIBRARIES}
+            ${OPENGL_LIBRARIES}
+            ${GLEW_LIBRARIES}
+            ${VORBIS_LIBRARIES}
+        )
+    endif()
+endif()
+
 # Create Hybrid-RSDK library
 add_library(HybridRSDK SHARED
     sonic-hybrid/HybridEngine.cpp
@@ -78,13 +135,24 @@ target_include_directories(HybridRSDK PRIVATE
     ${VORBIS_INCLUDE_DIRS}
 )
 
-target_link_libraries(HybridRSDK PRIVATE
+set(HYBRID_LINK_LIBS
     rsdk_core
     ${SDL2_LIBRARIES}
     ${OPENGL_LIBRARIES}
     ${GLEW_LIBRARIES}
     ${VORBIS_LIBRARIES}
 )
+
+# Add optional RSDK versions if available
+if(TARGET rsdkv3_core)
+    list(APPEND HYBRID_LINK_LIBS rsdkv3_core)
+endif()
+
+if(TARGET rsdkv5_core)
+    list(APPEND HYBRID_LINK_LIBS rsdkv5_core)
+endif()
+
+target_link_libraries(HybridRSDK PRIVATE ${HYBRID_LINK_LIBS})
 
 # Set Windows-specific properties
 if(WIN32)
@@ -104,8 +172,18 @@ target_link_libraries(rsdkv4 PRIVATE
     rsdk_core
 )
 
-# Install rules
-install(TARGETS rsdk_core rsdkv4 HybridRSDK
+# Install rules - include all available targets
+set(INSTALL_TARGETS rsdk_core rsdkv4 HybridRSDK)
+
+if(TARGET rsdkv3_core)
+    list(APPEND INSTALL_TARGETS rsdkv3_core)
+endif()
+
+if(TARGET rsdkv5_core)
+    list(APPEND INSTALL_TARGETS rsdkv5_core)
+endif()
+
+install(TARGETS ${INSTALL_TARGETS}
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib
