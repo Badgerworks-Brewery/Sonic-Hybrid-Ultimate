@@ -25,31 +25,11 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y cmake build-essential pkg-config libsdl2-dev libgl1-mesa-dev libglew-dev libvorbis-dev libtinyxml2-dev
-    - name: Fetch RSDK decompilations
+
+    - name: Build project
       run: |
-        chmod +x fetch_rsdkv3.sh fetch_rsdkv4.sh fetch_rsdkv5.sh
-        ./fetch_rsdkv4.sh
-        ./fetch_rsdkv3.sh
-        ./fetch_rsdkv5.sh
-
-
-    - name: Clean and create build directory
-      run: |
-        rm -rf build
-        mkdir -p build
-      working-directory: "Hybrid-RSDK Main"
-
-    - name: Configure CMake
-      run: cmake ..
-      working-directory: "Hybrid-RSDK Main/build"
-
-    - name: Build native components
-      run: cmake --build .
-      working-directory: "Hybrid-RSDK Main/build"
-
-    - name: Build Custom Client
-      run: dotnet build
-      working-directory: "Custom Client"
+        chmod +x build_all.sh
+        ./build_all.sh
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
