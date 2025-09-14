@@ -1,7 +1,7 @@
 #ifndef TRANSITION_MANAGER_H
 #define TRANSITION_MANAGER_H
 
-#include "RetroEngine.hpp"
+#include "../RSDKV4/RSDKV4/RetroEngine.hpp"
 #include <vector>
 
 namespace SonicHybrid {
