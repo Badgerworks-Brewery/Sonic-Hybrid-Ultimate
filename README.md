@@ -1,3 +1,4 @@
+# Reading README content
 # Build Process
 
 To build the project, ensure that all necessary project files are present in the repository. If you encounter the error `MSB1009: Project file does not exist`, verify the project file paths in the build scripts and ensure all required files are included.
@@ -72,13 +73,13 @@ This guide is useful if you previously played Sonic Hybrid but you want to perfo
 * Star Posts in Sonic the Hedgehog 1 and CD will bring you to the Sonic the Hedgehog 2 special stages.
 * Completing Sonic the Hedgehog 1's Final Zone will bring you to Palmtree Panic Zone.
 * Completing Sonic the Hedgehog CD's Metallic Madness Act 3 will bring you to Emerald Hill Zone.
-* Completing Death Egg Zone in Sonic the Hedgehog 2 will bring you to Angel Island Zone. 
+* Completing Death Egg Zone in Sonic the Hedgehog 2 will bring you to Angel Island Zone.
 * The Stage Select in the debug menu will report all the implemented level names.
 * Sonic CD stages correctly transitions as the original game.
 * Metal Sonic is now a playable character.
 * Sonic 3 will be included.
 
-## Known issues 
+## Known issues
 * **It runs, but when you load a level  it only loads the background**
 * No Sonic 3 yet.
 * Sonic 1 Special Stages are working from the Stage Select, but the graphics is corrupted.
