@@ -72,6 +72,7 @@ target_include_directories(rsdk_core PUBLIC
 target_link_libraries(rsdk_core PUBLIC
     ${SDL2_LIBRARIES}
     ${OPENGL_LIBRARIES}
+    ${TINYXML2_LIBRARIES}
     ${GLEW_LIBRARIES}
     ${VORBIS_LIBRARIES}
 )
