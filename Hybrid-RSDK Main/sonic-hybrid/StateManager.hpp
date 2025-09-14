@@ -40,7 +40,7 @@ namespace SonicHybrid {
         };
 
     private:
-        RSDK::RetroEngine* rsdkEngine;
+        RetroEngine* rsdkEngine;
         GameState currentState;
         std::vector<GameState> savedStates;
 
