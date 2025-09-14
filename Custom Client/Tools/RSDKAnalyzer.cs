@@ -9,9 +9,15 @@ namespace SonicHybridUltimate.Tools
     public class RSDKAnalyzer
     {
         private readonly string rsdkPath;
-        private readonly ILogger logger;
+        private readonly ILogger<RSDKAnalyzer> logger;
 
-        public RSDKAnalyzer(string rsdkPath, ILogger logger)
+        public RSDKAnalyzer(ILogger<RSDKAnalyzer> logger)
+        {
+            this.logger = logger;
+            this.rsdkPath = string.Empty;
+        }
+
+        public RSDKAnalyzer(string rsdkPath, ILogger<RSDKAnalyzer> logger)
         {
             this.rsdkPath = rsdkPath;
             this.logger = logger;
@@ -26,19 +32,19 @@ namespace SonicHybridUltimate.Tools
                 {
                     // Read RSDK header
                     var signature = new string(reader.ReadChars(4));
-                    logger.Log($"RSDK Signature: {signature}");
+                    logger.LogInformation("RSDK Signature: {Signature}", signature);
 
                     // Read version info
                     var version = reader.ReadUInt32();
-                    logger.Log($"RSDK Version: {version}");
+                    logger.LogInformation("RSDK Version: {Version}", version);
 
                     // Read file count
                     var fileCount = reader.ReadUInt32();
-                    logger.Log($"Number of files: {fileCount}");
+                    logger.LogInformation("Number of files: {FileCount}", fileCount);
 
                     // Read file table
                     var fileTable = new List<RSDKFileEntry>();
-                    for (int i = 0; i < fileCount; i++)
+                    for (uint i = 0; i < fileCount; i++)
                     {
                         var entry = new RSDKFileEntry
                         {
@@ -47,13 +53,13 @@ namespace SonicHybridUltimate.Tools
                             Name = ReadNullTerminatedString(reader)
                         };
                         fileTable.Add(entry);
-                        logger.Log($"File {i}: {entry.Name} (Size: {entry.Size} bytes, Offset: {entry.Offset})");
+                        logger.LogInformation("File {Index}: {Name} (Size: {Size} bytes, Offset: {Offset})", i, entry.Name, entry.Size, entry.Offset);
                     }
                 }
             }
             catch (Exception ex)
             {
-                logger.LogError($"Error analyzing RSDK file: {ex.Message}");
+                logger.LogError(ex, "Error analyzing RSDK file");
             }
         }
 
@@ -73,6 +79,6 @@ namespace SonicHybridUltimate.Tools
     {
         public uint Offset { get; set; }
         public uint Size { get; set; }
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
     }
 }
