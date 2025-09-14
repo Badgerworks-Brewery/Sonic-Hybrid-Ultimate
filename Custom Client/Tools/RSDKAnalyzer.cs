@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using System.Text;
 using System.Collections.Generic;
 using Microsoft.Extensions.Logging;
 
@@ -8,77 +7,90 @@ namespace SonicHybridUltimate.Tools
 {
     public class RSDKAnalyzer
     {
-        private readonly string rsdkPath;
-        private readonly ILogger<RSDKAnalyzer> logger;
+        private readonly ILogger<RSDKAnalyzer> _logger;
+        private readonly Dictionary<string, GameInfo> _gameDatabase;
 
         public RSDKAnalyzer(ILogger<RSDKAnalyzer> logger)
         {
-            this.logger = logger;
-            this.rsdkPath = string.Empty;
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _gameDatabase = InitializeGameDatabase();
         }
 
-        public RSDKAnalyzer(string rsdkPath, ILogger<RSDKAnalyzer> logger)
-        {
-            this.rsdkPath = rsdkPath;
-            this.logger = logger;
-        }
-
-        public void AnalyzeFile()
+        public GameInfo? AnalyzeRSDKFile(string filePath)
         {
             try
             {
-                using (var stream = new FileStream(rsdkPath, FileMode.Open, FileAccess.Read))
-                using (var reader = new BinaryReader(stream))
+                if (!File.Exists(filePath))
                 {
-                    // Read RSDK header
-                    var signature = new string(reader.ReadChars(4));
-                    logger.LogInformation("RSDK Signature: {Signature}", signature);
-
-                    // Read version info
-                    var version = reader.ReadUInt32();
-                    logger.LogInformation("RSDK Version: {Version}", version);
-
-                    // Read file count
-                    var fileCount = reader.ReadUInt32();
-                    logger.LogInformation("Number of files: {FileCount}", fileCount);
-
-                    // Read file table
-                    var fileTable = new List<RSDKFileEntry>();
-                    for (uint i = 0; i < fileCount; i++)
-                    {
-                        var entry = new RSDKFileEntry
-                        {
-                            Offset = reader.ReadUInt32(),
-                            Size = reader.ReadUInt32(),
-                            Name = ReadNullTerminatedString(reader)
-                        };
-                        fileTable.Add(entry);
-                        logger.LogInformation("File {Index}: {Name} (Size: {Size} bytes, Offset: {Offset})", i, entry.Name, entry.Size, entry.Offset);
-                    }
+                    _logger.LogError("RSDK file not found: {FilePath}", filePath);
+                    return null;
                 }
+
+                _logger.LogInformation("Analyzing RSDK file: {FilePath}", filePath);
+
+                using var stream = File.OpenRead(filePath);
+                using var reader = new BinaryReader(stream);
+
+                // Read RSDK header
+                var signature = reader.ReadBytes(4);
+                var version = reader.ReadByte();
+                var gameType = reader.ReadByte();
+
+                // Determine game based on signature and metadata
+                var gameInfo = DetermineGame(signature, version, gameType, filePath);
+
+                if (gameInfo != null)
+                {
+                    _logger.LogInformation("Detected game: {GameName} (Version: {Version})",
+                        gameInfo.Name, gameInfo.Version);
+                }
+                else
+                {
+                    _logger.LogWarning("Could not determine game type for: {FilePath}", filePath);
+                }
+
+                return gameInfo;
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Error analyzing RSDK file");
+                _logger.LogError(ex, "Error analyzing RSDK file: {FilePath}", filePath);
+                return null;
             }
         }
 
-        private string ReadNullTerminatedString(BinaryReader reader)
+        private GameInfo? DetermineGame(byte[] signature, byte version, byte gameType, string filePath)
         {
-            var bytes = new List<byte>();
-            byte b;
-            while ((b = reader.ReadByte()) != 0)
+            var fileName = Path.GetFileNameWithoutExtension(filePath).ToLowerInvariant();
+
+            if (_gameDatabase.TryGetValue(fileName, out var gameInfo))
             {
-                bytes.Add(b);
+                return gameInfo;
             }
-            return Encoding.ASCII.GetString(bytes.ToArray());
+
+            // Fallback detection based on file size or other heuristics
+            var fileSize = new FileInfo(filePath).Length;
+
+            // These are approximate sizes - adjust based on actual game files
+            return fileSize switch
+            {
+                > 50_000_000 => new GameInfo("Sonic 2", "RSDKv4", "sonic2"),
+                > 30_000_000 => new GameInfo("Sonic CD", "RSDKv3", "soniccd"),
+                > 20_000_000 => new GameInfo("Sonic 1", "RSDKv4", "sonic1"),
+                _ => null
+            };
+        }
+
+        private Dictionary<string, GameInfo> InitializeGameDatabase()
+        {
+            return new Dictionary<string, GameInfo>
+            {
+                ["sonic1"] = new GameInfo("Sonic the Hedgehog", "RSDKv4", "sonic1"),
+                ["sonic2"] = new GameInfo("Sonic the Hedgehog 2", "RSDKv4", "sonic2"),
+                ["soniccd"] = new GameInfo("Sonic CD", "RSDKv3", "soniccd"),
+                ["sonic3"] = new GameInfo("Sonic 3 & Knuckles", "Oxygen", "sonic3")
+            };
         }
     }
 
-    public class RSDKFileEntry
-    {
-        public uint Offset { get; set; }
-        public uint Size { get; set; }
-        public string Name { get; set; } = string.Empty;
-    }
+    public record GameInfo(string Name, string Version, string Identifier);
 }
