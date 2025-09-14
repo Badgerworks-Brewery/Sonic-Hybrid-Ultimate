@@ -257,6 +257,11 @@ enum RetroRegions {
     REGION_EU = 2,
 };
 
+// Forward declaration for TextMenu
+struct TextMenu {
+    // Placeholder structure
+};
+
 #if RETRO_REV00
 enum RetroEngineMessages {
     MESSAGE_NONE      = 0,
