@@ -8,7 +8,7 @@
 namespace SonicHybrid {
     class StateManager {
     public:
-        void Initialize(RSDK::RetroEngine* engine);
+        void Initialize(RetroEngine* engine);
         void Update();
         void ResetState();
         void SaveState();
@@ -22,16 +22,16 @@ namespace SonicHybrid {
             int rings;
             int score;
             bool isSuper;
-            
+
             // Level state
             std::string currentZone;
             int currentAct;
             std::vector<bool> checkpoints;
-            
+
             // Game progress
             int emeralds;
             bool specialStageAvailable;
-            
+
             // Engine state
             float cameraX;
             float cameraY;
@@ -40,7 +40,7 @@ namespace SonicHybrid {
         };
 
     private:
-        RSDK::RetroEngine* rsdkEngine;
+        RetroEngine* rsdkEngine;
         GameState currentState;
         std::vector<GameState> savedStates;
 

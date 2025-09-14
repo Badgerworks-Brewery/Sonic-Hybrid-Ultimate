@@ -13,11 +13,29 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - name: configure
-      run: ./configure
-    - name: make
-      run: make
-    - name: make check
-      run: make check
-    - name: make distcheck
-      run: make distcheck
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '6.0.x'
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake build-essential pkg-config libsdl2-dev libgl1-mesa-dev libglew-dev libvorbis-dev
+
+    - name: Create build directory
+      run: mkdir -p build
+      working-directory: "Hybrid-RSDK Main"
+
+    - name: Configure CMake
+      run: cmake ..
+      working-directory: "Hybrid-RSDK Main/build"
+
+    - name: Build native components
+      run: cmake --build .
+      working-directory: "Hybrid-RSDK Main/build"
+
+    - name: Build Custom Client
+      run: dotnet build
+      working-directory: "Custom Client"
