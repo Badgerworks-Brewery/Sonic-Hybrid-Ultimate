@@ -3,7 +3,7 @@
 
 namespace SonicHybrid {
     bool HybridEngine::Initialize() {
-        engine = std::make_unique<RSDK::RetroEngine>();
+        engine = std::make_unique<RetroEngine>();
         stateManager = std::make_unique<StateManager>();
         transitionManager = std::make_unique<TransitionManager>();
 
@@ -106,7 +106,7 @@ namespace SonicHybrid {
         if (engine) {
             engine->Cleanup();
         }
-        
+
         stateManager.reset();
         transitionManager.reset();
         engine.reset();
