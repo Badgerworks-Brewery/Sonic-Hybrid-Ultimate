@@ -23,7 +23,7 @@ namespace SonicHybrid {
         };
 
     private:
-        RSDK::RetroEngine* rsdkEngine;
+        RetroEngine* rsdkEngine;
         bool transitioning;
         float progress;
 
