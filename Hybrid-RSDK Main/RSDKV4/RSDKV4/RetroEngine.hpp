@@ -251,6 +251,12 @@ enum RetroLanguages {
     RETRO_ZS = 10,
 };
 
+enum RetroRegions {
+    REGION_US = 0,
+    REGION_JP = 1,
+    REGION_EU = 2,
+};
+
 #if RETRO_REV00
 enum RetroEngineMessages {
     MESSAGE_NONE      = 0,

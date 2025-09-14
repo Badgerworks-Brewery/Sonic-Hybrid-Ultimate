@@ -4,6 +4,8 @@
 #include "RetroEngine.hpp"
 #include "StateManager.hpp"
 #include "TransitionManager.hpp"
+#include <functional>
+#include <vector>
 #include <memory>
 
 namespace SonicHybrid {
@@ -35,7 +37,7 @@ namespace SonicHybrid {
         HybridEngine() = default;
         ~HybridEngine() = default;
 
-        std::unique_ptr<RSDK::RetroEngine> engine;
+        std::unique_ptr<RetroEngine> engine;
         std::unique_ptr<StateManager> stateManager;
         std::unique_ptr<TransitionManager> transitionManager;
         std::function<void()> completionCallback;
