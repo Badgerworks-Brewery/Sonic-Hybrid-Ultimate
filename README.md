@@ -1,11 +1,4 @@
-# Reading README content
-# Build Process
-
-To build the project, ensure that all necessary project files are present in the repository. If you encounter the error `MSB1009: Project file does not exist`, verify the project file paths in the build scripts and ensure all required files are included.
-
-Run the build command from the project's root directory.
-
-# Sonic RSDK + Oxygen Engine (Help Needed)
+# Sonic Hybrid Ultimate
 
 Aims to mix different Sonic the Hedgehog games into a single big game. Acts as a legal but cheaper version of Sonic Origins for fans that dont want to get scammed.
 
@@ -25,47 +18,83 @@ The Frontend will oversee and run both parts seperately, after Sonic 2 ends, the
 ## Completion Status:
 Hybrid-RSDK Debugging/Additons ?% (Hybrid-RSDK is still broken)
 
-
 Sonic 3 AIR (Oxygen) Integration 50% (All the source code is in the repo, but we havent done the neccessary changes yet)
 Integration with Hybrid RSDK is in progress, focusing on resolving loading issues and graphical corruption.
 
-
 Custom Client 0% (debugging Hybrid RSDK is the priority)
 
-## WARNING: DOES NOT WORK YET!
-Start from here:
+## Build Process
 
-This guide is useful if you never downloaded the project or if you want to start from scratch.
+### Prerequisites
+- CMake 3.15 or higher
+- C++17 compatible compiler
+- .NET 6.0 SDK
+- Git with submodule support
 
-1. [Download](https://github.com/Xeeynamo/sonic-hybrid-rsdk/archive/refs/heads/main.zip) the latest release
+### Dependencies (Linux/Ubuntu)
+```bash
+sudo apt-get update
+sudo apt-get install -y cmake build-essential pkg-config libsdl2-dev libgl1-mesa-dev libglew-dev libvorbis-dev libtinyxml2-dev
+```
 
-1. Unpack the zip file
+### Build Instructions
 
-1. Paste in the directory `rsdk-source-data` the following files:
+1. Clone the repository with submodules:
+```bash
+git clone --recursive https://github.com/Badgerworks-Brewery/Sonic-Hybrid-Ultimate.git
+cd Sonic-Hybrid-Ultimate
+```
 
-    * `Data.rsdk` from Sonic CD as `soniccd.rsdk`
-    * `Data.rsdk` from Sonic 1 as `sonic1.rsdk`
-    * `Data.rsdk` from Sonic 2 as `sonic2.rsdk`
-    * `Rom.bin`   from Sonic 3&K as `sonic3.bin` (I doubt this will be addable as Sonic 3 is a ROM unlike the rest which is a RSDK)
-1. Install [.NET 6](https://dotnet.microsoft.com/download/dotnet/6.0)
+2. Fetch RSDK decompilations:
+```bash
+chmod +x fetch_rsdkv3.sh fetch_rsdkv4.sh fetch_rsdkv5.sh
+./fetch_rsdkv4.sh
+./fetch_rsdkv3.sh
+./fetch_rsdkv5.sh
+```
 
-1. Open a terminal and run the command `dotnet run --project SonicHybridRsdk.Build`
+3. Build the Hybrid RSDK engine:
+```bash
+cd "Hybrid-RSDK Main"
+mkdir -p build
+cd build
+cmake ..
+cmake --build .
+cd ../..
+```
 
-1. Put the [RSDKv4](https://github.com/Rubberduckycooly/Sonic-1-2-2013-Decompilation/releases/tag/1.3.2) engine in the `sonic-hybrid` folder (still havent decided)
+4. Build the Custom Client:
+```bash
+cd "Custom Client"
+dotnet build
+cd ..
+```
 
-1. Compile/run the executable and have fun!
+5. Put the required game data files in `Hybrid-RSDK Main/rsdk-source-data/`:
+   - `Data.rsdk` from Sonic CD as `soniccd.rsdk`
+   - `Data.rsdk` from Sonic 1 as `sonic1.rsdk`
+   - `Data.rsdk` from Sonic 2 as `sonic2.rsdk`
+   - `Rom.bin` from Sonic 3&K as `sonic3.bin`
+
+6. Run the executable and have fun!
 
 ## Perform an update
 
-This guide is useful if you previously played Sonic Hybrid but you want to perform an update. Please look at the [commit list](https://github.com/Xeeynamo/sonic-hybrid-rsdk/commits/main) to know more info about the changelog through each update.
+This guide is useful if you previously played Sonic Hybrid but you want to perform an update. Please look at the [commit list](https://github.com/Badgerworks-Brewery/Sonic-Hybrid-Ultimate/commits/main) to know more info about the changelog through each update.
 
-1. [Download](https://github.com/Xeeynamo/sonic-hybrid-rsdk/archive/refs/heads/main.zip) the latest release
+1. Pull the latest changes:
+```bash
+git pull --recurse-submodules
+```
 
-1. Unpack the zip file and overwrite all the existing files
+2. Update RSDK decompilations:
+```bash
+./fetch_rsdkv4.sh
+./fetch_rsdkv3.sh
+./fetch_rsdkv5.sh
+```
 
-1. Open a terminal and run the command `dotnet run --project SonicHybridRsdk.Build`
-
-1. Run the executable and have fun!
+3. Rebuild the project following steps 3-4 from the build instructions above.
 
 ## Features
 
@@ -90,7 +119,6 @@ This guide is useful if you previously played Sonic Hybrid but you want to perfo
 * In Palmtree Panic Zone, the spinner will softlock the player.
 * Some Sonic CD's enemies and gimmicks might have the wrong palette.
 * Playable Metal Sonic has a "rolling" bugging collision.
-
 
 ## Resources
 
