@@ -1,87 +1,112 @@
-# Build Process
+# Sonic Hybrid Ultimate
 
-To build the project, ensure that all necessary project files are present in the repository. If you encounter the error `MSB1009: Project file does not exist`, verify the project file paths in the build scripts and ensure all required files are included.
-
-Run the build command from the project's root directory.
-
-# Sonic RSDK + Oxygen Engine (Help Needed)
-
-Aims to mix different Sonic the Hedgehog games into a single big game. Acts as a legal but cheaper version of Sonic Origins for fans that dont want to get scammed.
+A comprehensive Sonic the Hedgehog experience that combines multiple games into one seamless adventure.
 
 ![Sonic 1 in Sonic 2](docs/preview.png)
 
-## How it's gonna work.
-Instead of mixing 3 AIR'S Engine (called Oxygen) with the RSDK/Retro engine or compiling rsdk and 3 air as seperate EXEs to be laucnhed in one window, both of which is what this project gets confused as being, the project will have 3 (main) working parts:
+## Overview
 
-Sonic 3 AIR/Oxygen Engine.
+This project combines the RSDK (Retro Engine) decompilations with Sonic 3 AIR's Oxygen Engine to create a unified Sonic experience. Instead of mixing engines directly, the project uses a custom frontend that manages transitions between different game engines.
 
-Sonic Hybrid RSDK plus the Decompilations of RSDK Versions 3, 4 and/or 5U
+## Architecture
 
-And a seperate Frontend for managing both.
+The project consists of three main components:
 
-The Frontend will oversee and run both parts seperately, after Sonic 2 ends, the Frontend begins launching Sonic 3 and Knuckles via Sonic 3 AIR, sort of like switching HDMI inputs from one device to another on a TV.
+1. **Hybrid-RSDK Engine**: Enhanced RSDK engine supporting multiple versions (v3, v4, v5)
+2. **Sonic 3 AIR Integration**: Oxygen Engine for Sonic 3 & Knuckles
+3. **Custom Client**: Frontend that manages game transitions and provides a unified interface
 
-## Completion Status:
-Hybrid-RSDK Debugging/Additons ?% (Hybrid-RSDK is still broken)
+## Build Process
 
+### Prerequisites
 
-Sonic 3 AIR (Oxygen) Integration 50% (All the source code is in the repo, but we havent done the neccessary changes yet)
-Integration with Hybrid RSDK is in progress, focusing on resolving loading issues and graphical corruption.
+- **Linux/macOS**: CMake, SDL2, OpenGL, GLEW, Vorbis libraries
+- **Windows**: Visual Studio 2019+ or Build Tools
+- **.NET 6.0 SDK** for the Custom Client
+- **Git** for fetching submodules and dependencies
 
+### Quick Build
 
-Custom Client 0% (debugging Hybrid RSDK is the priority)
+```bash
+# Make the build script executable
+chmod +x build_clean.sh
 
-## WARNING: DOES NOT WORK YET!
-Start from here:
+# Run the build script
+./build_clean.sh
+```
 
-This guide is useful if you never downloaded the project or if you want to start from scratch.
+### Manual Build
 
-1. [Download](https://github.com/Xeeynamo/sonic-hybrid-rsdk/archive/refs/heads/main.zip) the latest release
+1. **Install Dependencies**:
+   ```bash
+   # Ubuntu/Debian
+   sudo apt-get install cmake build-essential pkg-config libsdl2-dev libgl1-mesa-dev libglew-dev libvorbis-dev
 
-1. Unpack the zip file
+   # macOS (with Homebrew)
+   brew install cmake sdl2 glew libvorbis pkg-config
+   ```
 
-1. Paste in the directory `rsdk-source-data` the following files:
+2. **Fetch RSDK Decompilations**:
+   ```bash
+   ./fetch_rsdkv3.sh  # For Sonic CD
+   ./fetch_rsdkv5.sh  # Universal RSDK engine
+   ```
 
-    * `Data.rsdk` from Sonic CD as `soniccd.rsdk`
-    * `Data.rsdk` from Sonic 1 as `sonic1.rsdk`
-    * `Data.rsdk` from Sonic 2 as `sonic2.rsdk`
-    * `Rom.bin`   from Sonic 3&K as `sonic3.bin` (I doubt this will be addable as Sonic 3 is a ROM unlike the rest which is a RSDK)
-1. Install [.NET 6](https://dotnet.microsoft.com/download/dotnet/6.0)
+3. **Build Hybrid-RSDK**:
+   ```bash
+   cd "Hybrid-RSDK Main"
+   mkdir build && cd build
+   cmake .. -DCMAKE_BUILD_TYPE=Release
+   cmake --build . --config Release
+   ```
 
-1. Open a terminal and run the command `dotnet run --project SonicHybridRsdk.Build`
+4. **Build Custom Client**:
+   ```bash
+   cd "Custom Client"
+   dotnet restore
+   dotnet build --configuration Release
+   ```
 
-1. Put the [RSDKv4](https://github.com/Rubberduckycooly/Sonic-1-2-2013-Decompilation/releases/tag/1.3.2) engine in the `sonic-hybrid` folder (still havent decided)
+## Setup
 
-1. Compile/run the executable and have fun!
+1. **Obtain Game Data Files**:
+   - `sonic1.rsdk` from Sonic 1 (2013 version)
+   - `sonic2.rsdk` from Sonic 2 (2013 version)
+   - `soniccd.rsdk` from Sonic CD
+   - `sonic3.bin` from Sonic 3 & Knuckles ROM
 
-## Perform an update
+2. **Place Data Files**:
+   ```
+   Hybrid-RSDK Main/rsdk-source-data/
+   ├── sonic1.rsdk
+   ├── sonic2.rsdk
+   ├── soniccd.rsdk
+   └── sonic3.bin
+   ```
 
-This guide is useful if you previously played Sonic Hybrid but you want to perform an update. Please look at the [commit list](https://github.com/Xeeynamo/sonic-hybrid-rsdk/commits/main) to know more info about the changelog through each update.
-
-1. [Download](https://github.com/Xeeynamo/sonic-hybrid-rsdk/archive/refs/heads/main.zip) the latest release
-
-1. Unpack the zip file and overwrite all the existing files
-
-1. Open a terminal and run the command `dotnet run --project SonicHybridRsdk.Build`
-
-1. Run the executable and have fun!
+3. **Run the Custom Client**:
+   ```bash
+   cd "Custom Client/bin/Release/net6.0-windows"
+   ./SonicHybrid.exe
+   ```
 
 ## Features
 
-* Play Sonic 1, Sonic CD, Sonic 2 and Sonic 3&k a single big game.
+* Play Sonic 1, Sonic CD, Sonic 2 and Sonic 3&K as a single big game.
 * Star Posts in Sonic the Hedgehog 1 and CD will bring you to the Sonic the Hedgehog 2 special stages.
 * Completing Sonic the Hedgehog 1's Final Zone will bring you to Palmtree Panic Zone.
 * Completing Sonic the Hedgehog CD's Metallic Madness Act 3 will bring you to Emerald Hill Zone.
-* Completing Death Egg Zone in Sonic the Hedgehog 2 will bring you to Angel Island Zone. 
+* Completing Death Egg Zone in Sonic the Hedgehog 2 will bring you to Angel Island Zone.
 * The Stage Select in the debug menu will report all the implemented level names.
 * Sonic CD stages correctly transitions as the original game.
 * Metal Sonic is now a playable character.
 * Sonic 3 will be included.
 
-## Known issues 
-* **It runs, but when you load a level  it only loads the background**
-* No Sonic 3 yet.
-* Sonic 1 Special Stages are working from the Stage Select, but the graphics is corrupted.
+## Known Issues
+
+* **Building requires proper RSDK data files**
+* No Sonic 3 yet (in progress).
+* Sonic 1 Special Stages are working from the Stage Select, but the graphics may be corrupted.
 * The main menu of RSDK will report the wrong stage names.
 * The Giant Ring from Sonic the Hedgehog 1 will teleport to the Sonic the Hedgehog 2 special stages.
 * Collision Chaos and Stardust Speedway are half-implemented.
@@ -89,7 +114,6 @@ This guide is useful if you previously played Sonic Hybrid but you want to perfo
 * In Palmtree Panic Zone, the spinner will softlock the player.
 * Some Sonic CD's enemies and gimmicks might have the wrong palette.
 * Playable Metal Sonic has a "rolling" bugging collision.
-
 
 ## Resources
 
@@ -100,7 +124,9 @@ Everything contained in `rsdk/Scripts` is a modified version of [Rubberduckycool
 The function `SonicHybridRsdk.Unpack12/DecryptData` was written by Giuseppe Gatta (nextvolume) from its [Retrun](http://unhaut.epizy.com/retrun/).
 
 ## Credits
+
 * Decompilation by Rubberduckycooly.
 * Hybrid-RSDK by Xeeynamo.
 * Sonic 3 AIR by Eukaryot.
 * Main Development By FGSOFTWARE1.
+* RSDK Decompilations by RSDKModding team.
