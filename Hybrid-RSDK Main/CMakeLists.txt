@@ -104,17 +104,8 @@ target_link_libraries(rsdkv4 PRIVATE
     rsdk_core
 )
 
-# Hybrid RSDK executable
-add_executable(hybrid_rsdk
-    sonic-hybrid/main.cpp
-)
-
-target_link_libraries(hybrid_rsdk PRIVATE
-    HybridRSDK
-)
-
 # Install rules
-install(TARGETS rsdk_core rsdkv4 hybrid_rsdk HybridRSDK
+install(TARGETS rsdk_core rsdkv4 HybridRSDK
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib
