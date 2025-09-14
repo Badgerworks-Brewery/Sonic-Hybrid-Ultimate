@@ -15,7 +15,7 @@ namespace SonicHybridUltimate
         private readonly RSDKEngine _rsdkEngine;
         private readonly OxygenEngine _oxygenEngine;
         private readonly RSDKAnalyzer _rsdkAnalyzer;
-        
+
         private RichTextBox _logBox = null!;
         private Label _statusLabel = null!;
         private Button _loadSonic2Button = null!;
@@ -210,6 +210,12 @@ namespace SonicHybridUltimate
             // TODO: Implement Death Egg zone completion check
             // For now, just enable Sonic 3 button for testing
             _loadSonic3Button.Enabled = true;
+
+            if (_rsdkEngine.IsDeathEggDefeated())
+            {
+                _logger.LogInformation("Death Egg defeated! Enabling Sonic 3 & Knuckles...");
+                _loadSonic3Button.Enabled = true;
+            }
         }
 
         private void Log(string message)
