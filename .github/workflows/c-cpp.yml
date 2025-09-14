@@ -4,7 +4,7 @@ on:
   push:
     branches: [ "main", "gitauto/*" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main", "gitauto/*" ]
 
 jobs:
   build:
