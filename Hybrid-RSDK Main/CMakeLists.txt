@@ -25,21 +25,27 @@ if(WIN32)
 endif()
 
 # Dependencies
-find_package(SDL2 REQUIRED)
-find_package(OpenGL REQUIRED)
-find_package(GLEW REQUIRED)
-find_package(PkgConfig REQUIRED)
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(VORBIS REQUIRED vorbis vorbisfile)
-pkg_check_modules(TINYXML2 REQUIRED tinyxml2)
+if(WIN32)
+    find_package(SDL2 CONFIG REQUIRED)
+    find_package(OpenGL REQUIRED)
+    find_package(GLEW REQUIRED)
+    find_package(Vorbis REQUIRED)
+    find_package(tinyxml2 CONFIG REQUIRED)
+else()
+    find_package(SDL2 REQUIRED)
+    find_package(OpenGL REQUIRED)
+    find_package(GLEW REQUIRED)
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(VORBIS REQUIRED vorbis vorbisfile)
+    pkg_check_modules(TINYXML2 REQUIRED tinyxml2)
+endif()
+
 # Check if RSDK decompilations exist
 if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation")
     message(STATUS "RSDKv4 Decompilation not found, fetching...")
     execute_process(COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/../fetch_rsdkv4.sh)
 endif()
 
-
-# Check if RSDK decompilations exist
 if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/RSDKV3")
     message(STATUS "RSDKv3 not found, fetching...")
     execute_process(COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/../fetch_rsdkv3.sh)
@@ -76,20 +82,39 @@ add_library(rsdk_core STATIC
 
 target_include_directories(rsdk_core PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4/RSDKV4
-    ${SDL2_INCLUDE_DIRS}
-    ${OPENGL_INCLUDE_DIR}
-    ${TINYXML2_INCLUDE_DIRS}
-    ${GLEW_INCLUDE_DIRS}
-    ${VORBIS_INCLUDE_DIRS}
 )
 
-target_link_libraries(rsdk_core PUBLIC
-    ${SDL2_LIBRARIES}
-    ${OPENGL_LIBRARIES}
-    ${TINYXML2_LIBRARIES}
-    ${GLEW_LIBRARIES}
-    ${VORBIS_LIBRARIES}
-)
+if(WIN32)
+    target_include_directories(rsdk_core PUBLIC
+        ${SDL2_INCLUDE_DIRS}
+        ${OPENGL_INCLUDE_DIR}
+        ${GLEW_INCLUDE_DIRS}
+    )
+    target_link_libraries(rsdk_core PUBLIC
+        SDL2::SDL2
+        SDL2::SDL2main
+        ${OPENGL_LIBRARIES}
+        GLEW::GLEW
+        Vorbis::vorbis
+        Vorbis::vorbisfile
+        tinyxml2::tinyxml2
+    )
+else()
+    target_include_directories(rsdk_core PUBLIC
+        ${SDL2_INCLUDE_DIRS}
+        ${OPENGL_INCLUDE_DIR}
+        ${GLEW_INCLUDE_DIRS}
+        ${VORBIS_INCLUDE_DIRS}
+        ${TINYXML2_INCLUDE_DIRS}
+    )
+    target_link_libraries(rsdk_core PUBLIC
+        ${SDL2_LIBRARIES}
+        ${OPENGL_LIBRARIES}
+        ${GLEW_LIBRARIES}
+        ${VORBIS_LIBRARIES}
+        ${TINYXML2_LIBRARIES}
+    )
+endif()
 
 # RSDK V3 Core library (for Sonic CD)
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/RSDKV3")
@@ -99,18 +124,36 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/RSDKV3")
 
         target_include_directories(rsdkv3_core PUBLIC
             ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV3
-            ${SDL2_INCLUDE_DIRS}
-            ${OPENGL_INCLUDE_DIR}
-            ${GLEW_INCLUDE_DIRS}
-            ${VORBIS_INCLUDE_DIRS}
         )
 
-        target_link_libraries(rsdkv3_core PUBLIC
-            ${SDL2_LIBRARIES}
-            ${OPENGL_LIBRARIES}
-            ${GLEW_LIBRARIES}
-            ${VORBIS_LIBRARIES}
-        )
+        if(WIN32)
+            target_include_directories(rsdkv3_core PUBLIC
+                ${SDL2_INCLUDE_DIRS}
+                ${OPENGL_INCLUDE_DIR}
+                ${GLEW_INCLUDE_DIRS}
+            )
+            target_link_libraries(rsdkv3_core PUBLIC
+                SDL2::SDL2
+                SDL2::SDL2main
+                ${OPENGL_LIBRARIES}
+                GLEW::GLEW
+                Vorbis::vorbis
+                Vorbis::vorbisfile
+            )
+        else()
+            target_include_directories(rsdkv3_core PUBLIC
+                ${SDL2_INCLUDE_DIRS}
+                ${OPENGL_INCLUDE_DIR}
+                ${GLEW_INCLUDE_DIRS}
+                ${VORBIS_INCLUDE_DIRS}
+            )
+            target_link_libraries(rsdkv3_core PUBLIC
+                ${SDL2_LIBRARIES}
+                ${OPENGL_LIBRARIES}
+                ${GLEW_LIBRARIES}
+                ${VORBIS_LIBRARIES}
+            )
+        endif()
     endif()
 endif()
 
@@ -122,18 +165,36 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/RSDKV5")
 
         target_include_directories(rsdkv5_core PUBLIC
             ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV5
-            ${SDL2_INCLUDE_DIRS}
-            ${OPENGL_INCLUDE_DIR}
-            ${GLEW_INCLUDE_DIRS}
-            ${VORBIS_INCLUDE_DIRS}
         )
 
-        target_link_libraries(rsdkv5_core PUBLIC
-            ${SDL2_LIBRARIES}
-            ${OPENGL_LIBRARIES}
-            ${GLEW_LIBRARIES}
-            ${VORBIS_LIBRARIES}
-        )
+        if(WIN32)
+            target_include_directories(rsdkv5_core PUBLIC
+                ${SDL2_INCLUDE_DIRS}
+                ${OPENGL_INCLUDE_DIR}
+                ${GLEW_INCLUDE_DIRS}
+            )
+            target_link_libraries(rsdkv5_core PUBLIC
+                SDL2::SDL2
+                SDL2::SDL2main
+                ${OPENGL_LIBRARIES}
+                GLEW::GLEW
+                Vorbis::vorbis
+                Vorbis::vorbisfile
+            )
+        else()
+            target_include_directories(rsdkv5_core PUBLIC
+                ${SDL2_INCLUDE_DIRS}
+                ${OPENGL_INCLUDE_DIR}
+                ${GLEW_INCLUDE_DIRS}
+                ${VORBIS_INCLUDE_DIRS}
+            )
+            target_link_libraries(rsdkv5_core PUBLIC
+                ${SDL2_LIBRARIES}
+                ${OPENGL_LIBRARIES}
+                ${GLEW_LIBRARIES}
+                ${VORBIS_LIBRARIES}
+            )
+        endif()
     endif()
 endif()
 
@@ -147,19 +208,24 @@ add_library(HybridRSDK SHARED
 target_include_directories(HybridRSDK PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4/RSDKV4
     ${CMAKE_CURRENT_SOURCE_DIR}/sonic-hybrid
-    ${SDL2_INCLUDE_DIRS}
-    ${OPENGL_INCLUDE_DIR}
-    ${GLEW_INCLUDE_DIRS}
-    ${VORBIS_INCLUDE_DIRS}
 )
 
-set(HYBRID_LINK_LIBS
-    rsdk_core
-    ${SDL2_LIBRARIES}
-    ${OPENGL_LIBRARIES}
-    ${GLEW_LIBRARIES}
-    ${VORBIS_LIBRARIES}
-)
+if(WIN32)
+    target_include_directories(HybridRSDK PRIVATE
+        ${SDL2_INCLUDE_DIRS}
+        ${OPENGL_INCLUDE_DIR}
+        ${GLEW_INCLUDE_DIRS}
+    )
+else()
+    target_include_directories(HybridRSDK PRIVATE
+        ${SDL2_INCLUDE_DIRS}
+        ${OPENGL_INCLUDE_DIR}
+        ${GLEW_INCLUDE_DIRS}
+        ${VORBIS_INCLUDE_DIRS}
+    )
+endif()
+
+set(HYBRID_LINK_LIBS rsdk_core)
 
 # Add optional RSDK versions if available
 if(TARGET rsdkv3_core)
