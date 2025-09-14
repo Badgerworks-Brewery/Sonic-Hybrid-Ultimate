@@ -7,10 +7,10 @@
 namespace SonicHybrid {
     class TransitionManager {
     public:
-        void Initialize(RSDK::RetroEngine* engine);
+        void Initialize(RetroEngine* engine);
         void Update();
         void Render();
-        
+
         void StartTransition();
         bool IsTransitioning() const;
         float GetProgress() const;
@@ -26,11 +26,11 @@ namespace SonicHybrid {
         RSDK::RetroEngine* rsdkEngine;
         bool transitioning;
         float progress;
-        
+
         // Transition curve data
         std::vector<TrackPoint> trackPoints;
         TrackPoint currentPoint;
-        
+
         void UpdateTrackPosition();
         void InterpolateTrackPoints(float t, TrackPoint& result);
         void RenderTrackEffect();
