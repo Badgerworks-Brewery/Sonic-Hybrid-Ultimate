@@ -17,7 +17,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y cmake build-essential libsdl2-dev libgl1-mesa-dev libglew-dev
+        sudo apt-get install -y cmake build-essential libsdl2-dev libgl1-mesa-dev libglew-dev libvorbis-dev
 
     - name: Create build directory
       run: mkdir -p build
