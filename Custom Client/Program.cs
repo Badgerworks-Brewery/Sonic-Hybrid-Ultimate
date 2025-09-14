@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using SonicHybridUltimate.Engines;
 using SonicHybridUltimate.Tools;
+using SonicHybridUltimate.Core;
 
 namespace SonicHybridUltimate
 {

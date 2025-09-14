@@ -13,6 +13,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        submodules: recursive
 
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
@@ -24,8 +26,10 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y cmake build-essential pkg-config libsdl2-dev libgl1-mesa-dev libglew-dev libvorbis-dev
 
-    - name: Create build directory
-      run: mkdir -p build
+    - name: Clean and create build directory
+      run: |
+        rm -rf build
+        mkdir -p build
       working-directory: "Hybrid-RSDK Main"
 
     - name: Configure CMake
@@ -39,3 +43,11 @@ jobs:
     - name: Build Custom Client
       run: dotnet build
       working-directory: "Custom Client"
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: sonic-hybrid-ultimate
+        path: |
+          Hybrid-RSDK Main/build/bin/
+          Custom Client/bin/
