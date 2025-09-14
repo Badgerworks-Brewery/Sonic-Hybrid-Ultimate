@@ -21,7 +21,9 @@ find_package(SDL2 REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(GLEW REQUIRED)
 find_package(PkgConfig REQUIRED)
+find_package(PkgConfig REQUIRED)
 pkg_check_modules(VORBIS REQUIRED vorbis vorbisfile)
+pkg_check_modules(TINYXML2 REQUIRED tinyxml2)
 
 # Check if RSDK decompilations exist
 if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/RSDKV3")
