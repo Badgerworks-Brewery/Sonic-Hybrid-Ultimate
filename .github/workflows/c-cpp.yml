@@ -25,6 +25,12 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y cmake build-essential pkg-config libsdl2-dev libgl1-mesa-dev libglew-dev libvorbis-dev libtinyxml2-dev
+    - name: Fetch RSDK decompilations
+      run: |
+        chmod +x fetch_rsdkv3.sh fetch_rsdkv5.sh
+        ./fetch_rsdkv3.sh
+        ./fetch_rsdkv5.sh
+
 
     - name: Clean and create build directory
       run: |
