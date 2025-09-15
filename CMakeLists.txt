@@ -10,7 +10,14 @@ find_package(SDL2 CONFIG REQUIRED)
 find_package(tinyxml2 CONFIG REQUIRED)
 find_package(unofficial-theora CONFIG REQUIRED)
 
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/vendor/theoraplay")
+include_directories(
+    "${CMAKE_CURRENT_SOURCE_DIR}/vendor/theoraplay"
+if(UNIX)
+    "${CMAKE_CURRENT_SOURCE_DIR}/build/vcpkg_installed/x64-linux/include" 
+elseif(WIN32)
+    "${CMAKE_CURRENT_SOURCE_DIR}/build/vcpkg_installed/x64-windows/include"
+endif()   
+)
 
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/vendor/theoraplay")
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/Hybrid-RSDK Main")
