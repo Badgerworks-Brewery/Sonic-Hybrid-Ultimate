@@ -48,37 +48,18 @@ endif()
 
 if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/RSDKV3")
     message(STATUS "RSDKv3 not found, fetching...")
-    execute_process(COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/../fetch_rsdkv3.sh)
+    execute_process(COMMAND bash ${SCRIPTS_DIR}/fetch_rsdkv3.sh)
 endif()
 
 if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/RSDKV5")
     message(STATUS "RSDKv5 not found, fetching...")
-    execute_process(COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/../fetch_rsdkv5.sh)
+    execute_process(COMMAND bash ${SCRIPTS_DIR}/fetch_rsdkv5.sh)
 endif()
 
+file(GLOB_RECURSE RSDKV4_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4/RSDKV4/*.cpp)
+
 # RSDK V4 Core library
-add_library(rsdk_core STATIC
-    RSDKV4/RSDKV4/RetroEngine.cpp
-    RSDKV4/RSDKV4/Scene.cpp
-    RSDKV4/RSDKV4/Animation.cpp
-    RSDKV4/RSDKV4/Drawing.cpp
-    RSDKV4/RSDKV4/Palette.cpp
-    RSDKV4/RSDKV4/Renderer.cpp
-    RSDKV4/RSDKV4/Sprite.cpp
-    RSDKV4/RSDKV4/Object.cpp
-    RSDKV4/RSDKV4/Audio.cpp
-    RSDKV4/RSDKV4/Input.cpp
-    RSDKV4/RSDKV4/Script.cpp
-    RSDKV4/RSDKV4/Networking.cpp
-    RSDKV4/RSDKV4/Debug.cpp
-    RSDKV4/RSDKV4/Math.cpp
-    RSDKV4/RSDKV4/Collision.cpp
-    RSDKV4/RSDKV4/ModAPI.cpp
-    RSDKV4/RSDKV4/String.cpp
-    RSDKV4/RSDKV4/Scene3D.cpp
-    RSDKV4/RSDKV4/Reader.cpp
-    RSDKV4/RSDKV4/Userdata.cpp
-)
+add_library(rsdk_core STATIC ${RSDKV4_SOURCES})
 
 target_include_directories(rsdk_core PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4/RSDKV4
@@ -116,44 +97,50 @@ else()
     )
 endif()
 
+# Get libraries linked to rsdk_core
+get_target_property(LIBS rsdk_core INTERFACE_LINK_LIBRARIES)
+
 # RSDK V3 Core library (for Sonic CD)
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/RSDKV3")
-    file(GLOB_RECURSE RSDKV3_SOURCES "RSDKV3/*.cpp" "RSDKV3/*.c")
-    if(RSDKV3_SOURCES)
-        add_library(rsdkv3_core STATIC ${RSDKV3_SOURCES})
+    if(NOT WIN32)
+        file(GLOB_RECURSE RSDKV3_SOURCES "RSDKV3/RSDKv3/*.cpp")
+    else()
+        file(GLOB_RECURSE RSDKV3_SOURCES "RSDKV3/*.cpp")
+    endif()
 
+    add_library(rsdkv3_core STATIC ${RSDKV3_SOURCES})
+
+    target_include_directories(rsdkv3_core PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV3
+    )
+
+    if(WIN32)
         target_include_directories(rsdkv3_core PUBLIC
-            ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV3
+            ${SDL2_INCLUDE_DIRS}
+            ${OPENGL_INCLUDE_DIR}
+            ${GLEW_INCLUDE_DIRS}
         )
-
-        if(WIN32)
-            target_include_directories(rsdkv3_core PUBLIC
-                ${SDL2_INCLUDE_DIRS}
-                ${OPENGL_INCLUDE_DIR}
-                ${GLEW_INCLUDE_DIRS}
-            )
-            target_link_libraries(rsdkv3_core PUBLIC
-                SDL2::SDL2
-                SDL2::SDL2main
-                ${OPENGL_LIBRARIES}
-                GLEW::GLEW
-                Vorbis::vorbis
-                Vorbis::vorbisfile
-            )
-        else()
-            target_include_directories(rsdkv3_core PUBLIC
-                ${SDL2_INCLUDE_DIRS}
-                ${OPENGL_INCLUDE_DIR}
-                ${GLEW_INCLUDE_DIRS}
-                ${VORBIS_INCLUDE_DIRS}
-            )
-            target_link_libraries(rsdkv3_core PUBLIC
-                ${SDL2_LIBRARIES}
-                ${OPENGL_LIBRARIES}
-                ${GLEW_LIBRARIES}
-                ${VORBIS_LIBRARIES}
-            )
-        endif()
+        target_link_libraries(rsdkv3_core PUBLIC
+            SDL2::SDL2
+            SDL2::SDL2main
+            ${OPENGL_LIBRARIES}
+            GLEW::GLEW
+            Vorbis::vorbis
+            Vorbis::vorbisfile
+        )
+    else()
+        target_include_directories(rsdkv3_core PUBLIC
+            ${SDL2_INCLUDE_DIRS}
+            ${OPENGL_INCLUDE_DIR}
+            ${GLEW_INCLUDE_DIRS}
+            ${VORBIS_INCLUDE_DIRS}
+        )
+        target_link_libraries(rsdkv3_core PUBLIC
+            ${SDL2_LIBRARIES}
+            ${OPENGL_LIBRARIES}
+            ${GLEW_LIBRARIES}
+            ${VORBIS_LIBRARIES}
+        )
     endif()
 endif()
 
