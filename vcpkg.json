@@ -1,0 +1,9 @@
+{
+  "dependencies": [
+    "glew",
+    "libvorbis",
+    "sdl2",
+    "tinyxml2",
+    "libtheora"
+  ]
+}
