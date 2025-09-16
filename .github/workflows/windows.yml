@@ -1,4 +1,4 @@
-name: C/C++ CI
+name: Windows Build
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
 jobs:
   build:
 
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
 
     steps:
     - uses: actions/checkout@v4
@@ -21,21 +21,25 @@ jobs:
       with:
         dotnet-version: '6.0.x'
 
-    - name: Install dependencies
+    - name: Setup vcpkg
+      uses: microsoft/setup-msbuild@v1.1
+
+    - name: Install dependencies with vcpkg
       run: |
-        sudo apt-get update
-        sudo bash scripts/deps.sh
-        sudo apt-get install -y cmake build-essential pkg-config libsdl2-dev libgl1-mesa-dev libglew-dev libvorbis-dev libtinyxml2-dev
+        vcpkg install sdl2:x64-windows
+        vcpkg install glew:x64-windows
+        vcpkg install libvorbis:x64-windows
+        vcpkg install tinyxml2:x64-windows
+        vcpkg integrate install
 
     - name: Build project
-      run: |
-        chmod +x build_all.sh
-        ./build_all.sh
+      run: .\build_all.ps1
+      shell: powershell
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: sonic-hybrid-ultimate
+        name: sonic-hybrid-ultimate-windows
         path: |
           Hybrid-RSDK Main/build/bin/
           Custom Client/bin/
