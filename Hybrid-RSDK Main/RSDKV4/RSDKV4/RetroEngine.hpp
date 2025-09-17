@@ -348,6 +348,7 @@ extern bool engineDebugMode;
 #include "Userdata.hpp"
 #include "Debug.hpp"
 #include "ModAPI.hpp"
+#include "RSDKv3/Text.hpp"
 
 // Native Entities
 #include "NativeObjects.hpp"

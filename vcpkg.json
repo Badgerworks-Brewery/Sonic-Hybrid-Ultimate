@@ -1,9 +1,11 @@
 {
   "dependencies": [
+    "asio",
     "glew",
+    "libtheora",
     "libvorbis",
     "sdl2",
     "tinyxml2",
-    "libtheora"
+    "stb"
   ]
 }

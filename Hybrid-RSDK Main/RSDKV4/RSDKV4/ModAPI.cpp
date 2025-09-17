@@ -22,6 +22,7 @@ byte modObjCount = 0;
 
 #include <filesystem>
 #include <locale>
+#include "Ini.hpp"
 
 int OpenModMenu()
 {
