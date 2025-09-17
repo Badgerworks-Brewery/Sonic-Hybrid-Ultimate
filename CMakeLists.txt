@@ -9,6 +9,8 @@ find_package(Vorbis CONFIG REQUIRED)
 find_package(SDL2 CONFIG REQUIRED)
 find_package(tinyxml2 CONFIG REQUIRED)
 find_package(unofficial-theora CONFIG REQUIRED)
+find_package(asio CONFIG REQUIRED)
+find_package(Stb REQUIRED)
 
 include_directories(
     "${CMAKE_CURRENT_SOURCE_DIR}/vendor/theoraplay"

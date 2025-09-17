@@ -34,6 +34,7 @@ add_library(rsdk_core STATIC ${RSDKV4_SOURCES})
 
 target_include_directories(rsdk_core PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4/RSDKV4
+    ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV3
     ${SDL2_INCLUDE_DIRS}
     ${OPENGL_INCLUDE_DIR}
     ${GLEW_INCLUDE_DIRS}
@@ -44,6 +45,7 @@ target_link_libraries(rsdk_core PUBLIC
     ${SDL2_LIBRARIES}
     ${GLEW_LIBRARIES}
     ${VORBIS_LIBRARIES}
+    ${ASIO_LIBRARIES}
 )
 
 # Get libraries linked to rsdk_core
@@ -60,7 +62,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/RSDKV3")
     add_library(rsdkv3_core STATIC ${RSDKV3_SOURCES})
 
     target_include_directories(rsdkv3_core PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV3
+        ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV3/RSDKv3
         ${SDL2_INCLUDE_DIRS}
         ${GLEW_INCLUDE_DIRS}
         ${VORBIS_INCLUDE_DIRS}
