@@ -37,5 +37,5 @@ jobs:
       with:
         name: sonic-hybrid-ultimate
         path: |
-          Hybrid-RSDK Main/build/bin/
-          Custom Client/bin/
+          Hybrid-RSDK-Main/build/bin/
+          Custom-Client/bin/
