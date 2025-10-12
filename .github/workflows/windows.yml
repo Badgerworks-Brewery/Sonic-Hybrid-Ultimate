@@ -26,20 +26,21 @@ jobs:
 
     - name: Install dependencies with vcpkg
       run: |
-        vcpkg install sdl2:x64-windows
-        vcpkg install glew:x64-windows
-        vcpkg install libvorbis:x64-windows
-        vcpkg install tinyxml2:x64-windows
+        vcpkg install --triplet x64-windows
         vcpkg integrate install
+      env:
+        VCPKG_DEFAULT_TRIPLET: x64-windows
 
     - name: Build project
       run: .\build_all.ps1
       shell: powershell
+      env:
+        VCPKG_ROOT: C:\vcpkg
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
         name: sonic-hybrid-ultimate-windows
         path: |
-          Hybrid-RSDK Main/build/bin/
-          Custom Client/bin/
+          Hybrid-RSDK-Main/build/bin/
+          Custom-Client/bin/
