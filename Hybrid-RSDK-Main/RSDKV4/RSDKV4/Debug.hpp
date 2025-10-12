@@ -10,7 +10,7 @@ inline void PrintLog(const char *msg, ...)
 {
 #ifndef RETRO_DISABLE_LOG
     if (engineDebugMode) {
-        char buffer[0x100];
+        char buffer[0x200];
 
         // make the full string
         va_list args;
@@ -104,5 +104,7 @@ void ProcessStageSelect();
 
 // Not in original, but the code was, and its cleaner this way
 void SetTextMenu(int mode);
+
+extern bool skipStartMenu;
 
 #endif //! DEBUG_H

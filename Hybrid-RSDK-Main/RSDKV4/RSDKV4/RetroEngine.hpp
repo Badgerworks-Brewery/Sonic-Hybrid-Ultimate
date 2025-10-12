@@ -342,12 +342,9 @@ extern bool engineDebugMode;
 #include "Scene.hpp"
 #include "Script.hpp"
 #include "Sprite.hpp"
-#include "Text.hpp"
-#include "Networking.hpp"
-#include "Renderer.hpp"
-#include "Userdata.hpp"
 #include "Debug.hpp"
 #include "ModAPI.hpp"
+#include "Text.hpp"
 
 // Native Entities
 #include "NativeObjects.hpp"

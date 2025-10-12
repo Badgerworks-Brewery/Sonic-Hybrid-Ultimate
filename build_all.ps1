@@ -7,6 +7,37 @@ if (-not (Test-Path "README.md")) {
     exit 1
 }
 
+# Check for required tools
+Write-Host "Checking for required tools..." -ForegroundColor Yellow
+if (-not (Get-Command cmake -ErrorAction SilentlyContinue)) {
+    Write-Host "Error: CMake is required but not installed." -ForegroundColor Red
+    Write-Host "Please install CMake (https://cmake.org/download/)." -ForegroundColor Red
+    exit 1
+}
+if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
+    Write-Host "Error: .NET 6.0 SDK is required but not installed." -ForegroundColor Red
+    Write-Host "Please install .NET 6.0 SDK (https://dotnet.microsoft.com/download/dotnet/6.0)." -ForegroundColor Red
+    exit 1
+}
+
+# Ensure vcpkg is bootstrapped and SDL2 is installed
+Write-Host "Ensuring vcpkg is ready and SDL2 is installed..." -ForegroundColor Yellow
+$vcpkgRoot = Join-Path $PSScriptRoot "vcpkg"
+if (-not (Test-Path $vcpkgRoot)) {
+    Write-Host "Cloning vcpkg..." -ForegroundColor Cyan
+    git clone https://github.com/microsoft/vcpkg.git $vcpkgRoot
+}
+Set-Location $vcpkgRoot
+if (-not (Test-Path "bootstrap-vcpkg.bat")) {
+    Write-Host "Error: vcpkg bootstrap script not found." -ForegroundColor Red
+    exit 1
+}
+Write-Host "Bootstrapping vcpkg..." -ForegroundColor Cyan
+& .\bootstrap-vcpkg.bat
+Write-Host "Installing SDL2 via vcpkg..." -ForegroundColor Cyan
+& .\vcpkg install sdl2 --triplet x64-windows
+Set-Location $PSScriptRoot
+
 # Fetch RSDK decompilations
 Write-Host "Fetching RSDK decompilations..." -ForegroundColor Yellow
 
