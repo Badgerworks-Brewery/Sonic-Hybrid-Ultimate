@@ -7,7 +7,7 @@ echo "Fetching RSDKv3 Decompilation..."
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(realpath "$SCRIPT_DIR/..")" 
 
-RSDK_DIR="$ROOT_DIR/Hybrid-RSDK Main/RSDKV3"
+RSDK_DIR="$ROOT_DIR/Hybrid-RSDK-Main/RSDKV3"
 
 if [ ! -d "$RSDK_DIR" ]; then
     git clone -b master --depth 1 https://github.com/RSDKModding/RSDKv3-Decompilation.git "$RSDK_DIR"

@@ -65,7 +65,7 @@ namespace SonicHybridUltimate.Core
         {
             try
             {
-                string rsdkPath = "Hybrid-RSDK Main/sonic2.rsdk"; // Adjust path as needed
+                string rsdkPath = "Hybrid-RSDK-Main/Data/sonic2.rsdk"; // Adjust path as needed
                 if (rsdkEngine.Initialize(rsdkPath))
                 {
                     logger.Log("Successfully recovered RSDK Engine");
