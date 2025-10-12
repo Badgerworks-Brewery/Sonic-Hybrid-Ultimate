@@ -51,7 +51,7 @@ namespace SonicHybrid {
         // Initialize target engine
         switch (currentEngine) {
             case EngineType::RSDK_V4:
-                rsdkEngine->Initialize("Hybrid-RSDK Main/sonic2.rsdk");
+                rsdkEngine->Initialize("Hybrid-RSDK-Main/Data/sonic2.rsdk");
                 break;
             case EngineType::OXYGEN:
                 oxygenEngine->Initialize("Sonic 3 AIR Main/sonic3.bin");
@@ -70,7 +70,7 @@ namespace SonicHybrid {
 
     void EngineManager::InitializeRSDKV4() {
         rsdkEngine = std::make_unique<RSDKEngine>();
-        if (!rsdkEngine->Initialize("Hybrid-RSDK Main/sonic2.rsdk")) {
+        if (!rsdkEngine->Initialize("Hybrid-RSDK-Main/Data/sonic2.rsdk")) {
             Logger::LogError("Failed to initialize RSDK Engine");
         }
     }

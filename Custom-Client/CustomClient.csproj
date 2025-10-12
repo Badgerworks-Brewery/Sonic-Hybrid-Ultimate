@@ -3,7 +3,9 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net6.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>SonicHybrid</AssemblyName>
     <ApplicationIcon>icon.ico</ApplicationIcon>
@@ -16,7 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="Hybrid-RSDK Main\**">
+    <None Update="Hybrid-RSDK-Main\**">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="Sonic 3 AIR Main\**">
@@ -32,7 +34,7 @@
   </ItemGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Exec Command="if not exist &quot;$(TargetDir)Hybrid-RSDK Main&quot; mkdir &quot;$(TargetDir)Hybrid-RSDK Main&quot;" />
+    <Exec Command="if not exist &quot;$(TargetDir)Hybrid-RSDK-Main&quot; mkdir &quot;$(TargetDir)Hybrid-RSDK-Main&quot;" />
     <Exec Command="if not exist &quot;$(TargetDir)Sonic 3 AIR Main&quot; mkdir &quot;$(TargetDir)Sonic 3 AIR Main&quot;" />
   </Target>
 
