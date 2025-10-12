@@ -87,14 +87,14 @@ function Setup-Directories {
     
     # Create necessary directories
     $dirs = @(
-        "Hybrid-RSDK Main/Data",
-        "Custom Client/bin"
+        "Hybrid-RSDK-Main/Data",
+        "Custom-Client/bin"
     )
 
     # Add native build directories if not skipping
     if (-not $SkipNative) {
         $dirs += @(
-            "Hybrid-RSDK Main/build",
+            "Hybrid-RSDK-Main/build",
             "Sonic 3 AIR Main/Oxygen"
         )
     }
@@ -110,7 +110,7 @@ function Setup-Directories {
 
 function Build-CustomClient {
     Write-Header "Building Custom Client"
-    Push-Location "$rootDir/Custom Client"
+    Push-Location "$rootDir/Custom-Client"
     try {
         if ($Clean) {
             dotnet clean
@@ -120,8 +120,8 @@ function Build-CustomClient {
         # Copy RSDK and Oxygen DLLs to output if they exist
         $outputDir = "bin/$buildType/net6.0-windows"
         if (-not $SkipNative) {
-            if (Test-Path "$rootDir/Hybrid-RSDK Main/build/bin") {
-                Copy-Item -Path "$rootDir/Hybrid-RSDK Main/build/bin/*.dll" -Destination $outputDir -Force
+            if (Test-Path "$rootDir/Hybrid-RSDK-Main/build/bin") {
+                Copy-Item -Path "$rootDir/Hybrid-RSDK-Main/build/bin/*.dll" -Destination $outputDir -Force
             }
             if (Test-Path "$rootDir/Sonic 3 AIR Main/Oxygen") {
                 Copy-Item -Path "$rootDir/Sonic 3 AIR Main/Oxygen/*.dll" -Destination $outputDir -Force
@@ -135,7 +135,7 @@ function Build-CustomClient {
 
 function Build-HybridRSDK {
     Write-Header "Building Hybrid RSDK"
-    Push-Location "$rootDir/Hybrid-RSDK Main"
+    Push-Location "$rootDir/Hybrid-RSDK-Main"
     try {
         $buildDir = "build"
         if ($Clean -and (Test-Path $buildDir)) {
@@ -155,13 +155,13 @@ function Build-HybridRSDK {
 
 function Write-Instructions {
     Write-Host "`nBuild complete! Follow these steps to run:" -ForegroundColor Green
-    Write-Host "1. Place your game files in 'Hybrid-RSDK Main/Data':"
+    Write-Host "1. Place your game files in 'Hybrid-RSDK-Main/Data':"
     Write-Host "   - Sonic 1's Data.rsdk as 'sonic1.rsdk'"
     Write-Host "   - Sonic 2's Data.rsdk as 'sonic2.rsdk'"
     Write-Host "   - Sonic CD's Data.rsdk as 'soniccd.rsdk'"
     Write-Host "   - Sonic 3&K ROM as 'sonic3.bin'"
     Write-Host "2. Run the client:"
-    Write-Host "   cd 'Custom Client/bin/$buildType/net6.0-windows'"
+    Write-Host "   cd 'Custom-Client/bin/$buildType/net6.0-windows'"
     Write-Host "   ./SonicHybridUltimate.exe`n"
     
     if ($SkipNative) {

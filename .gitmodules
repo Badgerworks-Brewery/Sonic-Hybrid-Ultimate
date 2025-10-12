@@ -10,14 +10,14 @@
 	path = vendor/theoraplay
 	url = https://github.com/fgsoftware1/theoraplay
 
-[submodule "Hybrid-RSDK Main/RSDKV3"]
-	path = Hybrid-RSDK Main/RSDKV3
+[submodule "Hybrid-RSDK-Main/RSDKV3"]
+	path = Hybrid-RSDK-Main/RSDKV3
 	url = https://github.com/RSDKModding/RSDKv3-Decompilation.git
 
-[submodule "Hybrid-RSDK Main/RSDKV4-Decompilation"]
-	path = Hybrid-RSDK Main/RSDKV4-Decompilation
+[submodule "Hybrid-RSDK-Main/RSDKV4-Decompilation"]
+	path = Hybrid-RSDK-Main/RSDKV4-Decompilation
 	url = https://github.com/RSDKModding/RSDKv4-Decompilation.git
 
-[submodule "Hybrid-RSDK Main/RSDKV5"]
-	path = Hybrid-RSDK Main/RSDKV5
+[submodule "Hybrid-RSDK-Main/RSDKV5"]
+	path = Hybrid-RSDK-Main/RSDKV5
 	url = https://github.com/RSDKModding/RSDKv5-Decompilation.git
