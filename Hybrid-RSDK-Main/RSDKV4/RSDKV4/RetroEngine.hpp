@@ -345,12 +345,10 @@ extern bool engineDebugMode;
 #include "Debug.hpp"
 #include "ModAPI.hpp"
 #include "Text.hpp"
+#include "Userdata.hpp"
 
 // Native Entities
 #include "NativeObjects.hpp"
-
-// Forward declarations for conditional compilation
-struct TextMenu;
 
 class RetroEngine
 {
