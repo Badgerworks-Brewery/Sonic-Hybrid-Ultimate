@@ -349,6 +349,9 @@ extern bool engineDebugMode;
 // Native Entities
 #include "NativeObjects.hpp"
 
+// Forward declarations for conditional compilation
+struct TextMenu;
+
 class RetroEngine
 {
 public:
