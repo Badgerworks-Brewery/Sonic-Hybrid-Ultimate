@@ -19,9 +19,9 @@ The Frontend will oversee and run both parts seperately, after Sonic 2 ends, the
 Hybrid-RSDK Debugging/Additons ?% (Hybrid-RSDK is still broken)
 
 Sonic 3 AIR (Oxygen) Integration 50% (All the source code is in the repo, but we havent done the neccessary changes yet)
-Integration with Hybrid RSDK is in progress, focusing on resolving loading issues and graphical corruption.
+Integration with Hybrid-RSDK-Main is in progress, focusing on resolving loading issues and graphical corruption.
 
-Custom Client 0% (debugging Hybrid RSDK is the priority)
+Custom-Client 0% (debugging Hybrid-RSDK-Main is the priority)
 
 ## Build Process
 
@@ -53,9 +53,9 @@ chmod +x fetch_rsdkv3.sh fetch_rsdkv4.sh fetch_rsdkv5.sh
 ./fetch_rsdkv5.sh
 ```
 
-3. Build the Hybrid RSDK engine:
+3. Build the Hybrid-RSDK-Main engine:
 ```bash
-cd "Hybrid-RSDK Main"
+cd "Hybrid-RSDK-Main"
 mkdir -p build
 cd build
 cmake ..
@@ -63,14 +63,14 @@ cmake --build .
 cd ../..
 ```
 
-4. Build the Custom Client:
+4. Build the Custom-Client:
 ```bash
-cd "Custom Client"
+cd "Custom-Client"
 dotnet build
 cd ..
 ```
 
-5. Put the required game data files in `Hybrid-RSDK Main/rsdk-source-data/`:
+5. Put the required game data files in `Hybrid-RSDK-Main/rsdk-source-data/`:
    - `Data.rsdk` from Sonic CD as `soniccd.rsdk`
    - `Data.rsdk` from Sonic 1 as `sonic1.rsdk`
    - `Data.rsdk` from Sonic 2 as `sonic2.rsdk`
@@ -133,3 +133,11 @@ The function `SonicHybridRsdk.Unpack12/DecryptData` was written by Giuseppe Gatt
 * Hybrid-RSDK by Xeeynamo.
 * Sonic 3 AIR by Eukaryot.
 * Main Development By FGSOFTWARE1.
+
+# Open Source Policy
+
+This project is an open-source initiative and welcomes contributions. While the core team manages the primary development and direction, external contributions are highly valued. Key policies include:
+
+* **Contribution Guidelines**: Please read `CONTRIBUTING.md` before submitting pull requests.
+* **Code of Conduct**: Adhere to the `CODE_OF_CONDUCT.md` to ensure a positive and inclusive environment.
+* **Licensing**: All contributions fall under the project's `LICENSE.md`.

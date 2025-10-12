@@ -64,6 +64,7 @@ extern int foreachStackPos;
 
 extern ScriptEngine scriptEng;
 extern char scriptText[0x4000];
+extern char globalVariableNames[0x1000][0x20];
 
 bool ConvertStringToInteger(const char *text, int *value);
 
@@ -95,5 +96,7 @@ void LoadBytecode(int stageListID, int scriptID);
 void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent);
 
 void ClearScriptData(void);
+
+void SetGlobalVariableByName(const char *name, int value);
 
 #endif // !SCRIPT_H
