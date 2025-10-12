@@ -14,7 +14,7 @@ $files = @(
     "Userdata.cpp"
 )
 
-$targetDir = "Hybrid-RSDK Main/RSDKV4/RSDKV4"
+$targetDir = "Hybrid-RSDK-Main/RSDKV4/RSDKV4"
 if (-not (Test-Path $targetDir)) {
     New-Item -ItemType Directory -Path $targetDir -Force
 }

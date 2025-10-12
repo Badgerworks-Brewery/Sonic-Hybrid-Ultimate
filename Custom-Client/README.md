@@ -14,8 +14,8 @@ This is the custom client/script executor for Sonic Hybrid Ultimate. It manages 
 
 1. Ensure you have the following prerequisites:
    - .NET 6.0 SDK
-   - RSDK Content in the Hybrid-RSDK Main directory
-   - Sonic 3 AIR in the Sonic3AIR directory
+   - RSDK content in the Hybrid-RSDK-Main directory
+   - Sonic 3 AIR in the "Sonic 3 AIR Main" directory
 
 2. Build the client:
    ```bash
@@ -27,11 +27,11 @@ This is the custom client/script executor for Sonic Hybrid Ultimate. It manages 
 ## Directory Structure
 
 ```
-Custom Client/
+Custom-Client/
 ├── CustomClient.csproj    # Project file
-├── Program.cs            # Main client code
-├── Config.cs            # Configuration handling
-└── README.md            # This file
+├── Program.cs             # Main client code
+├── Config.cs              # Configuration handling
+└── README.md              # This file
 ```
 
 ## How it Works

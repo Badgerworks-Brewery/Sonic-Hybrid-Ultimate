@@ -82,19 +82,19 @@ fi
 echo ""
 echo "Checking RSDK decompilations..."
 
-if [ -d "Hybrid-RSDK Main/RSDKV4-Decompilation" ]; then
+if [ -d "Hybrid-RSDK-Main/RSDKV4-Decompilation" ]; then
     echo "✅ RSDKv4 Decompilation found"
 else
     echo "❌ RSDKv4 Decompilation not found"
 fi
 
-if [ -d "Hybrid-RSDK Main/RSDKV3" ]; then
+if [ -d "Hybrid-RSDK-Main/RSDKV3" ]; then
     echo "✅ RSDKv3 Decompilation found"
 else
     echo "❌ RSDKv3 Decompilation not found"
 fi
 
-if [ -d "Hybrid-RSDK Main/RSDKV5" ]; then
+if [ -d "Hybrid-RSDK-Main/RSDKV5" ]; then
     echo "✅ RSDKv5 Decompilation found"
 else
     echo "❌ RSDKv5 Decompilation not found"
@@ -104,13 +104,13 @@ fi
 echo ""
 echo "Checking project files..."
 
-if [ -f "Hybrid-RSDK Main/CMakeLists.txt" ]; then
+if [ -f "Hybrid-RSDK-Main/CMakeLists.txt" ]; then
     echo "✅ CMakeLists.txt found"
 else
     echo "❌ CMakeLists.txt not found"
 fi
 
-if [ -f "Custom Client/CustomClient.csproj" ]; then
+if [ -f "Custom-Client/CustomClient.csproj" ]; then
     echo "✅ CustomClient.csproj found"
 else
     echo "❌ CustomClient.csproj not found"
@@ -120,9 +120,9 @@ fi
 echo ""
 echo "Checking build status..."
 
-if [ -d "Hybrid-RSDK Main/build" ]; then
+if [ -d "Hybrid-RSDK-Main/build" ]; then
     echo "✅ Build directory exists"
-    if [ -f "Hybrid-RSDK Main/build/bin/rsdkv4" ] || [ -f "Hybrid-RSDK Main/build/bin/rsdkv4.exe" ]; then
+    if [ -f "Hybrid-RSDK-Main/build/bin/rsdkv4" ] || [ -f "Hybrid-RSDK-Main/build/bin/rsdkv4.exe" ]; then
         echo "✅ RSDK executable built"
     else
         echo "❌ RSDK executable not built"
@@ -131,7 +131,7 @@ else
     echo "❌ Build directory not found"
 fi
 
-if [ -d "Custom Client/bin" ]; then
+if [ -d "Custom-Client/bin" ]; then
     echo "✅ Custom Client build directory exists"
 else
     echo "❌ Custom Client not built"
