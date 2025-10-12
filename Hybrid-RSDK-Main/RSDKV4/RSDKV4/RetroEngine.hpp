@@ -346,9 +346,15 @@ extern bool engineDebugMode;
 #include "ModAPI.hpp"
 #include "Text.hpp"
 #include "Userdata.hpp"
+#if RETRO_USE_NETWORKING
+#include "Networking.hpp"
+#endif
 
 // Native Entities
 #include "NativeObjects.hpp"
+
+// Forward declarations
+struct TextMenu;
 
 class RetroEngine
 {
