@@ -40,23 +40,49 @@ else()
     pkg_check_modules(TINYXML2 REQUIRED tinyxml2)
 endif()
 
-# Check if RSDK decompilations exist
+# Check if RSDK decompilations exist and fetch them if needed
 if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation")
     message(STATUS "RSDKv4 Decompilation not found, fetching...")
-    execute_process(COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/../fetch_rsdkv4.sh)
+    execute_process(
+        COMMAND bash "${CMAKE_CURRENT_SOURCE_DIR}/../fetch_rsdkv4.sh"
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/.."
+        RESULT_VARIABLE RSDKV4_FETCH_RESULT
+    )
+    if(NOT RSDKV4_FETCH_RESULT EQUAL 0)
+        message(FATAL_ERROR "Failed to fetch RSDKv4 Decompilation (required)")
+    endif()
 endif()
 
 if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/RSDKV3")
     message(STATUS "RSDKv3 not found, fetching...")
-    execute_process(COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/../fetch_rsdkv3.sh WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..)
+    execute_process(
+        COMMAND bash "${CMAKE_CURRENT_SOURCE_DIR}/../fetch_rsdkv3.sh"
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/.."
+        RESULT_VARIABLE RSDKV3_FETCH_RESULT
+    )
+    if(NOT RSDKV3_FETCH_RESULT EQUAL 0)
+        message(WARNING "Failed to fetch RSDKv3 Decompilation (Sonic CD support will be unavailable)")
+    endif()
 endif()
 
 if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/RSDKV5")
     message(STATUS "RSDKv5 not found, fetching...")
-    execute_process(COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/../fetch_rsdkv5.sh WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..)
+    execute_process(
+        COMMAND bash "${CMAKE_CURRENT_SOURCE_DIR}/../fetch_rsdkv5.sh"
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/.."
+        RESULT_VARIABLE RSDKV5_FETCH_RESULT
+    )
+    if(NOT RSDKV5_FETCH_RESULT EQUAL 0)
+        message(WARNING "Failed to fetch RSDKv5 Decompilation (newer games support will be unavailable)")
+    endif()
 endif()
 
 file(GLOB_RECURSE RSDKV4_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4/RSDKV4/*.cpp)
+
+# Verify that we have RSDKV4 sources (required)
+if(NOT RSDKV4_SOURCES)
+    message(FATAL_ERROR "No RSDKv4 source files found. Please ensure RSDKv4 decompilation is properly fetched.")
+endif()
 
 # RSDK V4 Core library
 add_library(rsdk_core STATIC ${RSDKV4_SOURCES})
@@ -259,3 +285,25 @@ install(TARGETS ${INSTALL_TARGETS}
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib
 )
+
+# Print build summary and user instructions
+message(STATUS "")
+message(STATUS "=== Sonic Hybrid Ultimate Build Summary ===")
+message(STATUS "")
+message(STATUS "Built components:")
+message(STATUS "  - RSDKv4 Core: YES (required)")
+if(TARGET rsdkv3_core)
+    message(STATUS "  - RSDKv3 Core: YES (Sonic CD support)")
+else()
+    message(STATUS "  - RSDKv3 Core: NO (Sonic CD support unavailable)")
+endif()
+if(TARGET rsdkv5_core)
+    message(STATUS "  - RSDKv5 Core: YES (newer games support)")
+else()
+    message(STATUS "  - RSDKv5 Core: NO (newer games support unavailable)")
+endif()
+message(STATUS "")
+message(STATUS "IMPORTANT: To run games, you need to provide Data.rsdk files")
+message(STATUS "from your legally owned copies of the respective Sonic games.")
+message(STATUS "Place these files in the same directory as the executables.")
+message(STATUS "")
