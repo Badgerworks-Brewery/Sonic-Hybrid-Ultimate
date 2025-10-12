@@ -3,6 +3,7 @@
 #if !RETRO_USE_ORIGINAL_CODE
 bool usingCWD        = false;
 bool engineDebugMode = false;
+bool skipStartMenu   = false;
 #endif
 
 #if RETRO_PLATFORM == RETRO_ANDROID
@@ -1271,38 +1272,6 @@ bool RetroEngine::LoadGameConfig(const char *filePath)
     AddNativeFunction("SetNetworkGameName", SetNetworkGameName);
 #endif
 
-#if RETRO_USE_MOD_LOADER
-    AddNativeFunction("ExitGame", ExitGame);
-    AddNativeFunction("FileExists", FileExists);
-    AddNativeFunction("OpenModMenu", OpenModMenu); // Opens the dev menu-based mod menu incase you cant be bothered or smth
-    AddNativeFunction("AddAchievement", AddGameAchievement);
-    AddNativeFunction("SetAchievementDescription", SetAchievementDescription);
-    AddNativeFunction("ClearAchievements", ClearAchievements);
-    AddNativeFunction("GetAchievementCount", GetAchievementCount);
-    AddNativeFunction("GetAchievement", GetAchievement);
-    AddNativeFunction("GetAchievementName", GetAchievementName);
-    AddNativeFunction("GetAchievementDescription", GetAchievementDescription);
-    AddNativeFunction("GetScreenWidth", GetScreenWidth);
-    AddNativeFunction("SetScreenWidth", SetScreenWidth);
-    AddNativeFunction("GetWindowScale", GetWindowScale);
-    AddNativeFunction("SetWindowScale", SetWindowScale);
-    AddNativeFunction("GetWindowScaleMode", GetWindowScaleMode);
-    AddNativeFunction("SetWindowScaleMode", SetWindowScaleMode);
-    AddNativeFunction("GetWindowFullScreen", GetWindowFullScreen);
-    AddNativeFunction("SetWindowFullScreen", SetWindowFullScreen);
-    AddNativeFunction("GetWindowBorderless", GetWindowBorderless);
-    AddNativeFunction("SetWindowBorderless", SetWindowBorderless);
-    AddNativeFunction("GetWindowVSync", GetWindowVSync);
-    AddNativeFunction("SetWindowVSync", SetWindowVSync);
-    AddNativeFunction("ApplyWindowChanges", ApplyWindowChanges); // Refresh window after changing window options
-    AddNativeFunction("GetModCount", GetModCount);
-    AddNativeFunction("GetModName", GetModName);
-    AddNativeFunction("GetModDescription", GetModDescription);
-    AddNativeFunction("GetModAuthor", GetModAuthor);
-    AddNativeFunction("GetModVersion", GetModVersion);
-    AddNativeFunction("GetModActive", GetModActive);
-    AddNativeFunction("SetModActive", SetModActive);
-    AddNativeFunction("MoveMod", MoveMod);
     AddNativeFunction("RefreshEngine", RefreshEngine); // Reload engine after changing mod status
 #endif
 
@@ -1315,6 +1284,13 @@ bool RetroEngine::LoadGameConfig(const char *filePath)
         startList_Game  = STAGELIST_BONUS;
         startStage_Game = 0xFE;
     }
+
+#if RETRO_REV03
+    Engine.usingOrigins = GetGlobalVariableID("game.playMode") != 0xFF;
+#endif
+#endif
+
+void ExitGame() { Engine.running = false; }
 
 #if RETRO_REV03
     Engine.usingOrigins = GetGlobalVariableID("game.playMode") != 0xFF;

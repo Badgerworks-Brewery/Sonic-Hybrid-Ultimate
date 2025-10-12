@@ -48,12 +48,12 @@ endif()
 
 if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/RSDKV3")
     message(STATUS "RSDKv3 not found, fetching...")
-    execute_process(COMMAND bash ${SCRIPTS_DIR}/fetch_rsdkv3.sh)
+    execute_process(COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/../fetch_rsdkv3.sh WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..)
 endif()
 
 if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/RSDKV5")
     message(STATUS "RSDKv5 not found, fetching...")
-    execute_process(COMMAND bash ${SCRIPTS_DIR}/fetch_rsdkv5.sh)
+    execute_process(COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/../fetch_rsdkv5.sh WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..)
 endif()
 
 file(GLOB_RECURSE RSDKV4_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4/RSDKV4/*.cpp)

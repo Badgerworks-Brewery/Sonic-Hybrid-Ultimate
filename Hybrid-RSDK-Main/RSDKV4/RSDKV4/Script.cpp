@@ -12,6 +12,9 @@
 #define SCRIPT_VAR_COUNT (COMMON_SCRIPT_VAR_COUNT + 0x1DF)
 int lineID = 0;
 
+extern int globalVariables[0x1000];
+extern char globalVariableNames[0x1000][0x20];
+
 enum ScriptVarType { VAR_ALIAS, VAR_STATICVALUE, VAR_TABLE };
 enum ScriptVarAccessModifier { ACCESS_NONE, ACCESS_PUBLIC, ACCESS_PRIVATE };
 
