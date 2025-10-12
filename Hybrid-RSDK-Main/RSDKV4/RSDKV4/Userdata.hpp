@@ -79,8 +79,8 @@ extern void *nativeFunction[NATIIVEFUNCTION_COUNT];
 extern int nativeFunctionCount;
 
 extern int globalVariablesCount;
-extern int globalVariables[GLOBALVAR_COUNT];
-extern char globalVariableNames[GLOBALVAR_COUNT][0x20];
+extern int globalVariables[0x1000];  // Use larger size to match Script.hpp
+// globalVariableNames is declared in Script.hpp with larger size
 
 extern char gamePath[0x100];
 extern int saveRAM[SAVEDATA_SIZE];
