@@ -6,6 +6,23 @@
 
 #include "Object.hpp"
 
+// Native object struct declarations
+struct RetroGameLoop {
+    // Placeholder for RetroGameLoop object data
+};
+
+struct VirtualDPad {
+    // Placeholder for VirtualDPad object data
+};
+
+struct SegaSplash {
+    // Placeholder for SegaSplash object data
+};
+
+struct PauseMenu {
+    // Placeholder for PauseMenu object data
+};
+
 // Forward declarations for native object creation/main functions
 void RetroGameLoop_Create(void *objPtr);
 void RetroGameLoop_Main(void *objPtr);
