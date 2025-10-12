@@ -31,9 +31,9 @@ chmod +x fetch_rsdkv3.sh fetch_rsdkv4.sh fetch_rsdkv5.sh
 ./fetch_rsdkv3.sh
 ./fetch_rsdkv5.sh
 
-# Build Hybrid RSDK engine
-echo "Building Hybrid RSDK engine..."
-cd "Hybrid-RSDK Main"
+# Build Hybrid-RSDK-Main engine
+echo "Building Hybrid-RSDK-Main engine..."
+cd "Hybrid-RSDK-Main"
 
 # Clean previous build
 rm -rf build
@@ -61,7 +61,7 @@ cd ../..
 
 # Build Custom Client
 echo "Building Custom Client..."
-cd "Custom Client"
+cd "Custom-Client"
 dotnet build --configuration Release
 if [ $? -ne 0 ]; then
     echo "Error: Custom Client build failed"
@@ -74,7 +74,5 @@ echo ""
 echo "🎉 Build completed successfully!"
 echo ""
 echo "Executables are located in:"
-echo "  - Hybrid-RSDK Main/build/bin/"
-echo "  - Custom Client/bin/"
-echo ""
-echo "To run the build status check: ./check_build_status.sh"
+echo "  - Hybrid-RSDK-Main/build/bin/"
+echo "  - Custom-Client/bin/"

@@ -10,24 +10,24 @@ if (-not (Test-Path "README.md")) {
 # Fetch RSDK decompilations
 Write-Host "Fetching RSDK decompilations..." -ForegroundColor Yellow
 
-if (-not (Test-Path "Hybrid-RSDK Main/RSDKV4-Decompilation")) {
+if (-not (Test-Path "Hybrid-RSDK-Main/RSDKV4-Decompilation")) {
     Write-Host "Cloning RSDKv4 Decompilation..."
-    git clone https://github.com/RSDKModding/RSDKv4-Decompilation.git "Hybrid-RSDK Main/RSDKV4-Decompilation"
+    git clone https://github.com/RSDKModding/RSDKv4-Decompilation.git "Hybrid-RSDK-Main/RSDKV4-Decompilation"
 }
 
-if (-not (Test-Path "Hybrid-RSDK Main/RSDKV3")) {
+if (-not (Test-Path "Hybrid-RSDK-Main/RSDKV3")) {
     Write-Host "Cloning RSDKv3 Decompilation..."
-    git clone https://github.com/RSDKModding/RSDKv3-Decompilation.git "Hybrid-RSDK Main/RSDKV3"
+    git clone https://github.com/RSDKModding/RSDKv3-Decompilation.git "Hybrid-RSDK-Main/RSDKV3"
 }
 
-if (-not (Test-Path "Hybrid-RSDK Main/RSDKV5")) {
+if (-not (Test-Path "Hybrid-RSDK-Main/RSDKV5")) {
     Write-Host "Cloning RSDKv5 Decompilation..."
-    git clone https://github.com/RSDKModding/RSDKv5-Decompilation.git "Hybrid-RSDK Main/RSDKV5"
+    git clone https://github.com/RSDKModding/RSDKv5-Decompilation.git "Hybrid-RSDK-Main/RSDKV5"
 }
 
 # Build Hybrid RSDK engine
 Write-Host "Building Hybrid RSDK engine..." -ForegroundColor Yellow
-Set-Location "Hybrid-RSDK Main"
+Set-Location "Hybrid-RSDK-Main"
 
 # Clean previous build
 if (Test-Path "build") {
@@ -53,7 +53,7 @@ Set-Location "../.."
 
 # Build Custom Client
 Write-Host "Building Custom Client..." -ForegroundColor Yellow
-Set-Location "Custom Client"
+Set-Location "Custom-Client"
 dotnet build --configuration Release
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Error: Custom Client build failed" -ForegroundColor Red
@@ -64,5 +64,5 @@ Set-Location ".."
 
 Write-Host "Build completed successfully!" -ForegroundColor Green
 Write-Host "Executables are located in:" -ForegroundColor Cyan
-Write-Host "  - Hybrid-RSDK Main/build/bin/" -ForegroundColor White
-Write-Host "  - Custom Client/bin/" -ForegroundColor White
+Write-Host "  - Hybrid-RSDK-Main/build/bin/" -ForegroundColor White
+Write-Host "  - Custom-Client/bin/" -ForegroundColor White
