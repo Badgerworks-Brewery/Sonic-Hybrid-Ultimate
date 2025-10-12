@@ -20,8 +20,8 @@ if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
     exit 1
 }
 
-# Ensure vcpkg is bootstrapped and SDL2 is installed
-Write-Host "Ensuring vcpkg is ready and SDL2 is installed..." -ForegroundColor Yellow
+# Ensure vcpkg is bootstrapped and dependencies are installed
+Write-Host "Ensuring vcpkg is ready and dependencies are installed..." -ForegroundColor Yellow
 $vcpkgRoot = Join-Path $PSScriptRoot "vcpkg"
 if (-not (Test-Path $vcpkgRoot)) {
     Write-Host "Cloning vcpkg..." -ForegroundColor Cyan
@@ -34,8 +34,10 @@ if (-not (Test-Path "bootstrap-vcpkg.bat")) {
 }
 Write-Host "Bootstrapping vcpkg..." -ForegroundColor Cyan
 & .\bootstrap-vcpkg.bat
-Write-Host "Installing SDL2 via vcpkg..." -ForegroundColor Cyan
-& .\vcpkg install sdl2 --triplet x64-windows
+Set-Location $PSScriptRoot
+Write-Host "Installing dependencies via vcpkg manifest..." -ForegroundColor Cyan
+Set-Location $vcpkgRoot
+& .\vcpkg install --triplet x64-windows
 Set-Location $PSScriptRoot
 
 # Fetch RSDK decompilations
@@ -68,7 +70,8 @@ New-Item -ItemType Directory -Path "build" -Force | Out-Null
 Set-Location "build"
 
 # Configure and build
-cmake ..
+$vcpkgToolchain = Join-Path $PSScriptRoot ".." "vcpkg" "scripts" "buildsystems" "vcpkg.cmake"
+cmake .. -DCMAKE_TOOLCHAIN_FILE="$vcpkgToolchain"
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Error: CMake configuration failed" -ForegroundColor Red
     exit 1
