@@ -199,8 +199,11 @@ void TransmitGlobal(int *globalValue, const char *globalName);
 
 #if RETRO_USE_NETWORKING
 void Receive2PVSData(MultiplayerData *data);
-#endif
 void Receive2PVSMatchCode(int code);
+#else
+// Provide a stub declaration to keep callers consistent in non-networking builds
+inline void Receive2PVSMatchCode(int) {}
+#endif
 
 void ShowPromoPopup(int *id, const char *popupName);
 void ShowSegaIDPopup();
