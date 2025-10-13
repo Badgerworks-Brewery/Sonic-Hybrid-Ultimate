@@ -69,6 +69,9 @@ struct LeaderboardEntry {
 };
 
 // MultiplayerData struct is defined in Networking.hpp
+#if RETRO_USE_NETWORKING
+struct MultiplayerData; // forward declaration to satisfy externs below
+#endif
 
 extern void *nativeFunction[NATIIVEFUNCTION_COUNT];
 extern int nativeFunctionCount;
