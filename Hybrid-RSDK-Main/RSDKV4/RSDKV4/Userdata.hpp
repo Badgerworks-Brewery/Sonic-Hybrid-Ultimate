@@ -69,9 +69,6 @@ struct LeaderboardEntry {
 };
 
 // MultiplayerData struct is defined in Networking.hpp
-#if RETRO_USE_NETWORKING
-struct MultiplayerData; // forward declaration to satisfy externs below
-#endif
 
 extern void *nativeFunction[NATIIVEFUNCTION_COUNT];
 extern int nativeFunctionCount;
@@ -202,11 +199,8 @@ void TransmitGlobal(int *globalValue, const char *globalName);
 
 #if RETRO_USE_NETWORKING
 void Receive2PVSData(MultiplayerData *data);
-void Receive2PVSMatchCode(int code);
-#else
-// Provide a stub declaration to keep callers consistent in non-networking builds
-inline void Receive2PVSMatchCode(int) {}
 #endif
+void Receive2PVSMatchCode(int code);
 
 void ShowPromoPopup(int *id, const char *popupName);
 void ShowSegaIDPopup();
