@@ -1,5 +1,4 @@
 #include "RetroEngine.hpp"
-#include "RSDKv3/Text.hpp"
 
 ushort blendLookupTable[0x20 * 0x100];
 ushort subtractLookupTable[0x20 * 0x100];
