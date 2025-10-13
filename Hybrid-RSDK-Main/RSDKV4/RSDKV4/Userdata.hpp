@@ -68,12 +68,7 @@ struct LeaderboardEntry {
     int score;
 };
 
-#ifndef NETWORKING_H
-struct MultiplayerData {
-    int type;
-    int data[0x1FF];
-};
-#endif
+// MultiplayerData struct is defined in Networking.hpp
 
 extern void *nativeFunction[NATIIVEFUNCTION_COUNT];
 extern int nativeFunctionCount;
@@ -88,8 +83,10 @@ extern Achievement achievements[ACHIEVEMENT_COUNT];
 extern int achievementCount;
 extern LeaderboardEntry leaderboards[LEADERBOARD_COUNT];
 
+#if RETRO_USE_NETWORKING
 extern MultiplayerData multiplayerDataIN;
 extern MultiplayerData multiplayerDataOUT;
+#endif
 
 extern int matchValueData[0x100];
 extern byte matchValueReadPos;
@@ -200,7 +197,9 @@ void ReceiveEntity(int *entityID, int *incrementPos);
 void ReceiveValue(int *value, int *incrementPos);
 void TransmitGlobal(int *globalValue, const char *globalName);
 
+#if RETRO_USE_NETWORKING
 void Receive2PVSData(MultiplayerData *data);
+#endif
 void Receive2PVSMatchCode(int code);
 
 void ShowPromoPopup(int *id, const char *popupName);
