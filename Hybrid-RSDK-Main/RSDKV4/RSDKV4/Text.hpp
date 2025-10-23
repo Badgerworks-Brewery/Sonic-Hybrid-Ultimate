@@ -16,6 +16,10 @@ struct TextMenu {
     int visibleRowOffset;
     int timer;
     int selectionCount;
+    int entryStart[0x100];
+    int entrySize[0x100];
+    byte textData[0x2000];
+    bool entryHighlight[0x100];
 };
 
 void SetupTextMenu(void *menu, int arg1);
