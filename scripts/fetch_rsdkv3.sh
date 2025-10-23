@@ -15,5 +15,5 @@ if [ ! -d "$RSDK_DIR" ]; then
     echo "RSDKv3 Decompilation fetched successfully"
 else
     echo "RSDKv3 already exists, updating..."
-    cd "$RSDK_DIR" && git pull
+    cd "$RSDK_DIR" && git pull --ff-only
 fi
