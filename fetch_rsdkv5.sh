@@ -11,5 +11,5 @@ if [ ! -d "Hybrid-RSDK-Main/RSDKV5" ]; then
     echo "RSDKv5 Decompilation fetched successfully"
 else
     echo "RSDKv5 already exists, updating..."
-    cd "Hybrid-RSDK-Main/RSDKV5" && git pull && cd ../..
+    cd "Hybrid-RSDK-Main/RSDKV5" && git pull --ff-only && cd ../..
 fi
