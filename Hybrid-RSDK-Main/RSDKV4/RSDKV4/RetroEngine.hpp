@@ -337,6 +337,7 @@ extern bool engineDebugMode;
 #include "Object.hpp"
 #include "Palette.hpp"
 #include "Drawing.hpp"
+#include "Renderer.hpp"
 #include "Scene3D.hpp"
 #include "Collision.hpp"
 #include "Scene.hpp"

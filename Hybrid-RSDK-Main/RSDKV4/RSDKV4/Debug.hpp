@@ -15,14 +15,20 @@ inline void PrintLog(const char *msg, ...)
         // make the full string
         va_list args;
         va_start(args, msg);
-        vsprintf(buffer, msg, args);
+        vsnprintf(buffer, sizeof(buffer) - 2, msg, args);  // Leave space for potential newline
+        va_end(args);
+        
         if (endLine) {
             printf("%s\n", buffer);
-            sprintf(buffer, "%s\n", buffer);
+            // Safely append newline for file writing
+            size_t len = strlen(buffer);
+            if (len < sizeof(buffer) - 2) {
+                buffer[len] = '\n';
+                buffer[len + 1] = '\0';
+            }
         }
         else {
             printf("%s", buffer);
-            sprintf(buffer, "%s", buffer);
         }
 
         char pathBuffer[0x100];

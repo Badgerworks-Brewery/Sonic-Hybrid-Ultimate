@@ -15,5 +15,5 @@ if [ ! -d "$RSDK_DIR" ]; then
     echo "RSDKv5 Decompilation fetched successfully"
 else
     echo "RSDKv5 already exists, updating..."
-    cd "$RSDK_DIR" && git pull
+    cd "$RSDK_DIR" && git fetch && git reset --hard origin/master
 fi
