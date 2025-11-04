@@ -112,9 +112,23 @@ namespace SonicHybridUltimate.Engines
 
             try
             {
+                // TODO: This currently uses hardcoded memory addresses which DON'T WORK
+                // Need to implement proper P/Invoke to RSDKBridge native methods
+                // The native RSDKBridge.cpp now uses actual RSDK variables like:
+                // - currentStageFolder (to detect "DEZ"/"DeathEgg")
+                // - stageListPosition (to check if we're at stage 11/0x0B)
+                // - Boss object state (to detect defeat)
+                //
+                // This needs to be exposed through C DLL exports that this C# code can call
+                // For now, returning false until native bridge is properly connected
+                return false;
+                
+                /*
+                // STUB CODE - doesn't actually work:
                 return IsInDeathEggZone() && 
                        GetDeathEggRobotState() == 1 && 
                        GetDeathEggExplosionTimer() > 0;
+                */
             }
             catch (Exception ex)
             {

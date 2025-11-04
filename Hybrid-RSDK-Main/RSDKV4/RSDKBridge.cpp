@@ -1,4 +1,12 @@
 #include "RSDKBridge.hpp"
+#include "../RSDKV4-Decompilation/RSDKv4/Scene.hpp"
+#include <cstring>
+
+// Import the actual RSDK global variables
+extern int activeStageList;
+extern int stageListPosition;
+extern char currentStageFolder[0x100];
+extern SceneInfo stageList[STAGELIST_MAX][0x100];
 
 namespace RSDK {
     bool RSDKBridge::Initialize(RetroEngine* engine) {
@@ -10,7 +18,7 @@ namespace RSDK {
     void RSDKBridge::Update() {
         if (!rsdkEngine) return;
 
-        // Check Death Egg state
+        // Check Death Egg state using ACTUAL RSDK variables
         auto state = GetDeathEggState();
         if (state.isActive && state.robotDefeated && state.cutsceneStarted && state.creditsPlaying) {
             if (completionCallback) {
@@ -20,25 +28,13 @@ namespace RSDK {
     }
 
     bool RSDKBridge::ReadMemory(uint32_t address, void* buffer, size_t size) {
-        if (!rsdkEngine || !buffer) return false;
-
-        // Validate memory range
-        if (address < 0x200000 || address + size > 0x300000) return false;
-
-        // Read from RSDK memory
-        memcpy(buffer, reinterpret_cast<void*>(address), size);
-        return true;
+        // Deprecated - use actual RSDK variables instead
+        return false;
     }
 
     bool RSDKBridge::WriteMemory(uint32_t address, const void* buffer, size_t size) {
-        if (!rsdkEngine || !buffer) return false;
-
-        // Validate memory range
-        if (address < 0x200000 || address + size > 0x300000) return false;
-
-        // Write to RSDK memory
-        memcpy(reinterpret_cast<void*>(address), buffer, size);
-        return true;
+        // Deprecated - use actual RSDK variables instead
+        return false;
     }
 
     RSDKBridge::DeathEggState RSDKBridge::GetDeathEggState() {
@@ -46,22 +42,28 @@ namespace RSDK {
         
         if (!rsdkEngine) return state;
 
-        // Read current zone
-        uint8_t currentZone = 0;
-        ReadMemory(ADDR_CURRENT_ZONE, &currentZone, sizeof(currentZone));
-        state.isActive = (currentZone == 0x0B); // Death Egg Zone ID
+        // Check if we're in Death Egg Zone by examining the ACTUAL stage folder name
+        // Sonic 2 Death Egg Zone folder is typically "DEZ" or "DeathEgg"
+        if (currentStageFolder[0] != '\0') {
+            // Check for Death Egg Zone - common names in Sonic 2
+            state.isActive = (strstr(currentStageFolder, "DEZ") != nullptr ||
+                            strstr(currentStageFolder, "DeathEgg") != nullptr ||
+                            strstr(currentStageFolder, "Death") != nullptr);
+            
+            // Also check stage list position - Death Egg is typically the last zone in Sonic 2
+            // In Sonic 2's stage list, Death Egg is usually stage 11 (0x0B)
+            if (stageListPosition == 11 || stageListPosition == 0x0B) {
+                state.isActive = true;
+            }
+        }
 
-        // Read completion flags
-        uint8_t robotState = 0, cutsceneState = 0, creditsState = 0, emeralds = 0;
-        ReadMemory(ADDR_ROBOT_STATE, &robotState, sizeof(robotState));
-        ReadMemory(ADDR_CUTSCENE, &cutsceneState, sizeof(cutsceneState));
-        ReadMemory(ADDR_CREDITS, &creditsState, sizeof(creditsState));
-        ReadMemory(ADDR_EMERALDS, &emeralds, sizeof(emeralds));
-
-        state.robotDefeated = (robotState != 0);
-        state.cutsceneStarted = (cutsceneState != 0);
-        state.creditsPlaying = (creditsState != 0);
-        state.emeraldCount = emeralds;
+        // TODO: Implement actual boss defeat detection
+        // This requires checking Object/Entity state in the scene
+        // Would need to iterate through objectEntityList and check for boss object defeat state
+        state.robotDefeated = false;  // Needs actual boss object state check
+        state.cutsceneStarted = false;  // Needs cutscene state check
+        state.creditsPlaying = false;   // Needs credits state check
+        state.emeraldCount = 0;        // Needs global variable check
 
         return state;
     }
