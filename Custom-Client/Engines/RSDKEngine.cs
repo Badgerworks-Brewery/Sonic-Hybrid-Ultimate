@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 
 namespace SonicHybridUltimate.Engines
 {
-    public class RSDKEngine : IDisposable
+    public class RSDKEngine : IGameEngine, IDisposable
     {
         private readonly ILogger<RSDKEngine> _logger;
         private bool _isInitialized;
@@ -15,6 +15,9 @@ namespace SonicHybridUltimate.Engines
         private const int ADDR_ROBOT_STATE = 0x203A44;
         private const int ADDR_EXPLOSION_TIMER = 0x203A48;
         private const byte DEATH_EGG_ZONE_ID = 0x0B;
+
+        public bool IsRunning => _isInitialized;
+        public string CurrentGame => _currentGame;
 
         public RSDKEngine(ILogger<RSDKEngine> logger)
         {
