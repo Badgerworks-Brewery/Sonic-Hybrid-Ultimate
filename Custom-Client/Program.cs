@@ -259,16 +259,42 @@ namespace SonicHybridUltimate
             }
         }
 
-        private void CheckSonic2Completion()
+        private async void CheckSonic2Completion()
         {
-            // TODO: Implement Death Egg zone completion check
-            // For now, just enable Sonic 3 button for testing
-            _loadSonic3Button.Enabled = true;
-
-            if (_rsdkEngine.IsDeathEggDefeated())
+            // Check if Death Egg has been defeated and we should transition to Sonic 3
+            if (_rsdkEngine.IsDeathEggDefeated() && !_isTransitioning)
             {
-                _logger.LogInformation("Death Egg defeated! Enabling Sonic 3 & Knuckles...");
-                _loadSonic3Button.Enabled = true;
+                _logger.LogInformation("Death Egg defeated! Automatically transitioning to Sonic 3 & Knuckles...");
+                _isTransitioning = true;
+                _statusLabel.Text = "Transitioning to Sonic 3 & Knuckles...";
+                
+                try
+                {
+                    // Create transition manager
+                    var transitionManager = new GameTransitionManager(
+                        _rsdkEngine,
+                        _oxygenEngine,
+                        _logger
+                    );
+                    
+                    // Transition to Sonic 3
+                    await transitionManager.TransitionToSonic3();
+                    
+                    // Update state
+                    _currentGame = "sonic3";
+                    _statusLabel.Text = "Running: Sonic 3 & Knuckles (Angel Island Zone)";
+                    _loadSonic2Button.Enabled = false;
+                    _loadSonic3Button.Enabled = false;
+                    
+                    _logger.LogInformation("Successfully transitioned to Sonic 3 & Knuckles");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error during automatic transition to Sonic 3");
+                    MessageBox.Show($"Error transitioning to Sonic 3 & Knuckles: {ex.Message}", "Transition Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    _isTransitioning = false;
+                    _statusLabel.Text = "Running: Sonic 2 (Transition Failed)";
+                }
             }
         }
 
