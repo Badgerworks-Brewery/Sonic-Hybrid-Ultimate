@@ -34,10 +34,10 @@ if (-not (Test-Path "bootstrap-vcpkg.bat")) {
 }
 Write-Host "Bootstrapping vcpkg..." -ForegroundColor Cyan
 & .\bootstrap-vcpkg.bat
-Set-Location $PSScriptRoot
 Write-Host "Installing dependencies via vcpkg manifest..." -ForegroundColor Cyan
-Set-Location $vcpkgRoot
-& .\vcpkg install --triplet x64-windows
+Set-Location $PSScriptRoot
+$vcpkgExe = Join-Path $vcpkgRoot "vcpkg.exe"
+& $vcpkgExe install --triplet x64-windows
 Set-Location $PSScriptRoot
 
 # Fetch RSDK decompilations
