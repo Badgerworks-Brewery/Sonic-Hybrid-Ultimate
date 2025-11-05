@@ -20,8 +20,8 @@ if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
     exit 1
 }
 
-# Ensure vcpkg is bootstrapped and dependencies are installed
-Write-Host "Ensuring vcpkg is ready and dependencies are installed..." -ForegroundColor Yellow
+# Ensure vcpkg is bootstrapped
+Write-Host "Ensuring vcpkg is ready..." -ForegroundColor Yellow
 $vcpkgRoot = Join-Path $PSScriptRoot "vcpkg"
 if (-not (Test-Path $vcpkgRoot)) {
     Write-Host "Cloning vcpkg..." -ForegroundColor Cyan
@@ -34,10 +34,10 @@ if (-not (Test-Path "bootstrap-vcpkg.bat")) {
 }
 Write-Host "Bootstrapping vcpkg..." -ForegroundColor Cyan
 & .\bootstrap-vcpkg.bat
-Write-Host "Installing dependencies via vcpkg manifest..." -ForegroundColor Cyan
-Set-Location $PSScriptRoot
-$vcpkgExe = Join-Path $vcpkgRoot "vcpkg.exe"
-& $vcpkgExe install --triplet x64-windows
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Error: vcpkg bootstrap failed" -ForegroundColor Red
+    exit 1
+}
 Set-Location $PSScriptRoot
 
 # Fetch RSDK decompilations
@@ -71,7 +71,9 @@ Set-Location "build"
 
 # Configure and build
 $vcpkgToolchain = Join-Path (Join-Path (Join-Path $PSScriptRoot "vcpkg") "scripts") "buildsystems\vcpkg.cmake"
-cmake .. -DCMAKE_TOOLCHAIN_FILE="$vcpkgToolchain"
+Write-Host "Using vcpkg toolchain: $vcpkgToolchain" -ForegroundColor Cyan
+Write-Host "Configuring CMake..." -ForegroundColor Cyan
+cmake .. -DCMAKE_TOOLCHAIN_FILE="$vcpkgToolchain" -DVCPKG_TARGET_TRIPLET=x64-windows
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Error: CMake configuration failed" -ForegroundColor Red
     exit 1
