@@ -2,9 +2,9 @@ name: C/C++ CI
 
 on:
   push:
-    branches: [ "main", "gitauto/*" ]
+    branches: [ "main", "gitauto/*", "copilot/*" ]
   pull_request:
-    branches: [ "main", "gitauto/*" ]
+    branches: [ "main" ]
 
 jobs:
   build:
