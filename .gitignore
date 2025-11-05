@@ -30,3 +30,15 @@ sonic-hybrid/log.txt
 sonic-hybrid/glew32.dll
 .vscode/settings.json
 build
+# vcpkg dependency manager
+vcpkg/
+
+# RSDK decompilation repositories (fetched during build)
+Hybrid-RSDK-Main/RSDKV3/
+Hybrid-RSDK-Main/RSDKV4-Decompilation/
+Hybrid-RSDK-Main/RSDKV5/
+
+# CMake build directories
+Hybrid-RSDK-Main/build/
+Custom-Client/bin/
+Custom-Client/obj/
