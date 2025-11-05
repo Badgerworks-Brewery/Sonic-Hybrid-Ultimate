@@ -70,7 +70,7 @@ New-Item -ItemType Directory -Path "build" -Force | Out-Null
 Set-Location "build"
 
 # Configure and build
-$vcpkgToolchain = Join-Path $PSScriptRoot "vcpkg" "scripts" "buildsystems" "vcpkg.cmake"
+$vcpkgToolchain = Join-Path (Join-Path (Join-Path $PSScriptRoot "vcpkg") "scripts") "buildsystems\vcpkg.cmake"
 cmake .. -DCMAKE_TOOLCHAIN_FILE="$vcpkgToolchain"
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Error: CMake configuration failed" -ForegroundColor Red
