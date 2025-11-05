@@ -2,9 +2,9 @@ name: Windows Build
 
 on:
   push:
-    branches: [ "main", "gitauto/*" ]
+    branches: [ "main", "gitauto/*", "copilot/*" ]
   pull_request:
-    branches: [ "main", "gitauto/*" ]
+    branches: [ "main" ]
 
 jobs:
   build:
@@ -21,21 +21,9 @@ jobs:
       with:
         dotnet-version: '6.0.x'
 
-    - name: Setup vcpkg
-      uses: microsoft/setup-msbuild@v1.1
-
-    - name: Install dependencies with vcpkg
-      run: |
-        vcpkg install --triplet x64-windows
-        vcpkg integrate install
-      env:
-        VCPKG_DEFAULT_TRIPLET: x64-windows
-
     - name: Build project
       run: .\build_all.ps1
       shell: powershell
-      env:
-        VCPKG_ROOT: C:\vcpkg
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
