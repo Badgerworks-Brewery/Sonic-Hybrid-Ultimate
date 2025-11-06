@@ -125,6 +125,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/RSDKV3")
 
     target_include_directories(rsdkv3_core PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV3
+        ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV3/RSDKv3
         ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV3/dependencies/all/theoraplay
     )
 
