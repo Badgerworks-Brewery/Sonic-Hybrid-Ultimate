@@ -22,7 +22,7 @@ byte modObjCount = 0;
 
 #include <filesystem>
 #include <locale>
-#include "RSDKv3/Ini.hpp"
+#include "Ini.hpp"
 
 int OpenModMenu()
 {
