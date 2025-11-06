@@ -1,5 +1,6 @@
 using System;
 using Microsoft.Extensions.Logging;
+using MicrosoftILogger = Microsoft.Extensions.Logging.ILogger;
 
 namespace SonicHybridUltimate.Core
 {
@@ -12,7 +13,7 @@ namespace SonicHybridUltimate.Core
             _logAction = logAction ?? throw new ArgumentNullException(nameof(logAction));
         }
 
-        public ILogger CreateLogger(string categoryName)
+        public MicrosoftILogger CreateLogger(string categoryName)
         {
             return new CustomLogger(categoryName, _logAction);
         }
@@ -22,7 +23,7 @@ namespace SonicHybridUltimate.Core
             // Nothing to dispose
         }
 
-        private class CustomLogger : ILogger
+        private class CustomLogger : MicrosoftILogger, ILogger
         {
             private readonly string _categoryName;
             private readonly Action<string> _logAction;
@@ -40,6 +41,22 @@ namespace SonicHybridUltimate.Core
             public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
             {
                 _logAction($"[{logLevel}] {_categoryName}: {formatter(state, exception)}");
+            }
+
+            // Implement custom ILogger interface
+            public void Log(string message)
+            {
+                _logAction(message);
+            }
+
+            public void LogError(string message)
+            {
+                _logAction($"[ERROR] {message}");
+            }
+
+            public void LogWarning(string message)
+            {
+                _logAction($"[WARNING] {message}");
             }
         }
     }

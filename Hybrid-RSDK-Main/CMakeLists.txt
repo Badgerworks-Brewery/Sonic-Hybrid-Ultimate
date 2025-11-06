@@ -34,10 +34,10 @@ if(WIN32)
     find_package(Vorbis REQUIRED)
     find_package(tinyxml2 CONFIG REQUIRED)
 else()
-    find_package(SDL2 REQUIRED)
     find_package(OpenGL REQUIRED)
     find_package(GLEW REQUIRED)
     find_package(PkgConfig REQUIRED)
+    pkg_check_modules(SDL2 REQUIRED sdl2)
     pkg_check_modules(VORBIS REQUIRED vorbis vorbisfile)
     pkg_check_modules(TINYXML2 REQUIRED tinyxml2)
 endif()
@@ -58,13 +58,21 @@ if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/RSDKV5")
     execute_process(COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/../fetch_rsdkv5.sh WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..)
 endif()
 
-file(GLOB_RECURSE RSDKV4_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4/RSDKV4/*.cpp)
+file(GLOB_RECURSE RSDKV4_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/RSDKv4/*.cpp)
+# Exclude All.cpp to avoid duplicate symbols
+list(FILTER RSDKV4_SOURCES EXCLUDE REGEX ".*NativeObjects/All.cpp$")
 
 # RSDK V4 Core library
 add_library(rsdk_core STATIC ${RSDKV4_SOURCES})
 
+# Add -fPIC for shared library compatibility
+set_target_properties(rsdk_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
 target_include_directories(rsdk_core PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4/RSDKV4
+    ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/RSDKv4
+    ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/RSDKv4/NativeObjects
+    ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/dependencies/all/asio/asio/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/dependencies/all/stb-image
 )
 
 if(WIN32)
@@ -112,8 +120,12 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/RSDKV3")
 
     add_library(rsdkv3_core STATIC ${RSDKV3_SOURCES})
 
+    # Add -fPIC for shared library compatibility
+    set_target_properties(rsdkv3_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
     target_include_directories(rsdkv3_core PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV3
+        ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV3/dependencies/all/theoraplay
     )
 
     if(WIN32)
@@ -146,46 +158,47 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/RSDKV3")
     endif()
 endif()
 
-# RSDK V5 Core library (Universal)
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/RSDKV5")
-    file(GLOB_RECURSE RSDKV5_SOURCES "RSDKV5/*.cpp" "RSDKV5/*.c")
-    if(RSDKV5_SOURCES)
-        add_library(rsdkv5_core STATIC ${RSDKV5_SOURCES})
-
-        target_include_directories(rsdkv5_core PUBLIC
-            ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV5
-        )
-
-        if(WIN32)
-            target_include_directories(rsdkv5_core PUBLIC
-                ${SDL2_INCLUDE_DIRS}
-                ${OPENGL_INCLUDE_DIR}
-                ${GLEW_INCLUDE_DIRS}
-            )
-            target_link_libraries(rsdkv5_core PUBLIC
-                SDL2::SDL2
-                SDL2::SDL2main
-                ${OPENGL_LIBRARIES}
-                GLEW::GLEW
-                Vorbis::vorbis
-                Vorbis::vorbisfile
-            )
-        else()
-            target_include_directories(rsdkv5_core PUBLIC
-                ${SDL2_INCLUDE_DIRS}
-                ${OPENGL_INCLUDE_DIR}
-                ${GLEW_INCLUDE_DIRS}
-                ${VORBIS_INCLUDE_DIRS}
-            )
-            target_link_libraries(rsdkv5_core PUBLIC
-                ${SDL2_LIBRARIES}
-                ${OPENGL_LIBRARIES}
-                ${GLEW_LIBRARIES}
-                ${VORBIS_LIBRARIES}
-            )
-        endif()
-    endif()
-endif()
+# RSDK V5 Core library (Universal) - Disabled for now as it requires complex setup
+# if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/RSDKV5")
+#     file(GLOB_RECURSE RSDKV5_SOURCES "RSDKV5/*.cpp" "RSDKV5/*.c")
+#     if(RSDKV5_SOURCES)
+#         add_library(rsdkv5_core STATIC ${RSDKV5_SOURCES})
+# 
+#         target_include_directories(rsdkv5_core PUBLIC
+#             ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV5
+#             ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV5/RSDKv5
+#         )
+# 
+#         if(WIN32)
+#             target_include_directories(rsdkv5_core PUBLIC
+#                 ${SDL2_INCLUDE_DIRS}
+#                 ${OPENGL_INCLUDE_DIR}
+#                 ${GLEW_INCLUDE_DIRS}
+#             )
+#             target_link_libraries(rsdkv5_core PUBLIC
+#                 SDL2::SDL2
+#                 SDL2::SDL2main
+#                 ${OPENGL_LIBRARIES}
+#                 GLEW::GLEW
+#                 Vorbis::vorbis
+#                 Vorbis::vorbisfile
+#             )
+#         else()
+#             target_include_directories(rsdkv5_core PUBLIC
+#                 ${SDL2_INCLUDE_DIRS}
+#                 ${OPENGL_INCLUDE_DIR}
+#                 ${GLEW_INCLUDE_DIRS}
+#                 ${VORBIS_INCLUDE_DIRS}
+#             )
+#             target_link_libraries(rsdkv5_core PUBLIC
+#                 ${SDL2_LIBRARIES}
+#                 ${OPENGL_LIBRARIES}
+#                 ${GLEW_LIBRARIES}
+#                 ${VORBIS_LIBRARIES}
+#             )
+#         endif()
+#     endif()
+# endif()
 
 # Create Hybrid-RSDK library
 add_library(HybridRSDK SHARED
@@ -195,7 +208,7 @@ add_library(HybridRSDK SHARED
 )
 
 target_include_directories(HybridRSDK PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4/RSDKV4
+    ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/RSDKv4
     ${CMAKE_CURRENT_SOURCE_DIR}/sonic-hybrid
 )
 
@@ -238,7 +251,7 @@ endif()
 
 # RSDK V4 executable
 add_executable(rsdkv4
-    RSDKV4/RSDKV4/main.cpp
+    RSDKV4-Decompilation/RSDKv4/main.cpp
 )
 
 target_link_libraries(rsdkv4 PRIVATE

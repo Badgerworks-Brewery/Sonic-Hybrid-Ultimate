@@ -4,12 +4,15 @@ using Microsoft.Extensions.Logging;
 
 namespace SonicHybridUltimate.Engines
 {
-    public class OxygenEngine : IDisposable
+    public class OxygenEngine : IGameEngine, IDisposable
     {
         private readonly ILogger<OxygenEngine> _logger;
         private bool _isInitialized;
         private string _currentScript = string.Empty;
         private bool _isDisposed;
+
+        public bool IsRunning => _isInitialized;
+        public string CurrentGame => _currentScript;
 
         public OxygenEngine(ILogger<OxygenEngine> logger)
         {

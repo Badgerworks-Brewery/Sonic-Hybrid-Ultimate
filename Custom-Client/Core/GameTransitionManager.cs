@@ -1,6 +1,8 @@
 using System;
 using System.Threading.Tasks;
 using SonicHybridUltimate.Engines;
+using Microsoft.Extensions.Logging;
+using MicrosoftILogger = Microsoft.Extensions.Logging.ILogger;
 
 namespace SonicHybridUltimate.Core
 {
@@ -8,10 +10,10 @@ namespace SonicHybridUltimate.Core
     {
         private readonly IGameEngine rsdkEngine;
         private readonly IGameEngine oxygenEngine;
-        private readonly ILogger logger;
+        private readonly MicrosoftILogger logger;
         private bool isTransitioning = false;
 
-        public GameTransitionManager(IGameEngine rsdkEngine, IGameEngine oxygenEngine, ILogger logger)
+        public GameTransitionManager(IGameEngine rsdkEngine, IGameEngine oxygenEngine, MicrosoftILogger logger)
         {
             this.rsdkEngine = rsdkEngine;
             this.oxygenEngine = oxygenEngine;
@@ -29,20 +31,20 @@ namespace SonicHybridUltimate.Core
             try
             {
                 isTransitioning = true;
-                logger.Log("Starting transition to Sonic 3");
+                logger.LogInformation("Starting transition to Sonic 3");
 
                 // Start fading out RSDK game (should be implemented in RSDK)
                 await Task.Delay(1000); // Give time for fade out
 
                 // Clean up RSDK
                 rsdkEngine.Cleanup();
-                logger.Log("RSDK Engine cleaned up");
+                logger.LogInformation("RSDK Engine cleaned up");
 
                 // Initialize Oxygen Engine with Sonic 3
                 string sonic3Path = "Sonic 3 AIR Main/sonic3.bin"; // Adjust path as needed
                 if (oxygenEngine.Initialize(sonic3Path))
                 {
-                    logger.Log("Oxygen Engine initialized successfully");
+                    logger.LogInformation("Oxygen Engine initialized successfully");
                 }
                 else
                 {
@@ -51,7 +53,7 @@ namespace SonicHybridUltimate.Core
             }
             catch (Exception ex)
             {
-                logger.LogError($"Error during transition: {ex.Message}");
+                logger.LogError(ex, "Error during transition: {Message}", ex.Message);
                 // Try to recover by reinitializing RSDK
                 TryRecoverRSDK();
             }
@@ -68,7 +70,7 @@ namespace SonicHybridUltimate.Core
                 string rsdkPath = "Hybrid-RSDK-Main/Data/sonic2.rsdk"; // Adjust path as needed
                 if (rsdkEngine.Initialize(rsdkPath))
                 {
-                    logger.Log("Successfully recovered RSDK Engine");
+                    logger.LogInformation("Successfully recovered RSDK Engine");
                 }
                 else
                 {
@@ -77,7 +79,7 @@ namespace SonicHybridUltimate.Core
             }
             catch (Exception ex)
             {
-                logger.LogError($"Error recovering RSDK Engine: {ex.Message}");
+                logger.LogError(ex, "Error recovering RSDK Engine: {Message}", ex.Message);
             }
         }
 

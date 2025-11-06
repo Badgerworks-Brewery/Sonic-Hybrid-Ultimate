@@ -2,9 +2,9 @@ name: C/C++ CI
 
 on:
   push:
-    branches: [ "main", "gitauto/*" ]
+    branches: [ "main", "gitauto/*", "copilot/*" ]
   pull_request:
-    branches: [ "main", "gitauto/*" ]
+    branches: [ "main" ]
 
 jobs:
   build:
@@ -25,7 +25,7 @@ jobs:
       run: |
         sudo apt-get update
         sudo bash scripts/deps.sh
-        sudo apt-get install -y cmake build-essential pkg-config libsdl2-dev libgl1-mesa-dev libglew-dev libvorbis-dev libtinyxml2-dev
+        sudo apt-get install -y cmake build-essential pkg-config libsdl2-dev libgl1-mesa-dev libglew-dev libvorbis-dev libtinyxml2-dev libtheora-dev
 
     - name: Build project
       run: |
