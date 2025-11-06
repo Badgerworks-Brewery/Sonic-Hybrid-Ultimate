@@ -32,6 +32,7 @@ sonic-hybrid/glew32.dll
 build
 # vcpkg dependency manager
 vcpkg/
+vcpkg_installed/
 
 # RSDK decompilation repositories (fetched during build)
 Hybrid-RSDK-Main/RSDKV3/

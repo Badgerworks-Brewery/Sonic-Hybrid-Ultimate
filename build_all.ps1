@@ -75,8 +75,18 @@ $vcpkgScriptsDir = Join-Path $vcpkgDir "scripts"
 $vcpkgBuildsystemsDir = Join-Path $vcpkgScriptsDir "buildsystems"
 $vcpkgToolchain = Join-Path $vcpkgBuildsystemsDir "vcpkg.cmake"
 Write-Host "Using vcpkg toolchain: $vcpkgToolchain" -ForegroundColor Cyan
+
+# Set environment variable for vcpkg manifest mode
+$env:VCPKG_ROOT = $vcpkgDir
+$env:VCPKG_INSTALLED_DIR = Join-Path $PSScriptRoot "vcpkg_installed"
+
 Write-Host "Configuring CMake..." -ForegroundColor Cyan
-cmake .. -DCMAKE_TOOLCHAIN_FILE="$vcpkgToolchain" -DVCPKG_TARGET_TRIPLET=x64-windows
+cmake .. `
+    -DCMAKE_TOOLCHAIN_FILE="$vcpkgToolchain" `
+    -DVCPKG_TARGET_TRIPLET=x64-windows `
+    -DVCPKG_MANIFEST_MODE=ON `
+    -DVCPKG_INSTALLED_DIR="$env:VCPKG_INSTALLED_DIR"
+
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Error: CMake configuration failed" -ForegroundColor Red
     exit 1
