@@ -2,7 +2,7 @@ name: C/C++ CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "gitauto/*", "copilot/*" ]
   pull_request:
     branches: [ "main" ]
 
@@ -25,29 +25,17 @@ jobs:
       run: |
         sudo apt-get update
         sudo bash scripts/deps.sh
+        sudo apt-get install -y cmake build-essential pkg-config libsdl2-dev libgl1-mesa-dev libglew-dev libvorbis-dev libtinyxml2-dev libtheora-dev
 
-    - name: Clean and create build directory
+    - name: Build project
       run: |
-        rm -rf build
-        mkdir -p build
-      working-directory: "Hybrid-RSDK Main"
-
-    - name: Configure CMake
-      run: cmake ..
-      working-directory: "Hybrid-RSDK Main/build"
-
-    - name: Build native components
-      run: cmake --build .
-      working-directory: "Hybrid-RSDK Main/build"
-
-    - name: Build Custom Client
-      run: dotnet build
-      working-directory: "Custom Client"
+        chmod +x build_all.sh
+        ./build_all.sh
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
         name: sonic-hybrid-ultimate
         path: |
-          Hybrid-RSDK Main/build/bin/
-          Custom Client/bin/
+          Hybrid-RSDK-Main/build/bin/
+          Custom-Client/bin/

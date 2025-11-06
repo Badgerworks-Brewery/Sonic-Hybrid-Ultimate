@@ -198,4 +198,6 @@ inline void ClearNativeObjects()
     memset(objectEntityBank, 0, sizeof(objectEntityBank));
 }
 
+#define CREATE_ENTITY(type) (type *)CreateNativeObject((void (*)(void *))type##_Create, (void (*)(void *))type##_Main)
+
 #endif // !OBJECT_H

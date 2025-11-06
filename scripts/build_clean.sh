@@ -71,12 +71,12 @@ chmod +x fetch_rsdkv3.sh fetch_rsdkv5.sh
 # Fetch RSDK decompilations if they don't exist
 echo "Fetching RSDK decompilations..."
 
-if [ ! -d "Hybrid-RSDK Main/RSDKV3" ]; then
+if [ ! -d "Hybrid-RSDK-Main/RSDKV3" ]; then
     echo "Fetching RSDKv3..."
     ./fetch_rsdkv3.sh
 fi
 
-if [ ! -d "Hybrid-RSDK Main/RSDKV5" ]; then
+if [ ! -d "Hybrid-RSDK-Main/RSDKV5" ]; then
     echo "Fetching RSDKv5..."
     ./fetch_rsdkv5.sh
 fi
@@ -84,15 +84,15 @@ fi
 # Clean previous build artifacts
 echo "Cleaning previous build artifacts..."
 
-if [ -d "Hybrid-RSDK Main/build" ]; then
-    rm -rf "Hybrid-RSDK Main/build"
+if [ -d "Hybrid-RSDK-Main/build" ]; then
+    rm -rf "Hybrid-RSDK-Main/build"
 fi
 
 # Create fresh build directory
-mkdir -p "Hybrid-RSDK Main/build"
+mkdir -p "Hybrid-RSDK-Main/build"
 
 echo "Building Hybrid-RSDK..."
-cd "Hybrid-RSDK Main/build"
+cd "Hybrid-RSDK-Main/build"
 
 # Configure CMake
 cmake .. -DCMAKE_BUILD_TYPE=Release
@@ -101,7 +101,7 @@ cmake .. -DCMAKE_BUILD_TYPE=Release
 cmake --build . --config Release
 
 echo "Building Custom Client..."
-cd "../../Custom Client"
+cd "../../Custom-Client"
 
 # Restore NuGet packages and build
 dotnet restore
@@ -110,12 +110,12 @@ dotnet build --configuration Release
 echo "=== Build Complete ==="
 echo ""
 echo "Built components:"
-echo "  - Hybrid-RSDK Main/build/bin/rsdkv4"
-echo "  - Hybrid-RSDK Main/build/lib/libHybridRSDK.so (or .dll/.dylib)"
-echo "  - Custom Client/bin/Release/net6.0-windows/SonicHybrid.exe"
+echo "  - Hybrid-RSDK-Main/build/bin/rsdkv4"
+echo "  - Hybrid-RSDK-Main/build/lib/libHybridRSDK.so (or .dll/.dylib)"
+echo "  - Custom-Client/bin/Release/net6.0-windows/SonicHybrid.exe"
 echo ""
 echo "To run the project:"
-echo "  1. Place your RSDK data files in 'Hybrid-RSDK Main/rsdk-source-data/'"
+echo "  1. Place your RSDK data files in 'Hybrid-RSDK-Main/rsdk-source-data/'"
 echo "  2. Run the Custom Client executable"
 echo ""
 echo "Required data files:"

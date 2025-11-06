@@ -1,9 +1,23 @@
 [submodule "vcpkg"]
 	path = vcpkg
 	url = https://github.com/microsoft/vcpkg.git
+
 [submodule "vendor/sonic3air"]
 	path = vendor/sonic3air
 	url = https://github.com/Eukaryot/sonic3air.git
+
 [submodule "vendor/theoraplay"]
 	path = vendor/theoraplay
 	url = https://github.com/fgsoftware1/theoraplay
+
+[submodule "Hybrid-RSDK-Main/RSDKV3"]
+	path = Hybrid-RSDK-Main/RSDKV3
+	url = https://github.com/RSDKModding/RSDKv3-Decompilation.git
+
+[submodule "Hybrid-RSDK-Main/RSDKV4-Decompilation"]
+	path = Hybrid-RSDK-Main/RSDKV4-Decompilation
+	url = https://github.com/RSDKModding/RSDKv4-Decompilation.git
+
+[submodule "Hybrid-RSDK-Main/RSDKV5"]
+	path = Hybrid-RSDK-Main/RSDKV5
+	url = https://github.com/RSDKModding/RSDKv5-Decompilation.git

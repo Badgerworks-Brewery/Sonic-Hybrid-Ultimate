@@ -67,6 +67,7 @@ extern byte graphicData[GFXDATA_SIZE];
 extern DisplaySettings displaySettings;
 extern bool convertTo32Bit;
 extern bool mixFiltersOnJekyll;
+extern int textMenuSurfaceNo;
 
 #if RETRO_USING_OPENGL
 extern GLint defaultFramebuffer;
