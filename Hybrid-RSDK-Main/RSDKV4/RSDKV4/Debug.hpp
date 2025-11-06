@@ -10,19 +10,25 @@ inline void PrintLog(const char *msg, ...)
 {
 #ifndef RETRO_DISABLE_LOG
     if (engineDebugMode) {
-        char buffer[0x100];
+        char buffer[0x200];
 
         // make the full string
         va_list args;
         va_start(args, msg);
-        vsprintf(buffer, msg, args);
+        vsnprintf(buffer, sizeof(buffer) - 2, msg, args);  // Leave space for potential newline
+        va_end(args);
+        
         if (endLine) {
             printf("%s\n", buffer);
-            sprintf(buffer, "%s\n", buffer);
+            // Safely append newline for file writing
+            size_t len = strlen(buffer);
+            if (len < sizeof(buffer) - 2) {
+                buffer[len] = '\n';
+                buffer[len + 1] = '\0';
+            }
         }
         else {
             printf("%s", buffer);
-            sprintf(buffer, "%s", buffer);
         }
 
         char pathBuffer[0x100];
@@ -104,5 +110,7 @@ void ProcessStageSelect();
 
 // Not in original, but the code was, and its cleaner this way
 void SetTextMenu(int mode);
+
+extern bool skipStartMenu;
 
 #endif //! DEBUG_H
