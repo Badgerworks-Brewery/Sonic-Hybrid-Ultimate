@@ -70,8 +70,10 @@ New-Item -ItemType Directory -Path "build" -Force | Out-Null
 Set-Location "build"
 
 # Configure and build
-$vcpkgScriptsDir = Join-Path $PSScriptRoot "vcpkg" "scripts"
-$vcpkgToolchain = Join-Path $vcpkgScriptsDir "buildsystems" "vcpkg.cmake"
+$vcpkgDir = Join-Path $PSScriptRoot "vcpkg"
+$vcpkgScriptsDir = Join-Path $vcpkgDir "scripts"
+$vcpkgBuildsystemsDir = Join-Path $vcpkgScriptsDir "buildsystems"
+$vcpkgToolchain = Join-Path $vcpkgBuildsystemsDir "vcpkg.cmake"
 Write-Host "Using vcpkg toolchain: $vcpkgToolchain" -ForegroundColor Cyan
 Write-Host "Configuring CMake..." -ForegroundColor Cyan
 cmake .. -DCMAKE_TOOLCHAIN_FILE="$vcpkgToolchain" -DVCPKG_TARGET_TRIPLET=x64-windows
