@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net6.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>SonicHybrid</AssemblyName>
+    <!-- <ApplicationIcon>icon.ico</ApplicationIcon> -->
+    <StartupObject>SonicHybridUltimate.Program</StartupObject>
+    <RootNamespace>SonicHybridUltimate</RootNamespace>
+  </PropertyGroup>
+
+  <!-- <ItemGroup>
+    <Content Include="icon.ico" />
+  </ItemGroup> -->
+
+  <ItemGroup>
+    <None Update="Hybrid-RSDK-Main\**">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Sonic 3 AIR Main\**">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="6.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="6.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="6.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.0" />
+  </ItemGroup>
+
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="'$(OS)' == 'Windows_NT'">
+    <Exec Command="if not exist &quot;$(TargetDir)Hybrid-RSDK-Main&quot; mkdir &quot;$(TargetDir)Hybrid-RSDK-Main&quot;" />
+    <Exec Command="if not exist &quot;$(TargetDir)Sonic 3 AIR Main&quot; mkdir &quot;$(TargetDir)Sonic 3 AIR Main&quot;" />
+  </Target>
+
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="'$(OS)' != 'Windows_NT'">
+    <Exec Command="mkdir -p &quot;$(TargetDir)Hybrid-RSDK-Main&quot;" />
+    <Exec Command="mkdir -p &quot;$(TargetDir)Sonic 3 AIR Main&quot;" />
+  </Target>
+
+</Project>

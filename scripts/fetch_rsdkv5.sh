@@ -7,7 +7,7 @@ echo "Fetching RSDKv5 Decompilation..."
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(realpath "$SCRIPT_DIR/..")"  
 
-RSDK_DIR="$ROOT_DIR/Hybrid-RSDK Main/RSDKV5"
+RSDK_DIR="$ROOT_DIR/Hybrid-RSDK-Main/RSDKV5"
 
 if [ ! -d "$RSDK_DIR" ]; then
     git clone -b master --depth 1 https://github.com/RSDKModding/RSDKv5-Decompilation.git "$RSDK_DIR"
@@ -15,5 +15,5 @@ if [ ! -d "$RSDK_DIR" ]; then
     echo "RSDKv5 Decompilation fetched successfully"
 else
     echo "RSDKv5 already exists, updating..."
-    cd "$RSDK_DIR" && git pull
+    cd "$RSDK_DIR" && git fetch && git reset --hard origin/master
 fi

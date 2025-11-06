@@ -337,22 +337,25 @@ extern bool engineDebugMode;
 #include "Object.hpp"
 #include "Palette.hpp"
 #include "Drawing.hpp"
+#include "Renderer.hpp"
 #include "Scene3D.hpp"
 #include "Collision.hpp"
 #include "Scene.hpp"
 #include "Script.hpp"
 #include "Sprite.hpp"
-#include "Text.hpp"
-#include "Networking.hpp"
-#include "Renderer.hpp"
-#include "Userdata.hpp"
 #include "Debug.hpp"
 #include "ModAPI.hpp"
-// Move cross-version includes to relevant .cpp files to avoid circular deps
-// #include "RSDKv3/Text.hpp"
+#include "Text.hpp"
+#include "Userdata.hpp"
+#if RETRO_USE_NETWORKING
+#include "Networking.hpp"
+#endif
 
 // Native Entities
 #include "NativeObjects.hpp"
+
+// Forward declarations
+struct TextMenu;
 
 class RetroEngine
 {

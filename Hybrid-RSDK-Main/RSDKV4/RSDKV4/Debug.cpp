@@ -1,9 +1,12 @@
 #include "RetroEngine.hpp"
+#include "Text.hpp"
 
 bool endLine   = true;
 int touchFlags = 0;
 
 int taListStore = 0;
+
+TextMenu gameMenu[2];
 
 void InitDevMenu()
 {
