@@ -3,7 +3,7 @@ param(
 )
 
 $baseUrl = "https://raw.githubusercontent.com/RSDKModding/RSDKv4-Decompilation/main/RSDKv4"
-$targetDir = "Hybrid-RSDK Main/RSDKV4/RSDKV4"
+$targetDir = "Hybrid-RSDK-Main/RSDKV4/RSDKV4"
 
 if (-not (Test-Path $targetDir)) {
     New-Item -ItemType Directory -Path $targetDir -Force

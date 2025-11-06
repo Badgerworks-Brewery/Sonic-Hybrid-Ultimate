@@ -1,7 +1,7 @@
 #ifndef HYBRID_ENGINE_H
 #define HYBRID_ENGINE_H
 
-#include "RetroEngine.hpp"
+#include "../RSDKV4/RSDKV4/RetroEngine.hpp"
 #include "StateManager.hpp"
 #include "TransitionManager.hpp"
 #include <functional>
