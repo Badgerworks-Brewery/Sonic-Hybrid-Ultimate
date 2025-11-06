@@ -85,6 +85,7 @@ cmake .. `
     -DCMAKE_TOOLCHAIN_FILE="$vcpkgToolchain" `
     -DVCPKG_TARGET_TRIPLET=x64-windows `
     -DVCPKG_MANIFEST_MODE=ON `
+    -DVCPKG_MANIFEST_DIR="$PSScriptRoot" `
     -DVCPKG_INSTALLED_DIR="$env:VCPKG_INSTALLED_DIR"
 
 if ($LASTEXITCODE -ne 0) {
