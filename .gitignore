@@ -1,1 +1,24 @@
+# Build artifacts
 Hybrid-RSDK-Main/build/
+**/bin/
+**/obj/
+*.o
+*.a
+*.so
+*.exe
+*.dll
+
+# Game data files (copyrighted)
+*.rsdk
+*.bin
+*.sav
+
+# IDE and editor files
+.vscode/
+.vs/
+*.suo
+*.user
+
+# OS files
+.DS_Store
+Thumbs.db
