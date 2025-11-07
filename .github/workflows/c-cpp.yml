@@ -16,6 +16,15 @@ jobs:
       with:
         submodules: recursive
 
+    - name: Apply Team Forever enhancements
+      run: |
+        cd Hybrid-RSDK-Main/RSDKV4-Decompilation
+        git apply ../../teamforever-rsdkv4.patch
+        if [ ! -d "dependencies/all/theoraplay/.git" ]; then
+          rm -rf dependencies/all/theoraplay
+          git clone --depth=1 https://github.com/icculus/theoraplay.git dependencies/all/theoraplay
+        fi
+
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
