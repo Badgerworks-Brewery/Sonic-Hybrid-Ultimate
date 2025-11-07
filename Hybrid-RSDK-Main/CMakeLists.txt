@@ -36,8 +36,8 @@ if(WIN32)
     # Team Forever requires ogg and theora for video playback
     # These use pkg-config even on Windows via vcpkg
     find_package(PkgConfig REQUIRED)
-    pkg_check_modules(OGG REQUIRED ogg)
-    pkg_check_modules(THEORA REQUIRED theora theoradec)
+    pkg_check_modules(OGG REQUIRED IMPORTED_TARGET ogg)
+    pkg_check_modules(THEORA REQUIRED IMPORTED_TARGET theora theoradec)
 else()
     find_package(OpenGL REQUIRED)
     find_package(GLEW REQUIRED)
@@ -94,8 +94,6 @@ if(WIN32)
         ${SDL2_INCLUDE_DIRS}
         ${OPENGL_INCLUDE_DIR}
         ${GLEW_INCLUDE_DIRS}
-        ${OGG_INCLUDE_DIRS}
-        ${THEORA_INCLUDE_DIRS}
     )
     target_link_libraries(rsdk_core PUBLIC
         SDL2::SDL2
@@ -105,8 +103,8 @@ if(WIN32)
         Vorbis::vorbis
         Vorbis::vorbisfile
         tinyxml2::tinyxml2
-        ${OGG_LIBRARIES}
-        ${THEORA_LIBRARIES}
+        PkgConfig::OGG
+        PkgConfig::THEORA
     )
 else()
     target_include_directories(rsdk_core PUBLIC
