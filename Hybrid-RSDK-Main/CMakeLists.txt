@@ -40,6 +40,8 @@ else()
     pkg_check_modules(SDL2 REQUIRED sdl2)
     pkg_check_modules(VORBIS REQUIRED vorbis vorbisfile)
     pkg_check_modules(TINYXML2 REQUIRED tinyxml2)
+    pkg_check_modules(OGG REQUIRED ogg)
+    pkg_check_modules(THEORA REQUIRED theora theoradec)
 endif()
 
 # Check if RSDK decompilations exist
@@ -62,6 +64,12 @@ file(GLOB_RECURSE RSDKV4_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilatio
 # Exclude All.cpp to avoid duplicate symbols
 list(FILTER RSDKV4_SOURCES EXCLUDE REGEX ".*NativeObjects/All.cpp$")
 
+# Add additional C source files for Team Forever features
+list(APPEND RSDKV4_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/RSDKv4/fcaseopen.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/dependencies/all/theoraplay/theoraplay.c
+)
+
 # RSDK V4 Core library
 add_library(rsdk_core STATIC ${RSDKV4_SOURCES})
 
@@ -73,6 +81,7 @@ target_include_directories(rsdk_core PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/RSDKv4/NativeObjects
     ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/dependencies/all/asio/asio/include
     ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/dependencies/all/stb-image
+    ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/dependencies/all/theoraplay
 )
 
 if(WIN32)
@@ -97,6 +106,8 @@ else()
         ${GLEW_INCLUDE_DIRS}
         ${VORBIS_INCLUDE_DIRS}
         ${TINYXML2_INCLUDE_DIRS}
+        ${OGG_INCLUDE_DIRS}
+        ${THEORA_INCLUDE_DIRS}
     )
     target_link_libraries(rsdk_core PUBLIC
         ${SDL2_LIBRARIES}
@@ -104,6 +115,8 @@ else()
         ${GLEW_LIBRARIES}
         ${VORBIS_LIBRARIES}
         ${TINYXML2_LIBRARIES}
+        ${OGG_LIBRARIES}
+        ${THEORA_LIBRARIES}
     )
 endif()
 
