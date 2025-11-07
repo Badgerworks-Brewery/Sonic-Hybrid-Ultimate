@@ -98,6 +98,9 @@ if(WIN32)
         Vorbis::vorbis
         Vorbis::vorbisfile
         tinyxml2::tinyxml2
+        Ogg::ogg
+        Theora::theora
+        Theora::theoradec
     )
 else()
     target_include_directories(rsdk_core PUBLIC
