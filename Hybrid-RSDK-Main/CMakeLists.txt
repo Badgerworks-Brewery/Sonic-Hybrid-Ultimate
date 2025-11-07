@@ -112,11 +112,8 @@ get_target_property(LIBS rsdk_core INTERFACE_LINK_LIBRARIES)
 
 # RSDK V3 Core library (for Sonic CD)
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/RSDKV3")
-    if(NOT WIN32)
-        file(GLOB_RECURSE RSDKV3_SOURCES "RSDKV3/RSDKv3/*.cpp")
-    else()
-        file(GLOB_RECURSE RSDKV3_SOURCES "RSDKV3/*.cpp")
-    endif()
+    # Only include core RSDKv3 sources, not platform-specific directories
+    file(GLOB_RECURSE RSDKV3_SOURCES "RSDKV3/RSDKv3/*.cpp")
 
     add_library(rsdkv3_core STATIC ${RSDKV3_SOURCES})
 
