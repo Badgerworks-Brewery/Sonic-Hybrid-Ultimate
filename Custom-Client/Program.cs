@@ -20,6 +20,8 @@ namespace SonicHybridUltimate
 
         private RichTextBox _logBox = null!;
         private Label _statusLabel = null!;
+        private Button _loadSonic1Button = null!;
+        private Button _loadSonicCDButton = null!;
         private Button _loadSonic2Button = null!;
         private Button _loadSonic3Button = null!;
         private System.Windows.Forms.Timer _updateTimer = null!;
@@ -67,6 +69,20 @@ namespace SonicHybridUltimate
                 Padding = new Padding(5)
             };
 
+            _loadSonic1Button = new Button
+            {
+                Text = "Load Sonic 1",
+                AutoSize = true
+            };
+            _loadSonic1Button.Click += LoadSonic1_Click;
+
+            _loadSonicCDButton = new Button
+            {
+                Text = "Load Sonic CD",
+                AutoSize = true
+            };
+            _loadSonicCDButton.Click += LoadSonicCD_Click;
+
             _loadSonic2Button = new Button
             {
                 Text = "Load Sonic 2",
@@ -82,7 +98,12 @@ namespace SonicHybridUltimate
             };
             _loadSonic3Button.Click += LoadSonic3_Click;
 
-            buttonPanel.Controls.AddRange(new Control[] { _loadSonic2Button, _loadSonic3Button });
+            buttonPanel.Controls.AddRange(new Control[] { 
+                _loadSonic1Button, 
+                _loadSonicCDButton, 
+                _loadSonic2Button, 
+                _loadSonic3Button 
+            });
 
             // Create log box
             _logBox = new RichTextBox
@@ -128,6 +149,108 @@ namespace SonicHybridUltimate
             };
             _updateTimer.Tick += UpdateTimer_Tick;
             _updateTimer.Start();
+        }
+
+        private void LoadSonic1_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                _logger.LogInformation("Loading Sonic 1...");
+
+                var defaultPath = Path.Combine("Hybrid-RSDK-Main", "Data", "sonic1.rsdk");
+                string gamePath = defaultPath;
+
+                if (!File.Exists(gamePath))
+                {
+                    using var ofd = new OpenFileDialog
+                    {
+                        Title = "Select Sonic 1 .rsdk file",
+                        Filter = "RSDK files (*.rsdk)|*.rsdk|All files (*.*)|*.*",
+                        CheckFileExists = true,
+                        Multiselect = false
+                    };
+
+                    if (ofd.ShowDialog() == DialogResult.OK)
+                    {
+                        gamePath = ofd.FileName;
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Sonic 1 .rsdk not provided by user");
+                        MessageBox.Show("Please provide a valid Sonic 1 .rsdk file to continue.", "RSDK File Required", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        return;
+                    }
+                }
+
+                if (_rsdkEngine.Initialize(gamePath))
+                {
+                    _currentGame = "sonic1";
+                    _statusLabel.Text = "Running: Sonic 1";
+                    _loadSonic1Button.Enabled = false;
+                    _logger.LogInformation("Sonic 1 loaded successfully");
+                }
+                else
+                {
+                    _logger.LogError("Failed to load Sonic 1");
+                    MessageBox.Show("Failed to load Sonic 1. Please check the log for details.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading Sonic 1");
+                MessageBox.Show($"Error loading Sonic 1: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void LoadSonicCD_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                _logger.LogInformation("Loading Sonic CD...");
+
+                var defaultPath = Path.Combine("Hybrid-RSDK-Main", "Data", "soniccd.rsdk");
+                string gamePath = defaultPath;
+
+                if (!File.Exists(gamePath))
+                {
+                    using var ofd = new OpenFileDialog
+                    {
+                        Title = "Select Sonic CD .rsdk file",
+                        Filter = "RSDK files (*.rsdk)|*.rsdk|All files (*.*)|*.*",
+                        CheckFileExists = true,
+                        Multiselect = false
+                    };
+
+                    if (ofd.ShowDialog() == DialogResult.OK)
+                    {
+                        gamePath = ofd.FileName;
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Sonic CD .rsdk not provided by user");
+                        MessageBox.Show("Please provide a valid Sonic CD .rsdk file to continue.", "RSDK File Required", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        return;
+                    }
+                }
+
+                if (_rsdkEngine.Initialize(gamePath))
+                {
+                    _currentGame = "soniccd";
+                    _statusLabel.Text = "Running: Sonic CD";
+                    _loadSonicCDButton.Enabled = false;
+                    _logger.LogInformation("Sonic CD loaded successfully");
+                }
+                else
+                {
+                    _logger.LogError("Failed to load Sonic CD");
+                    MessageBox.Show("Failed to load Sonic CD. Please check the log for details.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading Sonic CD");
+                MessageBox.Show($"Error loading Sonic CD: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private void LoadSonic2_Click(object sender, EventArgs e)
@@ -244,9 +367,14 @@ namespace SonicHybridUltimate
 
                 switch (_currentGame)
                 {
+                    case "sonic1":
+                    case "soniccd":
                     case "sonic2":
                         _rsdkEngine.Update();
-                        CheckSonic2Completion();
+                        if (_currentGame == "sonic2")
+                        {
+                            CheckSonic2Completion();
+                        }
                         break;
                     case "sonic3":
                         _oxygenEngine.Update();
