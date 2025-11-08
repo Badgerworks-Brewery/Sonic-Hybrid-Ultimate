@@ -8,13 +8,18 @@ echo "Applying Team Forever RSDKv4 enhancements..."
 
 cd "$(dirname "$0")/Hybrid-RSDK-Main/RSDKV4-Decompilation"
 
-# Apply the patch
-if [ -f "../../teamforever-rsdkv4.patch" ]; then
-    git apply ../../teamforever-rsdkv4.patch
-    echo "Team Forever enhancements applied successfully!"
+# Check if patch has already been applied
+if [ -f "RSDKv4/Video.cpp" ] && [ -f "RSDKv4/Video.hpp" ]; then
+    echo "Team Forever enhancements already applied, skipping..."
 else
-    echo "Error: teamforever-rsdkv4.patch not found"
-    exit 1
+    # Apply the patch
+    if [ -f "../../teamforever-rsdkv4.patch" ]; then
+        git apply ../../teamforever-rsdkv4.patch
+        echo "Team Forever enhancements applied successfully!"
+    else
+        echo "Error: teamforever-rsdkv4.patch not found"
+        exit 1
+    fi
 fi
 
 # Clone theoraplay if not present
