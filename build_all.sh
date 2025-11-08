@@ -55,6 +55,15 @@ if [ $? -ne 0 ]; then
     echo "Warning: Failed to fetch RSDKv5 Decompilation (newer games support will be unavailable)"
 fi
 
+# Apply Team Forever enhancements (required for video playback and mod support)
+echo "Applying Team Forever RSDKv4 enhancements..."
+chmod +x "${SCRIPT_DIR}/apply_teamforever.sh"
+"${SCRIPT_DIR}/apply_teamforever.sh"
+if [ $? -ne 0 ]; then
+    echo "Error: Failed to apply Team Forever enhancements (video playback will not work)"
+    exit 1
+fi
+
 # Build Hybrid-RSDK-Main engine
 echo "Building Hybrid-RSDK-Main engine..."
 cd "Hybrid-RSDK-Main"
@@ -70,7 +79,7 @@ cmake ..
 if [ $? -ne 0 ]; then
     echo "Error: CMake configuration failed"
     echo "Please check that all dependencies are installed:"
-    echo "  sudo apt-get install -y cmake build-essential pkg-config libsdl2-dev libgl1-mesa-dev libglew-dev libvorbis-dev libtinyxml2-dev"
+    echo "  sudo apt-get install -y cmake build-essential pkg-config libsdl2-dev libgl1-mesa-dev libglew-dev libvorbis-dev libtinyxml2-dev libogg-dev libtheora-dev"
     exit 1
 fi
 
