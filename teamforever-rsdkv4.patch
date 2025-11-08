@@ -13479,11 +13479,16 @@ new file mode 100644
 index 0000000..3dda164
 --- /dev/null
 +++ b/RSDKv4/Video.hpp
-@@ -0,0 +1,32 @@
+@@ -0,0 +1,39 @@
 +#ifndef VIDEO_HPP
 +#define VIDEO_HPP
 +
 +#include "theoraplay.h"
++
++// Forward declare OpenGL types
++#ifndef GL_VERSION
++typedef unsigned int GLuint;
++#endif
 +
 +extern int currentVideoFrame;
 +extern int videoFrameCount;
@@ -13503,6 +13508,8 @@ index 0000000..3dda164
 +extern int vidBaseTicks;
 +extern float videoAR;
 +
++extern GLuint videoBuffer;
++
 +void PlayVideoFile(char *filePath);
 +void UpdateVideoFrame();
 +int ProcessVideo();
@@ -13512,4 +13519,4 @@ index 0000000..3dda164
 +void CloseVideoBuffer();
 +
 +#endif
-\ No newline at end of file
+
