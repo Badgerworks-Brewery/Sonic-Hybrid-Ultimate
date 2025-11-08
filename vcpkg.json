@@ -2,6 +2,7 @@
   "dependencies": [
     "asio",
     "glew",
+    "libogg",
     "libtheora",
     "libvorbis",
     "sdl2",
