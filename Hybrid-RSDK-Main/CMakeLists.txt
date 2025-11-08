@@ -33,6 +33,13 @@ if(WIN32)
     find_package(GLEW REQUIRED)
     find_package(Vorbis REQUIRED)
     find_package(tinyxml2 CONFIG REQUIRED)
+    # Team Forever requires ogg and theora for video playback
+    # vcpkg provides these but without CMake config files, so we find them manually
+    find_library(OGG_LIBRARY NAMES ogg libogg REQUIRED)
+    find_library(THEORA_LIBRARY NAMES theora libtheora REQUIRED)
+    find_library(THEORADEC_LIBRARY NAMES theoradec libtheoradec REQUIRED)
+    find_path(OGG_INCLUDE_DIR ogg/ogg.h REQUIRED)
+    find_path(THEORA_INCLUDE_DIR theora/theora.h REQUIRED)
 else()
     find_package(OpenGL REQUIRED)
     find_package(GLEW REQUIRED)
@@ -40,6 +47,8 @@ else()
     pkg_check_modules(SDL2 REQUIRED sdl2)
     pkg_check_modules(VORBIS REQUIRED vorbis vorbisfile)
     pkg_check_modules(TINYXML2 REQUIRED tinyxml2)
+    pkg_check_modules(OGG REQUIRED ogg)
+    pkg_check_modules(THEORA REQUIRED theora theoradec)
 endif()
 
 # Check if RSDK decompilations exist
@@ -62,6 +71,12 @@ file(GLOB_RECURSE RSDKV4_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilatio
 # Exclude All.cpp to avoid duplicate symbols
 list(FILTER RSDKV4_SOURCES EXCLUDE REGEX ".*NativeObjects/All.cpp$")
 
+# Add additional C source files for Team Forever features
+list(APPEND RSDKV4_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/RSDKv4/fcaseopen.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/dependencies/all/theoraplay/theoraplay.c
+)
+
 # RSDK V4 Core library
 add_library(rsdk_core STATIC ${RSDKV4_SOURCES})
 
@@ -73,6 +88,7 @@ target_include_directories(rsdk_core PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/RSDKv4/NativeObjects
     ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/dependencies/all/asio/asio/include
     ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/dependencies/all/stb-image
+    ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/dependencies/all/theoraplay
 )
 
 if(WIN32)
@@ -80,6 +96,8 @@ if(WIN32)
         ${SDL2_INCLUDE_DIRS}
         ${OPENGL_INCLUDE_DIR}
         ${GLEW_INCLUDE_DIRS}
+        ${OGG_INCLUDE_DIR}
+        ${THEORA_INCLUDE_DIR}
     )
     target_link_libraries(rsdk_core PUBLIC
         SDL2::SDL2
@@ -89,6 +107,9 @@ if(WIN32)
         Vorbis::vorbis
         Vorbis::vorbisfile
         tinyxml2::tinyxml2
+        ${OGG_LIBRARY}
+        ${THEORA_LIBRARY}
+        ${THEORADEC_LIBRARY}
     )
 else()
     target_include_directories(rsdk_core PUBLIC
@@ -97,6 +118,8 @@ else()
         ${GLEW_INCLUDE_DIRS}
         ${VORBIS_INCLUDE_DIRS}
         ${TINYXML2_INCLUDE_DIRS}
+        ${OGG_INCLUDE_DIRS}
+        ${THEORA_INCLUDE_DIRS}
     )
     target_link_libraries(rsdk_core PUBLIC
         ${SDL2_LIBRARIES}
@@ -104,6 +127,8 @@ else()
         ${GLEW_LIBRARIES}
         ${VORBIS_LIBRARIES}
         ${TINYXML2_LIBRARIES}
+        ${OGG_LIBRARIES}
+        ${THEORA_LIBRARIES}
     )
 endif()
 
@@ -112,11 +137,8 @@ get_target_property(LIBS rsdk_core INTERFACE_LINK_LIBRARIES)
 
 # RSDK V3 Core library (for Sonic CD)
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/RSDKV3")
-    if(NOT WIN32)
-        file(GLOB_RECURSE RSDKV3_SOURCES "RSDKV3/RSDKv3/*.cpp")
-    else()
-        file(GLOB_RECURSE RSDKV3_SOURCES "RSDKV3/*.cpp")
-    endif()
+    # Only include core RSDKv3 sources, not platform-specific directories
+    file(GLOB_RECURSE RSDKV3_SOURCES "RSDKV3/RSDKv3/*.cpp")
 
     add_library(rsdkv3_core STATIC ${RSDKV3_SOURCES})
 
@@ -125,6 +147,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/RSDKV3")
 
     target_include_directories(rsdkv3_core PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV3
+        ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV3/RSDKv3
         ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV3/dependencies/all/theoraplay
     )
 
