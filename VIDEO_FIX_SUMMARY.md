@@ -57,19 +57,37 @@ videoDecoder = THEORAPLAY_startDecodeFile(filepath, 30, THEORAPLAY_VIDFMT_RGBA, 
    - `UpdateRSDKv4`
    - `CleanupRSDKv4`
 
+## Custom Client DLL Loading
+
+The Custom Client requires the RSDKv4 shared library to function. The build system now automatically handles this:
+
+### Automatic DLL Copying (Recommended)
+When you build with CMake, the RSDKv4 library is automatically copied to:
+1. The Custom Client output directory (`Custom-Client/bin/Release/net6.0-windows/`)
+2. The bin directory (`Hybrid-RSDK-Main/build/bin/`)
+
+### Manual DLL Copying (If Needed)
+If the automatic copy doesn't work:
+
+**On Windows:**
+1. After building, locate `RSDKv4.dll` in `Hybrid-RSDK-Main/build/lib/` or `Hybrid-RSDK-Main/build/bin/Release/`
+2. Copy it to the same directory as `SonicHybrid.exe` (typically `Custom-Client/bin/Release/net6.0-windows/`)
+
+**On Linux:**
+1. After building, locate `libRSDKv4.so` in `Hybrid-RSDK-Main/build/lib/`
+2. Copy it to the same directory as the Custom Client executable
+
+### Verifying the DLL
+The Custom Client will look for:
+- **Windows:** `RSDKv4.dll` 
+- **Linux:** `libRSDKv4.so` (without the `lib` prefix in the P/Invoke call, Linux handles this automatically)
+
+If you still get DLL loading errors, ensure:
+1. The DLL is in the same directory as the executable
+2. All dependencies (SDL2, OpenGL, GLEW, Vorbis, Theora, OGG) are installed
+3. On Windows, the Visual C++ Redistributable is installed
+
 ## Remaining Work
-The Custom Client still needs:
-1. **File selector improvements** - Add support for all game files:
-   - Sonic 1 (.rsdk)
-   - Sonic CD (.rsdk)
-   - Sonic 2 (.rsdk)
-   - Sonic 3 & Knuckles (.bin or .md ROM file)
 
-2. **Build consolidation** - Merge Custom Client and Hybrid-RSDK into single output folder with one executable
-
-## Next Steps
-For future development:
-1. Test Custom Client DLL loading with the new libRSDKv4.so
-2. Update Custom Client file selector to show all supported game files
-3. Consolidate build output into a single executable
-4. Test end-to-end functionality with actual game data files
+- Custom Client file selector needs to support all game files (Sonic 1, CD, 2, S3&K)
+- Build output consolidation into single executable

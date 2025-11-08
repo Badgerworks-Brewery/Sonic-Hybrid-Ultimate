@@ -304,6 +304,22 @@ if(NOT WIN32)
     )
 endif()
 
+# Copy RSDKv4 library to Custom Client directory after build
+add_custom_command(TARGET RSDKv4 POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        $<TARGET_FILE:RSDKv4>
+        ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net6.0-windows/
+    COMMENT "Copying RSDKv4 library to Custom Client output directory"
+)
+
+# Also copy to the bin directory for standalone use
+add_custom_command(TARGET RSDKv4 POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        $<TARGET_FILE:RSDKv4>
+        ${CMAKE_BINARY_DIR}/bin/
+    COMMENT "Copying RSDKv4 library to bin directory"
+)
+
 # Install rules - include all available targets
 set(INSTALL_TARGETS rsdk_core rsdkv4 HybridRSDK RSDKv4)
 
