@@ -8,7 +8,7 @@ Sonic Hybrid Ultimate is a hybrid engine that combines multiple RSDK (Retro Soft
 
 ### Linux/Ubuntu
 ```bash
-sudo apt-get install -y cmake build-essential pkg-config libsdl2-dev libgl1-mesa-dev libglew-dev libvorbis-dev libtinyxml2-dev git dotnet-sdk-6.0
+sudo apt-get install -y cmake build-essential pkg-config libsdl2-dev libgl1-mesa-dev libglew-dev libvorbis-dev libtinyxml2-dev libogg-dev libtheora-dev git dotnet-sdk-6.0
 ```
 
 ### Windows
@@ -44,7 +44,12 @@ chmod +x build_all.sh
    ./fetch_rsdkv5.sh  # Optional for newer games
    ```
 
-3. **Build the engine:**
+3. **Apply Team Forever enhancements (required for video playback):**
+   ```bash
+   ./apply_teamforever.sh
+   ```
+
+4. **Build the engine:**
    ```bash
    cd Hybrid-RSDK-Main
    mkdir build && cd build
@@ -53,7 +58,7 @@ chmod +x build_all.sh
    cd ../..
    ```
 
-4. **Build the custom client:**
+5. **Build the custom client:**
    ```bash
    cd Custom-Client
    dotnet build --configuration Release

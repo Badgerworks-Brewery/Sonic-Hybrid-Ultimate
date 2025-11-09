@@ -1,0 +1,19 @@
+--- a/RSDKv4/Video.cpp
++++ b/RSDKv4/Video.cpp
+@@ -7,9 +7,15 @@ int videoWidth = 0;
+ int videoHeight = 0;
+ float videoAR = 0;
+ 
+-THEORAPLAY_Decoder *videoDecoder;
+-const THEORAPLAY_VideoFrame *videoVidData;
++THEORAPLAY_Decoder *videoDecoder = NULL;
++const THEORAPLAY_VideoFrame *videoVidData = NULL;
++const THEORAPLAY_AudioPacket *videoAudioData = NULL;
+ THEORAPLAY_Io callbacks;
++
++#if RETRO_USING_OPENGL
++GLuint videoBuffer = 0;
++#endif
+ 
+ byte videoSurface = 0;
+ int videoFilePos = 0;
