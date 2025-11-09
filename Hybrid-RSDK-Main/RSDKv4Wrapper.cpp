@@ -1,11 +1,14 @@
 // RSDKv4Wrapper.cpp - C wrapper for P/Invoke from C# Custom Client
-#include "RSDKV4-Decompilation/RSDKv4/RetroEngine.hpp"
+#include "sonic-hybrid/HybridEngine.hpp"
 #include <string.h>
 #include <SDL2/SDL.h>
 
+using namespace SonicHybrid;
+
 extern "C" {
 
-// Global engine instance
+// Global hybrid engine instance
+static HybridEngine* hybridEngine = nullptr;
 static bool sdlInitialized = false;
 
 #ifdef _WIN32
@@ -16,6 +19,10 @@ static bool sdlInitialized = false;
 
 EXPORT int InitRSDKv4(const char* dataPath) {
     try {
+        if (hybridEngine != nullptr) {
+            return 1; // Already initialized
+        }
+
         // Initialize SDL if not already initialized
         if (!sdlInitialized) {
             if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_GAMECONTROLLER) < 0) {
@@ -23,32 +30,62 @@ EXPORT int InitRSDKv4(const char* dataPath) {
             }
             sdlInitialized = true;
         }
+
+        // Get hybrid engine singleton instance
+        hybridEngine = &HybridEngine::Instance();
         
-        // Set the game path
-        if (dataPath) {
-            strncpy(Engine.dataFile[0], dataPath, 0x80 - 1);
-            Engine.dataFile[0][0x80 - 1] = '\0';
+        // Initialize hybrid engine (initializes RetroEngine + state/transition managers)
+        if (!hybridEngine->Initialize()) {
+            hybridEngine = nullptr;
+            return 0;
         }
-        
-        // Initialize the engine systems
-        Engine.Init();
-        Engine.LoadGameConfig("Data/Game/GameConfig.bin");
-        InitFirstStage();
+
+        // Load game data
+        if (!hybridEngine->LoadGame(std::string(dataPath))) {
+            hybridEngine->Cleanup();
+            hybridEngine = nullptr;
+            return 0;
+        }
         
         return 1; // Success
     }
     catch (...) {
+        if (hybridEngine) {
+            hybridEngine->Cleanup();
+            hybridEngine = nullptr;
+        }
         return 0; // Failure
     }
 }
 
 EXPORT void UpdateRSDKv4() {
-    // Process one frame of the game
-    // Don't call Run() - that's the main loop that blocks
-    ProcessEvents();
+    if (hybridEngine == nullptr) {
+        return;
+    }
+
+    try {
+        // Update hybrid engine (handles game logic, state management, transitions, completion detection)
+        hybridEngine->Update();
+    }
+    catch (...) {
+        // Silently handle exceptions to prevent crashes
+    }
+}
+
+EXPORT int IsGameComplete() {
+    if (hybridEngine == nullptr) {
+        return 0;
+    }
+
+    return hybridEngine->IsGameComplete() ? 1 : 0;
 }
 
 EXPORT void CleanupRSDKv4() {
+    if (hybridEngine != nullptr) {
+        hybridEngine->Cleanup();
+        hybridEngine = nullptr;
+    }
+    
     if (sdlInitialized) {
         SDL_Quit();
         sdlInitialized = false;

@@ -281,6 +281,25 @@ target_link_libraries(rsdkv4 PRIVATE
     rsdk_core
 )
 
+# Sonic Hybrid library - game progression and state management
+add_library(sonic_hybrid STATIC
+    sonic-hybrid/HybridEngine.cpp
+    sonic-hybrid/StateManager.cpp
+    sonic-hybrid/TransitionManager.cpp
+)
+
+target_include_directories(sonic_hybrid PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/sonic-hybrid
+    ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/RSDKv4
+    ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/RSDKv4/NativeObjects
+)
+
+set_target_properties(sonic_hybrid PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
+target_link_libraries(sonic_hybrid PUBLIC
+    rsdk_core
+)
+
 # RSDKv4 shared library for Custom Client P/Invoke
 add_library(RSDKv4 SHARED
     RSDKv4Wrapper.cpp
@@ -288,12 +307,14 @@ add_library(RSDKv4 SHARED
 
 target_include_directories(RSDKv4 PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/sonic-hybrid
     ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/RSDKv4
     ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/RSDKv4/NativeObjects
 )
 
 target_link_libraries(RSDKv4 PRIVATE
     rsdk_core
+    sonic_hybrid
 )
 
 # Set visibility for exported functions on Linux
