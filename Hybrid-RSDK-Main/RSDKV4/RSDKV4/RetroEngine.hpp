@@ -537,4 +537,8 @@ public:
 };
 
 extern RetroEngine Engine;
+
+// Global function for processing events frame-by-frame
+bool ProcessEvents();
+
 #endif // !RETROENGINE_H

@@ -281,8 +281,82 @@ target_link_libraries(rsdkv4 PRIVATE
     rsdk_core
 )
 
+# Sonic Hybrid library - game progression and state management
+add_library(sonic_hybrid STATIC
+    sonic-hybrid/HybridEngine.cpp
+    sonic-hybrid/StateManager.cpp
+    sonic-hybrid/TransitionManager.cpp
+)
+
+target_include_directories(sonic_hybrid PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/sonic-hybrid
+    ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/RSDKv4
+    ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/RSDKv4/NativeObjects
+)
+
+set_target_properties(sonic_hybrid PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
+target_link_libraries(sonic_hybrid PUBLIC
+    rsdk_core
+)
+
+# RSDKv4 shared library for Custom Client P/Invoke
+add_library(RSDKv4 SHARED
+    RSDKv4Wrapper.cpp
+)
+
+target_include_directories(RSDKv4 PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/sonic-hybrid
+    ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/RSDKv4
+    ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/RSDKv4/NativeObjects
+)
+
+target_link_libraries(RSDKv4 PRIVATE
+    rsdk_core
+    sonic_hybrid
+)
+
+# Set visibility for exported functions on Linux
+if(NOT WIN32)
+    set_target_properties(RSDKv4 PROPERTIES
+        CXX_VISIBILITY_PRESET hidden
+        C_VISIBILITY_PRESET hidden
+    )
+endif()
+
+# Copy RSDKv4 library to Custom Client directory after build
+add_custom_command(TARGET RSDKv4 POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net6.0-windows/
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        $<TARGET_FILE:RSDKv4>
+        ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net6.0-windows/
+    COMMENT "Copying RSDKv4 library to Custom Client output directory"
+)
+
+# Copy dependency DLLs to Custom Client directory on Windows (vcpkg provides these)
+if(WIN32)
+    add_custom_command(TARGET RSDKv4 POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E echo "Copying RSDKv4 dependencies to Custom Client directory..."
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            $<TARGET_RUNTIME_DLLS:RSDKv4>
+            ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net6.0-windows/
+        COMMAND_EXPAND_LISTS
+        COMMENT "Copying RSDKv4 dependency DLLs (SDL2, GLEW, OGG, Vorbis, Theora)"
+    )
+endif()
+
+# Also copy to the bin directory for standalone use
+add_custom_command(TARGET RSDKv4 POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/bin/
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        $<TARGET_FILE:RSDKv4>
+        ${CMAKE_BINARY_DIR}/bin/
+    COMMENT "Copying RSDKv4 library to bin directory"
+)
+
 # Install rules - include all available targets
-set(INSTALL_TARGETS rsdk_core rsdkv4 HybridRSDK)
+set(INSTALL_TARGETS rsdk_core rsdkv4 HybridRSDK RSDKv4)
 
 if(TARGET rsdkv3_core)
     list(APPEND INSTALL_TARGETS rsdkv3_core)
