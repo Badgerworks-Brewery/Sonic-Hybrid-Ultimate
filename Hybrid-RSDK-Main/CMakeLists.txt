@@ -313,6 +313,18 @@ add_custom_command(TARGET RSDKv4 POST_BUILD
     COMMENT "Copying RSDKv4 library to Custom Client output directory"
 )
 
+# Copy dependency DLLs to Custom Client directory on Windows (vcpkg provides these)
+if(WIN32)
+    add_custom_command(TARGET RSDKv4 POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E echo "Copying RSDKv4 dependencies to Custom Client directory..."
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            $<TARGET_RUNTIME_DLLS:RSDKv4>
+            ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net6.0-windows/
+        COMMAND_EXPAND_LISTS
+        COMMENT "Copying RSDKv4 dependency DLLs (SDL2, GLEW, OGG, Vorbis, Theora)"
+    )
+endif()
+
 # Also copy to the bin directory for standalone use
 add_custom_command(TARGET RSDKv4 POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/bin/
