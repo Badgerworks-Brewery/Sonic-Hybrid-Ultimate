@@ -55,14 +55,11 @@ if [ $? -ne 0 ]; then
     echo "Warning: Failed to fetch RSDKv5 Decompilation (newer games support will be unavailable)"
 fi
 
-# Apply Team Forever enhancements (required for video playback and mod support)
+# Apply Team Forever enhancements (optional - provides video playback and mod support)
 echo "Applying Team Forever RSDKv4 enhancements..."
 chmod +x "${SCRIPT_DIR}/apply_teamforever.sh"
 "${SCRIPT_DIR}/apply_teamforever.sh"
-if [ $? -ne 0 ]; then
-    echo "Error: Failed to apply Team Forever enhancements (video playback will not work)"
-    exit 1
-fi
+# Script always exits 0 now - patch application is optional
 
 # Build Hybrid-RSDK-Main engine
 echo "Building Hybrid-RSDK-Main engine..."
