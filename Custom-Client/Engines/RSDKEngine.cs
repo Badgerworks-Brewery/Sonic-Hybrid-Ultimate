@@ -246,6 +246,24 @@ namespace SonicHybridUltimate.Engines
             GC.SuppressFinalize(this);
         }
 
+        public bool CheckGameComplete()
+        {
+            if (!_isInitialized)
+                return false;
+
+            try
+            {
+                return NativeMethods.IsGameComplete() != 0;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking game completion");
+                return false;
+            }
+        }
+
+        public bool IsGameComplete() => CheckGameComplete();
+
         private static class NativeMethods
         {
             [DllImport("RSDKv4", CallingConvention = CallingConvention.Cdecl)]
@@ -253,6 +271,9 @@ namespace SonicHybridUltimate.Engines
 
             [DllImport("RSDKv4", CallingConvention = CallingConvention.Cdecl)]
             public static extern void UpdateRSDKv4();
+
+            [DllImport("RSDKv4", CallingConvention = CallingConvention.Cdecl)]
+            public static extern int IsGameComplete();
 
             [DllImport("RSDKv4", CallingConvention = CallingConvention.Cdecl)]
             public static extern void CleanupRSDKv4();

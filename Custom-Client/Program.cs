@@ -41,6 +41,9 @@ namespace SonicHybridUltimate
             InitializeComponents();
             InitializeTimer();
 
+            // Auto-load Sonic 1 to start the progression
+            LoadSonic1_Click(this, EventArgs.Empty);
+
             _logger.LogInformation("MainForm initialized");
         }
 
@@ -369,13 +372,16 @@ namespace SonicHybridUltimate
                 switch (_currentGame)
                 {
                     case "sonic1":
+                        _rsdkEngine.Update();
+                        CheckSonic1Completion();
+                        break;
                     case "soniccd":
+                        _rsdkEngine.Update();
+                        CheckSonicCDCompletion();
+                        break;
                     case "sonic2":
                         _rsdkEngine.Update();
-                        if (_currentGame == "sonic2")
-                        {
-                            CheckSonic2Completion();
-                        }
+                        CheckSonic2Completion();
                         break;
                     case "sonic3":
                         _oxygenEngine.Update();
@@ -385,6 +391,90 @@ namespace SonicHybridUltimate
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error in update loop");
+            }
+        }
+
+        private async void CheckSonic1Completion()
+        {
+            // Check if Sonic 1 has been completed and transition to Sonic CD
+            if (_rsdkEngine.IsGameComplete() && !_isTransitioning)
+            {
+                _logger.LogInformation("Sonic 1 completed! Automatically transitioning to Sonic CD...");
+                _isTransitioning = true;
+                _statusLabel.Text = "Transitioning to Sonic CD...";
+                
+                try
+                {
+                    _rsdkEngine.Cleanup();
+                    
+                    string sonicCDPath = Path.Combine(
+                        Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? "",
+                        "..", "rsdk-source-data", "soniccd.rsdk"
+                    );
+                    
+                    if (_rsdkEngine.Initialize(sonicCDPath))
+                    {
+                        _currentGame = "soniccd";
+                        _statusLabel.Text = "Running: Sonic CD (Palmtree Panic Zone)";
+                        _loadSonic1Button.Enabled = false;
+                        _logger.LogInformation("Successfully transitioned to Sonic CD");
+                    }
+                    else
+                    {
+                        throw new Exception("Failed to initialize Sonic CD");
+                    }
+                    
+                    _isTransitioning = false;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error during automatic transition to Sonic CD");
+                    MessageBox.Show($"Error transitioning to Sonic CD: {ex.Message}", "Transition Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    _isTransitioning = false;
+                    _statusLabel.Text = "Running: Sonic 1 (Transition Failed)";
+                }
+            }
+        }
+
+        private async void CheckSonicCDCompletion()
+        {
+            // Check if Sonic CD has been completed and transition to Sonic 2
+            if (_rsdkEngine.IsGameComplete() && !_isTransitioning)
+            {
+                _logger.LogInformation("Sonic CD completed! Automatically transitioning to Sonic 2...");
+                _isTransitioning = true;
+                _statusLabel.Text = "Transitioning to Sonic 2...";
+                
+                try
+                {
+                    _rsdkEngine.Cleanup();
+                    
+                    string sonic2Path = Path.Combine(
+                        Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? "",
+                        "..", "rsdk-source-data", "sonic2.rsdk"
+                    );
+                    
+                    if (_rsdkEngine.Initialize(sonic2Path))
+                    {
+                        _currentGame = "sonic2";
+                        _statusLabel.Text = "Running: Sonic 2 (Emerald Hill Zone)";
+                        _loadSonicCDButton.Enabled = false;
+                        _logger.LogInformation("Successfully transitioned to Sonic 2");
+                    }
+                    else
+                    {
+                        throw new Exception("Failed to initialize Sonic 2");
+                    }
+                    
+                    _isTransitioning = false;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error during automatic transition to Sonic 2");
+                    MessageBox.Show($"Error transitioning to Sonic 2: {ex.Message}", "Transition Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    _isTransitioning = false;
+                    _statusLabel.Text = "Running: Sonic CD (Transition Failed)";
+                }
             }
         }
 
