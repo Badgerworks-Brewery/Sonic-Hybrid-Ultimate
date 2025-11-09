@@ -1,14 +1,13 @@
 // RSDKv4Wrapper.cpp - C wrapper for P/Invoke from C# Custom Client
-#include "sonic-hybrid/HybridEngine.hpp"
-#include <string.h>
+#include "RSDKV4-Decompilation/RSDKv4/RetroEngine.hpp"
 #include <SDL2/SDL.h>
-
-using namespace SonicHybrid;
+#include <string.h>
+#include <stdio.h>
 
 extern "C" {
 
-// Global hybrid engine instance
-static HybridEngine* hybridEngine = nullptr;
+// Global engine instance
+static RetroEngine* engineInstance = nullptr;
 static bool sdlInitialized = false;
 
 #ifdef _WIN32
@@ -19,53 +18,70 @@ static bool sdlInitialized = false;
 
 EXPORT int InitRSDKv4(const char* dataPath) {
     try {
-        if (hybridEngine != nullptr) {
+        if (engineInstance != nullptr) {
             return 1; // Already initialized
         }
 
-        // Initialize SDL if not already initialized
+        // Initialize SDL subsystems if not already done
         if (!sdlInitialized) {
-            if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_GAMECONTROLLER) < 0) {
-                return 0; // SDL initialization failed
+            if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMECONTROLLER) < 0) {
+                fprintf(stderr, "SDL_Init failed: %s\n", SDL_GetError());
+                return 0;
             }
             sdlInitialized = true;
         }
 
-        // Get hybrid engine singleton instance
-        hybridEngine = &HybridEngine::Instance();
+        // Create new RetroEngine instance
+        engineInstance = new RetroEngine();
         
-        // Initialize hybrid engine (initializes RetroEngine + state/transition managers)
-        if (!hybridEngine->Initialize()) {
-            hybridEngine = nullptr;
+        // Initialize engine - this sets up the display and subsystems
+        if (!engineInstance->Init()) {
+            delete engineInstance;
+            engineInstance = nullptr;
+            fprintf(stderr, "RetroEngine::Init() failed\n");
             return 0;
         }
 
-        // Load game data
-        if (!hybridEngine->LoadGame(std::string(dataPath))) {
-            hybridEngine->Cleanup();
-            hybridEngine = nullptr;
+        // Load game config from the .rsdk file
+        if (!engineInstance->LoadGameConfig(dataPath)) {
+            engineInstance->Release();
+            delete engineInstance;
+            engineInstance = nullptr;
+            fprintf(stderr, "LoadGameConfig(%s) failed\n", dataPath);
             return 0;
         }
+
+        // Initialize first stage
+        engineInstance->InitFirstStage();
         
         return 1; // Success
     }
+    catch (const std::exception& e) {
+        fprintf(stderr, "Exception in InitRSDKv4: %s\n", e.what());
+        if (engineInstance) {
+            delete engineInstance;
+            engineInstance = nullptr;
+        }
+        return 0;
+    }
     catch (...) {
-        if (hybridEngine) {
-            hybridEngine->Cleanup();
-            hybridEngine = nullptr;
+        fprintf(stderr, "Unknown exception in InitRSDKv4\n");
+        if (engineInstance) {
+            delete engineInstance;
+            engineInstance = nullptr;
         }
         return 0; // Failure
     }
 }
 
 EXPORT void UpdateRSDKv4() {
-    if (hybridEngine == nullptr) {
+    if (engineInstance == nullptr) {
         return;
     }
 
     try {
-        // Update hybrid engine (handles game logic, state management, transitions, completion detection)
-        hybridEngine->Update();
+        // Process one frame of game logic
+        engineInstance->ProcessEvents();
     }
     catch (...) {
         // Silently handle exceptions to prevent crashes
@@ -73,23 +89,28 @@ EXPORT void UpdateRSDKv4() {
 }
 
 EXPORT int IsGameComplete() {
-    if (hybridEngine == nullptr) {
+    if (engineInstance == nullptr) {
         return 0;
     }
 
-    return hybridEngine->IsGameComplete() ? 1 : 0;
+    // Check if game is in credits/ending state
+    // This is a placeholder - actual completion detection would check game state
+    return 0;
 }
 
 EXPORT void CleanupRSDKv4() {
-    if (hybridEngine != nullptr) {
-        hybridEngine->Cleanup();
-        hybridEngine = nullptr;
+    if (engineInstance != nullptr) {
+        try {
+            engineInstance->Release();
+        }
+        catch (...) {
+            // Ignore cleanup errors
+        }
+        delete engineInstance;
+        engineInstance = nullptr;
     }
     
-    if (sdlInitialized) {
-        SDL_Quit();
-        sdlInitialized = false;
-    }
+    // Don't quit SDL here - it might be shared with other engines
 }
 
 } // extern "C"
