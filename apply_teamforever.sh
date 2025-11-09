@@ -16,6 +16,12 @@ else
     if [ -f "../../teamforever-rsdkv4.patch" ]; then
         git apply ../../teamforever-rsdkv4.patch
         echo "Team Forever enhancements applied successfully!"
+        
+        # Apply video fix patch
+        if [ -f "../../video-fix.patch" ]; then
+            git apply ../../video-fix.patch
+            echo "Video.cpp fixes applied successfully!"
+        fi
     else
         echo "Error: teamforever-rsdkv4.patch not found"
         exit 1
