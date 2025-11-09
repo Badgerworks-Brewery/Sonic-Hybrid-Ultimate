@@ -98,7 +98,7 @@ namespace SonicHybridUltimate
             {
                 Text = "Load Sonic 3 & Knuckles",
                 AutoSize = true,
-                Enabled = false  // Disabled until Sonic 2 is completed
+                Enabled = true  // Allow users to manually load Sonic 3 AIR
             };
             _loadSonic3Button.Click += LoadSonic3_Click;
 
