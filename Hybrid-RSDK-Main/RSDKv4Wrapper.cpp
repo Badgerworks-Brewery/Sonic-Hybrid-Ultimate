@@ -1,8 +1,17 @@
 // RSDKv4Wrapper.cpp - C wrapper for P/Invoke from C# Custom Client
 #include "RSDKV4-Decompilation/RSDKv4/RetroEngine.hpp"
+#include "RSDKV4-Decompilation/RSDKv4/Drawing.hpp"
+#include "RSDKV4-Decompilation/RSDKv4/Audio.hpp"
+#include "RSDKV4-Decompilation/RSDKv4/Scene.hpp"
 #include <SDL2/SDL.h>
 #include <string.h>
 #include <stdio.h>
+#include <unistd.h>  // For getcwd, chdir on Unix
+#ifdef _WIN32
+#include <direct.h>  // For _getcwd, _chdir on Windows
+#define getcwd _getcwd
+#define chdir _chdir
+#endif
 
 // Declare external symbols from RSDKv4
 extern RetroEngine Engine;
@@ -18,16 +27,80 @@ static bool engineInitialized = false;
     #define EXPORT __attribute__((visibility("default")))
 #endif
 
+// Forward declarations
+EXPORT void CleanupRSDKv4();
+
 EXPORT int InitRSDKv4(const char* dataPath) {
     try {
         if (engineInitialized) {
-            return 1; // Already initialized
+            fprintf(stderr, "RSDK already initialized, cleaning up first...\n");
+            CleanupRSDKv4();
         }
 
+        if (!dataPath || strlen(dataPath) == 0) {
+            fprintf(stderr, "ERROR: No data path provided to InitRSDKv4\n");
+            return 0;
+        }
+
+        fprintf(stderr, "InitRSDKv4: Loading game from %s\n", dataPath);
+
+        // Extract directory and filename from dataPath
+        char dataDir[512] = "";
+        char dataFile[128] = "";
+        
+        const char* lastSlash = strrchr(dataPath, '/');
+        const char* lastBackslash = strrchr(dataPath, '\\');
+        const char* separator = lastSlash > lastBackslash ? lastSlash : lastBackslash;
+        
+        if (separator) {
+            // Split into directory and filename
+            size_t dirLen = separator - dataPath;
+            strncpy(dataDir, dataPath, dirLen);
+            dataDir[dirLen] = '\0';
+            strncpy(dataFile, separator + 1, sizeof(dataFile) - 1);
+            dataFile[sizeof(dataFile) - 1] = '\0';
+        } else {
+            // No directory separator, use current directory
+            strcpy(dataFile, dataPath);
+        }
+
+        // Change to the data directory so Engine.Init() can find the file
+        char originalDir[512];
+        if (getcwd(originalDir, sizeof(originalDir)) == NULL) {
+            fprintf(stderr, "ERROR: Failed to get current directory\n");
+            return 0;
+        }
+
+        if (strlen(dataDir) > 0) {
+            if (chdir(dataDir) != 0) {
+                fprintf(stderr, "ERROR: Failed to change to directory: %s\n", dataDir);
+                return 0;
+            }
+            fprintf(stderr, "Changed directory to: %s\n", dataDir);
+        }
+
+        // Set the data file name in Engine
+        strncpy(Engine.dataFile[0], dataFile, sizeof(Engine.dataFile[0]) - 1);
+        Engine.dataFile[0][sizeof(Engine.dataFile[0]) - 1] = '\0';
+        fprintf(stderr, "Set Engine.dataFile[0] to: %s\n", Engine.dataFile[0]);
+
         // Initialize the global Engine instance
+        // This calls CheckRSDKFile, LoadGameConfig, InitRenderDevice, InitAudioPlayback, InitFirstStage
         Engine.Init();
         
+        // Restore original directory
+        if (chdir(originalDir) != 0) {
+            fprintf(stderr, "WARNING: Failed to restore directory: %s\n", originalDir);
+        }
+
+        if (!Engine.running) {
+            fprintf(stderr, "ERROR: Engine failed to start - Engine.running is false\n");
+            engineInitialized = false;
+            return 0;
+        }
+
         engineInitialized = true;
+        fprintf(stderr, "InitRSDKv4: Successfully initialized and started engine\n");
         return 1; // Success
     }
     catch (const std::exception& e) {
