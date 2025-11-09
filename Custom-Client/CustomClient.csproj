@@ -11,12 +11,19 @@
     <!-- <ApplicationIcon>icon.ico</ApplicationIcon> -->
     <StartupObject>SonicHybridUltimate.Program</StartupObject>
     <RootNamespace>SonicHybridUltimate</RootNamespace>
+    <!-- Single file publishing configuration -->
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
   </PropertyGroup>
 
   <!-- <ItemGroup>
     <Content Include="icon.ico" />
   </ItemGroup> -->
 
+  <!-- Embed native libraries and content files into single executable -->
   <ItemGroup>
     <None Update="Hybrid-RSDK-Main\**">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -26,13 +33,26 @@
     </None>
   </ItemGroup>
 
-  <!-- Copy RSDKv4 library from build output -->
+  <!-- Copy RSDKv4 library and ALL dependencies from build output -->
   <ItemGroup>
+    <!-- RSDKv4 library -->
     <None Include="..\Hybrid-RSDK-Main\build\lib\*.dll" Condition="Exists('..\Hybrid-RSDK-Main\build\lib')">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>%(Filename)%(Extension)</Link>
     </None>
     <None Include="..\Hybrid-RSDK-Main\build\lib\*.so" Condition="Exists('..\Hybrid-RSDK-Main\build\lib')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>%(Filename)%(Extension)</Link>
+    </None>
+    
+    <!-- All dependency DLLs from bin directory (SDL2, GLEW, OGG, Vorbis, Theora, etc.) -->
+    <None Include="..\Hybrid-RSDK-Main\build\bin\**\*.dll" Condition="Exists('..\Hybrid-RSDK-Main\build\bin')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>%(Filename)%(Extension)</Link>
+    </None>
+    
+    <!-- RSDK executables -->
+    <None Include="..\Hybrid-RSDK-Main\build\bin\*.exe" Condition="Exists('..\Hybrid-RSDK-Main\build\bin')">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>%(Filename)%(Extension)</Link>
     </None>
