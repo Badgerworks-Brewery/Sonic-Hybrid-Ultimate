@@ -28,6 +28,7 @@ namespace SonicHybridUltimate
 
         private string _currentGame = string.Empty;
         private bool _isTransitioning;
+        private bool _hasEncounteredFatalError = false;
 
         public MainForm(IServiceProvider services)
         {
