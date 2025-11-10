@@ -195,7 +195,20 @@ namespace SonicHybridUltimate
                 else
                 {
                     _logger.LogError("Failed to load Sonic 1");
-                    MessageBox.Show("Failed to load Sonic 1. Please check the log for details.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show(
+                        "Failed to load Sonic 1.\n\n" +
+                        "This could be because:\n" +
+                        "• The native libraries (RSDKv4.dll) are missing\n" +
+                        "• The .rsdk file is invalid or corrupted\n" +
+                        "• SDL2 or other dependencies are missing\n\n" +
+                        "Please check the log for detailed error information.\n\n" +
+                        "To fix this:\n" +
+                        "1. Run the build_native_libs.sh script to build required libraries\n" +
+                        "2. Ensure you have a valid Sonic 1 .rsdk file\n" +
+                        "3. Check that all dependencies are installed",
+                        "Error Loading Sonic 1",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
                 }
             }
             catch (Exception ex)
@@ -246,7 +259,20 @@ namespace SonicHybridUltimate
                 else
                 {
                     _logger.LogError("Failed to load Sonic CD");
-                    MessageBox.Show("Failed to load Sonic CD. Please check the log for details.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show(
+                        "Failed to load Sonic CD.\n\n" +
+                        "This could be because:\n" +
+                        "• The native libraries (RSDKv4.dll) are missing\n" +
+                        "• The .rsdk file is invalid or corrupted\n" +
+                        "• SDL2 or other dependencies are missing\n\n" +
+                        "Please check the log for detailed error information.\n\n" +
+                        "To fix this:\n" +
+                        "1. Run the build_native_libs.sh script to build required libraries\n" +
+                        "2. Ensure you have a valid Sonic CD .rsdk file\n" +
+                        "3. Check that all dependencies are installed",
+                        "Error Loading Sonic CD",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
                 }
             }
             catch (Exception ex)
@@ -297,7 +323,20 @@ namespace SonicHybridUltimate
                 else
                 {
                     _logger.LogError("Failed to load Sonic 2");
-                    MessageBox.Show("Failed to load Sonic 2. Please check the log for details.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show(
+                        "Failed to load Sonic 2.\n\n" +
+                        "This could be because:\n" +
+                        "• The native libraries (RSDKv4.dll) are missing\n" +
+                        "• The .rsdk file is invalid or corrupted\n" +
+                        "• SDL2 or other dependencies are missing\n\n" +
+                        "Please check the log for detailed error information.\n\n" +
+                        "To fix this:\n" +
+                        "1. Run the build_native_libs.sh script to build required libraries\n" +
+                        "2. Ensure you have a valid Sonic 2 .rsdk file\n" +
+                        "3. Check that all dependencies are installed",
+                        "Error Loading Sonic 2",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
                 }
             }
             catch (Exception ex)
@@ -348,7 +387,20 @@ namespace SonicHybridUltimate
                 else
                 {
                     _logger.LogError("Failed to load Sonic 3 & Knuckles");
-                    MessageBox.Show("Failed to load Sonic 3 & Knuckles. Please check the log for details.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show(
+                        "Failed to load Sonic 3 & Knuckles.\n\n" +
+                        "This could be because:\n" +
+                        "• The native libraries (OxygenEngine.dll) are missing\n" +
+                        "• Sonic 3 AIR executable is not found\n" +
+                        "• The ROM file is invalid or corrupted\n\n" +
+                        "Please check the log for detailed error information.\n\n" +
+                        "To fix this:\n" +
+                        "1. Run the build_native_libs.sh script to build required libraries\n" +
+                        "2. Ensure Sonic 3 AIR is properly installed\n" +
+                        "3. Verify the ROM file is a valid Sonic 3 & Knuckles ROM",
+                        "Error Loading Sonic 3 & Knuckles",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
                 }
             }
             catch (Exception ex)
