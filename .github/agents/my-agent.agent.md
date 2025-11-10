@@ -1,6 +1,11 @@
 ---
-name: Sonic Hybrid Build Expert
-description: Expert in building and integrating Sonic game engines (RSDK v3/v4/v5, Sonic 3 AIR) with C++, CMake, and C# interop
+# Fill in the fields below to create a basic custom agent for your repository.
+# The Copilot CLI can be used for local testing: https://gh.io/customagents/cli
+# To make this agent available, merge this file into the default repository branch.
+# For format details, see: https://gh.io/customagents/config
+
+name: Badger
+description: Good old agent
 ---
 
 # Sonic Hybrid Build Expert
