@@ -74,7 +74,7 @@ list(FILTER RSDKV4_SOURCES EXCLUDE REGEX ".*NativeObjects/All.cpp$")
 # Add additional C source files for Team Forever features
 list(APPEND RSDKV4_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/RSDKv4/fcaseopen.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/dependencies/all/theoraplay/theoraplay.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../vendor/theoraplay/theoraplay.c
 )
 
 # RSDK V4 Core library
@@ -88,7 +88,7 @@ target_include_directories(rsdk_core PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/RSDKv4/NativeObjects
     ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/dependencies/all/asio/asio/include
     ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/dependencies/all/stb-image
-    ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/dependencies/all/theoraplay
+    ${CMAKE_CURRENT_SOURCE_DIR}/../vendor/theoraplay
 )
 
 if(WIN32)
@@ -324,6 +324,36 @@ if(NOT WIN32)
         C_VISIBILITY_PRESET hidden
     )
 endif()
+
+# OxygenEngine wrapper library for Sonic 3 AIR integration
+add_library(OxygenEngine SHARED
+    OxygenWrapper.cpp
+)
+
+# Set visibility for exported functions on Linux
+if(NOT WIN32)
+    set_target_properties(OxygenEngine PROPERTIES
+        CXX_VISIBILITY_PRESET hidden
+        C_VISIBILITY_PRESET hidden
+    )
+endif()
+
+# Copy OxygenEngine library to Custom Client directory
+add_custom_command(TARGET OxygenEngine POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net6.0-windows/win-x64/
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        $<TARGET_FILE:OxygenEngine>
+        ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net6.0-windows/win-x64/
+    COMMENT "Copying OxygenEngine library to Custom Client output directory (win-x64)"
+)
+
+add_custom_command(TARGET OxygenEngine POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net6.0-windows/
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        $<TARGET_FILE:OxygenEngine>
+        ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net6.0-windows/
+    COMMENT "Copying OxygenEngine library to Custom Client output directory (non-RID)"
+)
 
 # Copy RSDKv4 library to Custom Client directory after build
 # .NET 6.0 with RuntimeIdentifier uses paths like bin/Release/net6.0-windows/win-x64/
