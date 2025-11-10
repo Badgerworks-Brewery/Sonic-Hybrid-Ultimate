@@ -15,7 +15,6 @@ namespace SonicHybridUltimate
         private readonly ILogger<MainForm> _logger;
         private readonly IServiceProvider _services;
         private readonly RSDKEngine _rsdkEngine;
-        private readonly OxygenEngine _oxygenEngine;
         private readonly RSDKAnalyzer _rsdkAnalyzer;
 
         private RichTextBox _logBox = null!;
@@ -35,7 +34,6 @@ namespace SonicHybridUltimate
             _services = services ?? throw new ArgumentNullException(nameof(services));
             _logger = _services.GetRequiredService<ILogger<MainForm>>();
             _rsdkEngine = _services.GetRequiredService<RSDKEngine>();
-            _oxygenEngine = _services.GetRequiredService<OxygenEngine>();
             _rsdkAnalyzer = _services.GetRequiredService<RSDKAnalyzer>();
 
             InitializeComponents();
@@ -314,48 +312,26 @@ namespace SonicHybridUltimate
             {
                 _logger.LogInformation("Loading Sonic 3 & Knuckles...");
 
-                var defaultRom = Path.Combine("Sonic 3 AIR Main", "sonic3.bin");
-                string romFile = defaultRom;
+                MessageBox.Show(
+                    "Sonic 3 AIR integration is not yet complete.\n\n" +
+                    "For now, please use the standalone Sonic 3 AIR executable.\n\n" +
+                    "The hybrid progression will be: Sonic 1 → Sonic CD → Sonic 2 → (manual launch of Sonic 3 AIR)",
+                    "Sonic 3 AIR Not Available",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+                
+                return;
 
-                if (!File.Exists(romFile))
-                {
-                    using var ofd = new OpenFileDialog
-                    {
-                        Title = "Select Sonic 3 & Knuckles ROM (sonic3.bin)",
-                        Filter = "ROM files (*.bin)|*.bin|All files (*.*)|*.*",
-                        CheckFileExists = true,
-                        Multiselect = false
-                    };
-
-                    if (ofd.ShowDialog() == DialogResult.OK)
-                    {
-                        romFile = ofd.FileName;
-                    }
-                    else
-                    {
-                        _logger.LogWarning("Sonic 3 & Knuckles ROM not provided by user");
-                        MessageBox.Show("Please provide the Sonic 3 & Knuckles ROM file to continue.", "ROM Required", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        return;
-                    }
-                }
-
-                if (_oxygenEngine.Initialize(romFile))
-                {
-                    _currentGame = "sonic3";
-                    _statusLabel.Text = "Running: Sonic 3 & Knuckles";
-                    _loadSonic3Button.Enabled = false;
-                    _logger.LogInformation("Sonic 3 & Knuckles loaded successfully");
-                }
-                else
-                {
-                    _logger.LogError("Failed to load Sonic 3 & Knuckles");
-                    MessageBox.Show("Failed to load Sonic 3 & Knuckles. Please check the log for details.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
+                // TODO: Integrate Sonic 3 AIR properly
+                // This requires either:
+                // 1. Building Sonic 3 AIR as a library (complex)
+                // 2. Launching as separate process (contradicts single-exe requirement)
+                // 3. Porting Sonic 3 AIR engine to our wrapper architecture
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error loading Sonic 3 & Knuckles");
-                MessageBox.Show($"Error loading Sonic 3 & Knuckles: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                _logger.LogError(ex, "Error with Sonic 3 & Knuckles");
+                MessageBox.Show($"Error: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -483,36 +459,38 @@ namespace SonicHybridUltimate
             // Check if Death Egg has been defeated and we should transition to Sonic 3
             if (_rsdkEngine.IsDeathEggDefeated() && !_isTransitioning)
             {
-                _logger.LogInformation("Death Egg defeated! Automatically transitioning to Sonic 3 & Knuckles...");
+                _logger.LogInformation("Death Egg defeated! Sonic 2 completed!");
                 _isTransitioning = true;
-                _statusLabel.Text = "Transitioning to Sonic 3 & Knuckles...";
+                _statusLabel.Text = "Sonic 2 Complete!";
                 
                 try
                 {
-                    // Create transition manager
-                    var transitionManager = new GameTransitionManager(
-                        _rsdkEngine,
-                        _oxygenEngine,
-                        _logger
-                    );
+                    _rsdkEngine.Cleanup();
                     
-                    // Transition to Sonic 3
-                    await transitionManager.TransitionToSonic3();
+                    MessageBox.Show(
+                        "Congratulations! You've completed the Hybrid RSDK trilogy!\n\n" +
+                        "Sonic 1 → Sonic CD → Sonic 2\n\n" +
+                        "Sonic 3 AIR integration is coming soon.\n" +
+                        "For now, please launch Sonic 3 AIR separately to continue the adventure!",
+                        "Trilogy Complete!",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information);
                     
-                    // Update state
-                    _currentGame = "sonic3";
-                    _statusLabel.Text = "Running: Sonic 3 & Knuckles (Angel Island Zone)";
-                    _loadSonic2Button.Enabled = false;
-                    _loadSonic3Button.Enabled = false;
+                    _currentGame = "";
+                    _statusLabel.Text = "Trilogy Complete - Ready for new game";
+                    _loadSonic1Button.Enabled = true;
+                    _loadSonicCDButton.Enabled = true;
+                    _loadSonic2Button.Enabled = true;
                     
-                    _logger.LogInformation("Successfully transitioned to Sonic 3 & Knuckles");
+                    _logger.LogInformation("Hybrid trilogy completed successfully");
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error during automatic transition to Sonic 3");
-                    MessageBox.Show($"Error transitioning to Sonic 3 & Knuckles: {ex.Message}", "Transition Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    _logger.LogError(ex, "Error after Sonic 2 completion");
+                }
+                finally
+                {
                     _isTransitioning = false;
-                    _statusLabel.Text = "Running: Sonic 2 (Transition Failed)";
                 }
             }
         }
@@ -533,7 +511,6 @@ namespace SonicHybridUltimate
         {
             _updateTimer.Stop();
             _rsdkEngine.Cleanup();
-            _oxygenEngine.Cleanup();
             base.OnFormClosing(e);
         }
     }
@@ -554,7 +531,6 @@ namespace SonicHybridUltimate
                     builder.AddConsole();
                 })
                 .AddSingleton<RSDKEngine>()
-                .AddSingleton<OxygenEngine>()
                 .AddSingleton<RSDKAnalyzer>()
                 .AddSingleton<MainForm>()
                 .BuildServiceProvider();
