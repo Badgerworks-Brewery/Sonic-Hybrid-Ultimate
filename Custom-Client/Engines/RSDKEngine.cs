@@ -125,7 +125,24 @@ namespace SonicHybridUltimate.Engines
                     Cleanup();
                 }
 
-                var result = NativeMethods.InitRSDKv4(gamePath);
+                int result = 0;
+                try
+                {
+                    result = NativeMethods.InitRSDKv4(gamePath);
+                }
+                catch (AccessViolationException ex)
+                {
+                    _logger.LogError(ex, "Access violation in native RSDK initialization - the native code crashed");
+                    _logger.LogError("This typically means SDL window creation failed or the .rsdk file is incompatible");
+                    return false;
+                }
+                catch (SEHException ex)
+                {
+                    _logger.LogError(ex, "Structured exception in native RSDK initialization - the native code crashed");
+                    _logger.LogError("This typically means SDL window creation failed or the .rsdk file is incompatible");
+                    return false;
+                }
+                
                 _isInitialized = (result == 1);
 
                 if (_isInitialized)
