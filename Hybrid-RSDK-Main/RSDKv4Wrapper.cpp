@@ -88,15 +88,22 @@ EXPORT int InitRSDKv4(const char* dataPath) {
 
         // Initialize the global Engine instance
         // This calls CheckRSDKFile, LoadGameConfig, InitRenderDevice, InitAudioPlayback, InitFirstStage
+        fprintf(stderr, "Calling Engine.Init()...\n");
         Engine.Init();
+        fprintf(stderr, "Engine.Init() completed. Engine.running = %d, Engine.initialised = %d\n", 
+                Engine.running, Engine.initialised);
         
-        // Restore original directory
-        if (chdir(originalDir) != 0) {
-            fprintf(stderr, "WARNING: Failed to restore directory: %s\n", originalDir);
-        }
+        // Don't restore directory - the engine needs to stay in the data directory
+        // to access game resources (sprites, music, etc.)
+        // if (chdir(originalDir) != 0) {
+        //     fprintf(stderr, "WARNING: Failed to restore directory: %s\n", originalDir);
+        // }
 
         if (!Engine.running) {
             fprintf(stderr, "ERROR: Engine failed to start - Engine.running is false\n");
+            fprintf(stderr, "Check that the .rsdk file is valid and contains game data\n");
+            // Restore directory on failure
+            chdir(originalDir);
             engineInitialized = false;
             return 0;
         }

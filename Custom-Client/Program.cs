@@ -314,32 +314,32 @@ namespace SonicHybridUltimate
             {
                 _logger.LogInformation("Loading Sonic 3 & Knuckles...");
 
-                var defaultDll = Path.Combine("Sonic 3 AIR Main", "Oxygen", "sonic3air.dll");
-                string oxygenDll = defaultDll;
+                var defaultRom = Path.Combine("Sonic 3 AIR Main", "sonic3.bin");
+                string romFile = defaultRom;
 
-                if (!File.Exists(oxygenDll))
+                if (!File.Exists(romFile))
                 {
                     using var ofd = new OpenFileDialog
                     {
-                        Title = "Select Sonic 3 AIR oxygen DLL (sonic3air.dll)",
-                        Filter = "DLL files (*.dll)|*.dll|All files (*.*)|*.*",
+                        Title = "Select Sonic 3 & Knuckles ROM (sonic3.bin)",
+                        Filter = "ROM files (*.bin)|*.bin|All files (*.*)|*.*",
                         CheckFileExists = true,
                         Multiselect = false
                     };
 
                     if (ofd.ShowDialog() == DialogResult.OK)
                     {
-                        oxygenDll = ofd.FileName;
+                        romFile = ofd.FileName;
                     }
                     else
                     {
-                        _logger.LogWarning("Oxygen DLL not provided by user");
-                        MessageBox.Show("Please provide the Sonic 3 AIR 'sonic3air.dll' to continue.", "Oxygen DLL Required", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        _logger.LogWarning("Sonic 3 & Knuckles ROM not provided by user");
+                        MessageBox.Show("Please provide the Sonic 3 & Knuckles ROM file to continue.", "ROM Required", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         return;
                     }
                 }
 
-                if (_oxygenEngine.Initialize(oxygenDll))
+                if (_oxygenEngine.Initialize(romFile))
                 {
                     _currentGame = "sonic3";
                     _statusLabel.Text = "Running: Sonic 3 & Knuckles";
