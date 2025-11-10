@@ -48,6 +48,8 @@ chmod +x build_all.sh
    ```bash
    ./apply_teamforever.sh
    ```
+   
+   **Note**: The Team Forever patch may fail to apply due to version mismatches with RSDKv4 v1.3.3. This is expected and non-critical - the build will continue without video cutscene support, but core gameplay will work normally.
 
 4. **Build the engine:**
    ```bash
@@ -97,19 +99,29 @@ Missing optional components will result in warnings but won't prevent the build 
 
 ### Common Issues
 
-1. **"TextMenu has not been declared"**
+1. **Team Forever patch fails to apply**
+   - **Symptom**: `error: patch failed: RSDKv4/Drawing.cpp:2772` and similar errors during `apply_teamforever.sh`
+   - **Cause**: The patch was created for an older RSDKv4 version and conflicts with v1.3.3
+   - **Resolution**: This is expected and non-critical. The build continues automatically without video playback support. Core gameplay works normally.
+
+2. **"TextMenu has not been declared"**
    - This should be fixed in the current version
    - If it persists, ensure all includes are properly ordered
 
-2. **"fetch_rsdkv3.sh: No such file or directory"**
+3. **"fetch_rsdkv3.sh: No such file or directory"**
    - This should be fixed in the current version
    - Ensure you're running the build script from the project root
 
-3. **Missing dependencies**
+4. **Missing dependencies**
    - Install the prerequisites listed above
    - On Ubuntu: `sudo apt-get install -y cmake build-essential pkg-config libsdl2-dev libgl1-mesa-dev libglew-dev libvorbis-dev libtinyxml2-dev`
 
-4. **Git clone failures**
+5. **RSDKv4.dll not found on Windows**
+   - **Symptom**: `Could not find RSDKv4 library in any of the search paths`
+   - **Cause**: The DLL wasn't copied to the correct output directory
+   - **Resolution**: Rebuild Hybrid-RSDK-Main. The build system now copies to both `bin/Release/net6.0-windows/` and `bin/Release/net6.0-windows/win-x64/` for compatibility with .NET 6.0 RuntimeIdentifier.
+
+6. **Git clone failures**
    - Ensure you have internet connectivity
    - Check if GitHub is accessible from your network
    - Some corporate networks may block git:// URLs
