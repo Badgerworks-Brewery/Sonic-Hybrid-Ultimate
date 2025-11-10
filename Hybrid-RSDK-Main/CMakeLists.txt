@@ -325,6 +325,37 @@ if(NOT WIN32)
     )
 endif()
 
+# OxygenEngine stub library for Custom Client P/Invoke
+# This is a placeholder until we fully integrate Sonic 3 AIR
+add_library(OxygenEngine SHARED
+    OxygenWrapper.cpp
+)
+
+# Set visibility for exported functions on Linux
+if(NOT WIN32)
+    set_target_properties(OxygenEngine PROPERTIES
+        CXX_VISIBILITY_PRESET hidden
+        C_VISIBILITY_PRESET hidden
+    )
+endif()
+
+# Copy OxygenEngine library to Custom Client directory
+add_custom_command(TARGET OxygenEngine POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net6.0-windows/win-x64/
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        $<TARGET_FILE:OxygenEngine>
+        ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net6.0-windows/win-x64/
+    COMMENT "Copying OxygenEngine library to Custom Client output directory (win-x64)"
+)
+
+add_custom_command(TARGET OxygenEngine POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net6.0-windows/
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        $<TARGET_FILE:OxygenEngine>
+        ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net6.0-windows/
+    COMMENT "Copying OxygenEngine library to Custom Client output directory (non-RID)"
+)
+
 # Copy RSDKv4 library to Custom Client directory after build
 # .NET 6.0 with RuntimeIdentifier uses paths like bin/Release/net6.0-windows/win-x64/
 add_custom_command(TARGET RSDKv4 POST_BUILD
