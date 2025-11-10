@@ -6,6 +6,7 @@
 #include <SDL2/SDL.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdarg.h>
 
 #ifdef _WIN32
 #include <direct.h>  // For _getcwd, _chdir on Windows
@@ -23,6 +24,27 @@ extern "C" {
 
 static bool engineInitialized = false;
 
+// Logging callback
+typedef void (*LogCallback)(const char* message);
+static LogCallback logCallback = nullptr;
+
+// Helper function to log messages
+static void LogMessage(const char* format, ...) {
+    char buffer[1024];
+    va_list args;
+    va_start(args, format);
+    vsnprintf(buffer, sizeof(buffer), format, args);
+    va_end(args);
+    
+    // Always output to stderr for debugging
+    LogMessage("%s", buffer);
+    
+    // Also call the callback if set
+    if (logCallback) {
+        logCallback(buffer);
+    }
+}
+
 #ifdef _WIN32
     #define EXPORT __declspec(dllexport)
 #else
@@ -32,19 +54,24 @@ static bool engineInitialized = false;
 // Forward declarations
 EXPORT void CleanupRSDKv4();
 
+// Set logging callback
+EXPORT void SetRSDKv4LogCallback(LogCallback callback) {
+    logCallback = callback;
+}
+
 EXPORT int InitRSDKv4(const char* dataPath) {
     try {
         if (engineInitialized) {
-            fprintf(stderr, "RSDK already initialized, cleaning up first...\n");
+            LogMessage("RSDK already initialized, cleaning up first...\n");
             CleanupRSDKv4();
         }
 
         if (!dataPath || strlen(dataPath) == 0) {
-            fprintf(stderr, "ERROR: No data path provided to InitRSDKv4\n");
+            LogMessage("ERROR: No data path provided to InitRSDKv4\n");
             return 0;
         }
 
-        fprintf(stderr, "InitRSDKv4: Loading game from %s\n", dataPath);
+        LogMessage("InitRSDKv4: Loading game from %s\n", dataPath);
 
         // Extract directory and filename from dataPath
         char dataDir[512] = "";
@@ -69,85 +96,85 @@ EXPORT int InitRSDKv4(const char* dataPath) {
         // Verify the file exists before proceeding
         FILE* testFile = fopen(dataPath, "rb");
         if (!testFile) {
-            fprintf(stderr, "ERROR: Cannot open file: %s\n", dataPath);
-            fprintf(stderr, "Please verify the .rsdk file exists and is accessible\n");
+            LogMessage("ERROR: Cannot open file: %s\n", dataPath);
+            LogMessage("Please verify the .rsdk file exists and is accessible\n");
             return 0;
         }
         fclose(testFile);
-        fprintf(stderr, "Verified .rsdk file exists: %s\n", dataPath);
+        LogMessage("Verified .rsdk file exists: %s\n", dataPath);
 
         // Change to the data directory so Engine.Init() can find the file
         char originalDir[512];
         if (getcwd(originalDir, sizeof(originalDir)) == NULL) {
-            fprintf(stderr, "ERROR: Failed to get current directory\n");
+            LogMessage("ERROR: Failed to get current directory\n");
             return 0;
         }
 
         if (strlen(dataDir) > 0) {
             if (chdir(dataDir) != 0) {
-                fprintf(stderr, "ERROR: Failed to change to directory: %s\n", dataDir);
+                LogMessage("ERROR: Failed to change to directory: %s\n", dataDir);
                 return 0;
             }
-            fprintf(stderr, "Changed directory to: %s\n", dataDir);
+            LogMessage("Changed directory to: %s\n", dataDir);
         }
 
         // Verify file is accessible from new directory
         testFile = fopen(dataFile, "rb");
         if (!testFile) {
-            fprintf(stderr, "ERROR: Cannot open file '%s' from directory '%s'\n", dataFile, dataDir);
-            fprintf(stderr, "Current working directory after chdir: ");
+            LogMessage("ERROR: Cannot open file '%s' from directory '%s'\n", dataFile, dataDir);
+            LogMessage("Current working directory after chdir: ");
             char cwd[512];
             if (getcwd(cwd, sizeof(cwd))) {
-                fprintf(stderr, "%s\n", cwd);
+                LogMessage("%s\n", cwd);
             } else {
-                fprintf(stderr, "(unknown)\n");
+                LogMessage("(unknown)\n");
             }
             chdir(originalDir);
             return 0;
         }
         fclose(testFile);
-        fprintf(stderr, "Verified file accessible as: %s\n", dataFile);
+        LogMessage("Verified file accessible as: %s\n", dataFile);
 
         // Set the data file name in Engine
         strncpy(Engine.dataFile[0], dataFile, sizeof(Engine.dataFile[0]) - 1);
         Engine.dataFile[0][sizeof(Engine.dataFile[0]) - 1] = '\0';
-        fprintf(stderr, "Set Engine.dataFile[0] to: %s\n", Engine.dataFile[0]);
+        LogMessage("Set Engine.dataFile[0] to: %s\n", Engine.dataFile[0]);
 
         // Initialize SDL first
         if (SDL_Init(SDL_INIT_EVERYTHING) < 0) {
-            fprintf(stderr, "ERROR: SDL_Init failed: %s\n", SDL_GetError());
+            LogMessage("ERROR: SDL_Init failed: %s\n", SDL_GetError());
             chdir(originalDir);
             return 0;
         }
-        fprintf(stderr, "SDL initialized successfully\n");
+        LogMessage("SDL initialized successfully\n");
 
         // Initialize the global Engine instance
         // This calls CheckRSDKFile, LoadGameConfig, InitRenderDevice, InitAudioPlayback, InitFirstStage
-        fprintf(stderr, "Calling Engine.Init()...\n");
-        fprintf(stderr, "Engine.dataFile[0] = '%s'\n", Engine.dataFile[0]);
-        fprintf(stderr, "Current working directory: %s\n", dataDir[0] ? dataDir : originalDir);
+        LogMessage("Calling Engine.Init()...\n");
+        LogMessage("Engine.dataFile[0] = '%s'\n", Engine.dataFile[0]);
+        LogMessage("Current working directory: %s\n", dataDir[0] ? dataDir : originalDir);
         
         Engine.Init();
         
-        fprintf(stderr, "Engine.Init() completed. Engine.running = %d, Engine.initialised = %d\n", 
+        LogMessage("Engine.Init() completed. Engine.running = %d, Engine.initialised = %d\n", 
                 Engine.running, Engine.initialised);
-        fprintf(stderr, "Engine.usingDataFile = %d, Engine.usingBytecode = %d\n",
+        LogMessage("Engine.usingDataFile = %d, Engine.usingBytecode = %d\n",
                 Engine.usingDataFile, Engine.usingBytecode);
         
         // Don't restore directory - the engine needs to stay in the data directory
         // to access game resources (sprites, music, etc.)
         // if (chdir(originalDir) != 0) {
-        //     fprintf(stderr, "WARNING: Failed to restore directory: %s\n", originalDir);
+        //     LogMessage("WARNING: Failed to restore directory: %s\n", originalDir);
         // }
 
         if (!Engine.running) {
-            fprintf(stderr, "ERROR: Engine failed to start - Engine.running is false\n");
-            fprintf(stderr, "Possible causes:\n");
-            fprintf(stderr, "  1. .rsdk file is invalid or corrupted\n");
-            fprintf(stderr, "  2. .rsdk file is missing Data/Game/GameConfig.bin\n");
-            fprintf(stderr, "  3. Failed to initialize render device (SDL window)\n");
-            fprintf(stderr, "  4. Failed to initialize audio playback\n");
-            fprintf(stderr, "Check the .rsdk file with a valid RSDK game data file\n");
+            LogMessage("ERROR: Engine failed to start - Engine.running is false\n");
+            LogMessage("Possible causes:\n");
+            LogMessage("  1. .rsdk file is invalid or corrupted\n");
+            LogMessage("  2. .rsdk file is missing Data/Game/GameConfig.bin\n");
+            LogMessage("  3. Failed to initialize render device (SDL window)\n");
+            LogMessage("  4. Failed to initialize audio playback\n");
+            LogMessage("Check the .rsdk file with a valid RSDK game data file\n");
             // Restore directory on failure
             chdir(originalDir);
             engineInitialized = false;
@@ -155,16 +182,16 @@ EXPORT int InitRSDKv4(const char* dataPath) {
         }
 
         engineInitialized = true;
-        fprintf(stderr, "InitRSDKv4: Successfully initialized and started engine\n");
+        LogMessage("InitRSDKv4: Successfully initialized and started engine\n");
         return 1; // Success
     }
     catch (const std::exception& e) {
-        fprintf(stderr, "Exception in InitRSDKv4: %s\n", e.what());
+        LogMessage("Exception in InitRSDKv4: %s\n", e.what());
         engineInitialized = false;
         return 0;
     }
     catch (...) {
-        fprintf(stderr, "Unknown exception in InitRSDKv4\n");
+        LogMessage("Unknown exception in InitRSDKv4\n");
         engineInitialized = false;
         return 0; // Failure
     }

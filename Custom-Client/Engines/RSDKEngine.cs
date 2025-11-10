@@ -12,6 +12,7 @@ namespace SonicHybridUltimate.Engines
         private bool _isInitialized;
         private string _currentGame = string.Empty;
         private bool _isDisposed;
+        private static NativeMethods.LogCallback? _logCallbackDelegate;
 
         private const int ADDR_CURRENT_ZONE = 0x203A40;
         private const int ADDR_ROBOT_STATE = 0x203A44;
@@ -85,6 +86,29 @@ namespace SonicHybridUltimate.Engines
         public RSDKEngine(ILogger<RSDKEngine> logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            
+            // Set up native logging callback (keep delegate alive)
+            try
+            {
+                _logCallbackDelegate = NativeLogCallback;
+                NativeMethods.SetRSDKv4LogCallback(_logCallbackDelegate);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to set native logging callback");
+            }
+        }
+        
+        private static void NativeLogCallback(string message)
+        {
+            // Remove trailing newline if present
+            if (message.EndsWith("\n"))
+            {
+                message = message.Substring(0, message.Length - 1);
+            }
+            
+            // Write to console which is connected to the UI logger
+            Console.WriteLine($"[NATIVE] {message}");
         }
 
         public bool Initialize(string gamePath)
@@ -266,6 +290,12 @@ namespace SonicHybridUltimate.Engines
 
         private static class NativeMethods
         {
+            [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+            public delegate void LogCallback([MarshalAs(UnmanagedType.LPStr)] string message);
+            
+            [DllImport("RSDKv4", CallingConvention = CallingConvention.Cdecl)]
+            public static extern void SetRSDKv4LogCallback(LogCallback callback);
+            
             [DllImport("RSDKv4", CallingConvention = CallingConvention.Cdecl)]
             public static extern int InitRSDKv4(string dataPath);
 
