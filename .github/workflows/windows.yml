@@ -19,17 +19,19 @@ jobs:
     - name: Apply Team Forever enhancements
       run: |
         cd Hybrid-RSDK-Main/RSDKV4-Decompilation
+        $ErrorActionPreference = 'Continue'
         git apply ../../teamforever-rsdkv4.patch 2>&1 | Out-Null
         if ($LASTEXITCODE -ne 0) {
           Write-Host "Warning: Could not apply teamforever-rsdkv4.patch"
           Write-Host "Continuing build without video playback support"
+          $LASTEXITCODE = 0
         }
         if (!(Test-Path "dependencies/all/theoraplay/.git")) {
           Remove-Item -Recurse -Force -ErrorAction SilentlyContinue dependencies/all/theoraplay
           git clone --depth=1 https://github.com/icculus/theoraplay.git dependencies/all/theoraplay
         }
+        exit 0
       shell: powershell
-      continue-on-error: false
 
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
