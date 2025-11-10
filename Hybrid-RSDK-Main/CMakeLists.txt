@@ -74,7 +74,7 @@ list(FILTER RSDKV4_SOURCES EXCLUDE REGEX ".*NativeObjects/All.cpp$")
 # Add additional C source files for Team Forever features
 list(APPEND RSDKV4_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/RSDKv4/fcaseopen.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/dependencies/all/theoraplay/theoraplay.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../vendor/theoraplay/theoraplay.c
 )
 
 # RSDK V4 Core library
@@ -88,7 +88,7 @@ target_include_directories(rsdk_core PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/RSDKv4/NativeObjects
     ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/dependencies/all/asio/asio/include
     ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/dependencies/all/stb-image
-    ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/dependencies/all/theoraplay
+    ${CMAKE_CURRENT_SOURCE_DIR}/../vendor/theoraplay
 )
 
 if(WIN32)
