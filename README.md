@@ -2,6 +2,16 @@
 
 Aims to mix different Sonic the Hedgehog games into a single big game. Acts as a legal but cheaper version of Sonic Origins for fans that dont want to get scammed.
 
+**Now featuring Team Forever QOL enhancements!** This project integrates quality-of-life improvements from [Team Forever's RSDKv4 mods](https://github.com/ElspethThePict/TeamForever-v4-1.3), including:
+- **Mod Loader** - Built-in mod support with custom achievements and save redirection
+- **Multiplayer Networking** - Host and join Sonic 2 VS mode servers
+- **Enhanced Debug Tools** - F-key shortcuts for scene loading, hitbox visualization, palette overlay
+- **Settings System** - Persistent settings.ini configuration like Sonic Mania
+- **Idle Screen Dimming** - Configurable screen dimming feature from Sonic Mania Plus
+- **Built-in Script Compiler** - Compile RSDKv4 scripts at runtime
+
+See [TEAMFOREVER_INTEGRATION.md](TEAMFOREVER_INTEGRATION.md) for complete feature list.
+
 ![Sonic 1 in Sonic 2](docs/preview.png)
 
 ## How it's gonna work.
@@ -34,7 +44,7 @@ Custom-Client 0% (debugging Hybrid-RSDK-Main is the priority)
 ### Dependencies (Linux/Ubuntu)
 ```bash
 sudo apt-get update
-sudo apt-get install -y cmake build-essential pkg-config libsdl2-dev libgl1-mesa-dev libglew-dev libvorbis-dev libtinyxml2-dev
+sudo apt-get install -y cmake build-essential pkg-config libsdl2-dev libgl1-mesa-dev libglew-dev libvorbis-dev libtinyxml2-dev libtheora-dev libogg-dev
 ```
 
 ### Build Instructions
@@ -45,7 +55,13 @@ git clone --recursive https://github.com/Badgerworks-Brewery/Sonic-Hybrid-Ultima
 cd Sonic-Hybrid-Ultimate
 ```
 
-2. Fetch RSDK decompilations:
+2. Apply Team Forever enhancements:
+```bash
+chmod +x apply_teamforever.sh
+./apply_teamforever.sh
+```
+
+3. Fetch RSDK decompilations:
 ```bash
 chmod +x fetch_rsdkv3.sh fetch_rsdkv4.sh fetch_rsdkv5.sh
 ./fetch_rsdkv4.sh
@@ -53,7 +69,7 @@ chmod +x fetch_rsdkv3.sh fetch_rsdkv4.sh fetch_rsdkv5.sh
 ./fetch_rsdkv5.sh
 ```
 
-3. Build the Hybrid-RSDK-Main engine:
+4. Build the Hybrid-RSDK-Main engine:
 ```bash
 cd "Hybrid-RSDK-Main"
 mkdir -p build
@@ -63,14 +79,14 @@ cmake --build .
 cd ../..
 ```
 
-4. Build the Custom-Client:
+5. Build the Custom-Client:
 ```bash
 cd "Custom-Client"
 dotnet build
 cd ..
 ```
 
-5. Put the required game data files in `Hybrid-RSDK-Main/rsdk-source-data/`:
+6. Put the required game data files in `Hybrid-RSDK-Main/rsdk-source-data/`:
    - `Data.rsdk` from Sonic CD as `soniccd.rsdk`
    - `Data.rsdk` from Sonic 1 as `sonic1.rsdk`
    - `Data.rsdk` from Sonic 2 as `sonic2.rsdk`
