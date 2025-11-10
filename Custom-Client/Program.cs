@@ -542,6 +542,10 @@ namespace SonicHybridUltimate
         [STAThread]
         public static void Main()
         {
+            // Set up global exception handlers to catch crashes
+            Application.ThreadException += Application_ThreadException;
+            AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
+            
             Application.SetHighDpiMode(HighDpiMode.SystemAware);
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
@@ -565,6 +569,29 @@ namespace SonicHybridUltimate
 
             var mainForm = services.GetRequiredService<MainForm>();
             Application.Run(mainForm);
+        }
+        
+        private static void Application_ThreadException(object sender, System.Threading.ThreadExceptionEventArgs e)
+        {
+            Console.WriteLine($"[CRASH] Unhandled thread exception: {e.Exception}");
+            MessageBox.Show(
+                $"Application Error:\n\n{e.Exception.Message}\n\nStack Trace:\n{e.Exception.StackTrace}",
+                "Application Error",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
+        }
+
+        private static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
+        {
+            Console.WriteLine($"[CRASH] Unhandled domain exception: {e.ExceptionObject}");
+            if (e.ExceptionObject is Exception ex)
+            {
+                MessageBox.Show(
+                    $"Fatal Error:\n\n{ex.Message}\n\nStack Trace:\n{ex.StackTrace}",
+                    "Fatal Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
         }
     }
 }
