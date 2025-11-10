@@ -47,8 +47,8 @@ namespace SonicHybridUltimate
             
             InitializeTimer();
 
-            // Auto-load Sonic 1 to start the progression
-            LoadSonic1_Click(this, EventArgs.Empty);
+            // Don't auto-load - let user choose which game to play
+            // LoadSonic1_Click(this, EventArgs.Empty);
 
             _logger.LogInformation("MainForm initialized");
         }
