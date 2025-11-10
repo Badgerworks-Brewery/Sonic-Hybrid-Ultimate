@@ -17,6 +17,7 @@ namespace SonicHybridUltimate
         private readonly RSDKEngine _rsdkEngine;
         private readonly OxygenEngine _oxygenEngine;
         private readonly RSDKAnalyzer _rsdkAnalyzer;
+        private readonly UILoggerProvider _uiLoggerProvider;
 
         private RichTextBox _logBox = null!;
         private Label _statusLabel = null!;
@@ -30,15 +31,20 @@ namespace SonicHybridUltimate
         private bool _isTransitioning;
         private bool _hasEncounteredFatalError = false;
 
-        public MainForm(IServiceProvider services)
+        public MainForm(IServiceProvider services, UILoggerProvider uiLoggerProvider)
         {
             _services = services ?? throw new ArgumentNullException(nameof(services));
+            _uiLoggerProvider = uiLoggerProvider ?? throw new ArgumentNullException(nameof(uiLoggerProvider));
             _logger = _services.GetRequiredService<ILogger<MainForm>>();
             _rsdkEngine = _services.GetRequiredService<RSDKEngine>();
             _oxygenEngine = _services.GetRequiredService<OxygenEngine>();
             _rsdkAnalyzer = _services.GetRequiredService<RSDKAnalyzer>();
 
             InitializeComponents();
+            
+            // Configure UI logging now that the log box is created
+            _uiLoggerProvider.SetLogAction(Log);
+            
             InitializeTimer();
 
             // Auto-load Sonic 1 to start the progression
@@ -135,14 +141,7 @@ namespace SonicHybridUltimate
 
             Controls.Add(mainLayout);
 
-            // Set up logging
-            var loggerProvider = new LoggerProvider(Log);
-            var factory = LoggerFactory.Create(builder =>
-            {
-                builder.AddProvider(loggerProvider);
-                builder.AddDebug();
-                builder.AddConsole();
-            });
+            // Don't set up logging here - it's done in DI container
         }
 
         private void InitializeTimer()
@@ -547,19 +546,25 @@ namespace SonicHybridUltimate
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
+            // Create UILoggerProvider that will be configured later
+            var uiLoggerProvider = new UILoggerProvider();
+
             var services = new ServiceCollection()
                 .AddLogging(builder =>
                 {
                     builder.AddDebug();
                     builder.AddConsole();
+                    builder.AddProvider(uiLoggerProvider);
                 })
                 .AddSingleton<RSDKEngine>()
                 .AddSingleton<OxygenEngine>()
                 .AddSingleton<RSDKAnalyzer>()
+                .AddSingleton(uiLoggerProvider) // Register so MainForm can access it
                 .AddSingleton<MainForm>()
                 .BuildServiceProvider();
 
-            Application.Run(services.GetRequiredService<MainForm>());
+            var mainForm = services.GetRequiredService<MainForm>();
+            Application.Run(mainForm);
         }
     }
 }
