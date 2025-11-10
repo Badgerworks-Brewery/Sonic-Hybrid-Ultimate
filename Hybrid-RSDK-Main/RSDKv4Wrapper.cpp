@@ -113,12 +113,26 @@ EXPORT int InitRSDKv4(const char* dataPath) {
         Engine.dataFile[0][sizeof(Engine.dataFile[0]) - 1] = '\0';
         fprintf(stderr, "Set Engine.dataFile[0] to: %s\n", Engine.dataFile[0]);
 
+        // Initialize SDL first
+        if (SDL_Init(SDL_INIT_EVERYTHING) < 0) {
+            fprintf(stderr, "ERROR: SDL_Init failed: %s\n", SDL_GetError());
+            chdir(originalDir);
+            return 0;
+        }
+        fprintf(stderr, "SDL initialized successfully\n");
+
         // Initialize the global Engine instance
         // This calls CheckRSDKFile, LoadGameConfig, InitRenderDevice, InitAudioPlayback, InitFirstStage
         fprintf(stderr, "Calling Engine.Init()...\n");
+        fprintf(stderr, "Engine.dataFile[0] = '%s'\n", Engine.dataFile[0]);
+        fprintf(stderr, "Current working directory: %s\n", dataDir[0] ? dataDir : originalDir);
+        
         Engine.Init();
+        
         fprintf(stderr, "Engine.Init() completed. Engine.running = %d, Engine.initialised = %d\n", 
                 Engine.running, Engine.initialised);
+        fprintf(stderr, "Engine.usingDataFile = %d, Engine.usingBytecode = %d\n",
+                Engine.usingDataFile, Engine.usingBytecode);
         
         // Don't restore directory - the engine needs to stay in the data directory
         // to access game resources (sprites, music, etc.)
@@ -128,7 +142,12 @@ EXPORT int InitRSDKv4(const char* dataPath) {
 
         if (!Engine.running) {
             fprintf(stderr, "ERROR: Engine failed to start - Engine.running is false\n");
-            fprintf(stderr, "Check that the .rsdk file is valid and contains game data\n");
+            fprintf(stderr, "Possible causes:\n");
+            fprintf(stderr, "  1. .rsdk file is invalid or corrupted\n");
+            fprintf(stderr, "  2. .rsdk file is missing Data/Game/GameConfig.bin\n");
+            fprintf(stderr, "  3. Failed to initialize render device (SDL window)\n");
+            fprintf(stderr, "  4. Failed to initialize audio playback\n");
+            fprintf(stderr, "Check the .rsdk file with a valid RSDK game data file\n");
             // Restore directory on failure
             chdir(originalDir);
             engineInitialized = false;
