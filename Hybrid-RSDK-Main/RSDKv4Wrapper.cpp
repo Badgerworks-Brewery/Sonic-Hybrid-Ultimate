@@ -66,6 +66,16 @@ EXPORT int InitRSDKv4(const char* dataPath) {
             strcpy(dataFile, dataPath);
         }
 
+        // Verify the file exists before proceeding
+        FILE* testFile = fopen(dataPath, "rb");
+        if (!testFile) {
+            fprintf(stderr, "ERROR: Cannot open file: %s\n", dataPath);
+            fprintf(stderr, "Please verify the .rsdk file exists and is accessible\n");
+            return 0;
+        }
+        fclose(testFile);
+        fprintf(stderr, "Verified .rsdk file exists: %s\n", dataPath);
+
         // Change to the data directory so Engine.Init() can find the file
         char originalDir[512];
         if (getcwd(originalDir, sizeof(originalDir)) == NULL) {
@@ -80,6 +90,23 @@ EXPORT int InitRSDKv4(const char* dataPath) {
             }
             fprintf(stderr, "Changed directory to: %s\n", dataDir);
         }
+
+        // Verify file is accessible from new directory
+        testFile = fopen(dataFile, "rb");
+        if (!testFile) {
+            fprintf(stderr, "ERROR: Cannot open file '%s' from directory '%s'\n", dataFile, dataDir);
+            fprintf(stderr, "Current working directory after chdir: ");
+            char cwd[512];
+            if (getcwd(cwd, sizeof(cwd))) {
+                fprintf(stderr, "%s\n", cwd);
+            } else {
+                fprintf(stderr, "(unknown)\n");
+            }
+            chdir(originalDir);
+            return 0;
+        }
+        fclose(testFile);
+        fprintf(stderr, "Verified file accessible as: %s\n", dataFile);
 
         // Set the data file name in Engine
         strncpy(Engine.dataFile[0], dataFile, sizeof(Engine.dataFile[0]) - 1);
