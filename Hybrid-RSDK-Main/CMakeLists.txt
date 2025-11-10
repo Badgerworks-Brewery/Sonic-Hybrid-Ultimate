@@ -33,6 +33,13 @@ if(WIN32)
     find_package(GLEW REQUIRED)
     find_package(Vorbis REQUIRED)
     find_package(tinyxml2 CONFIG REQUIRED)
+    # Team Forever requires ogg and theora for video playback
+    # vcpkg provides these but without CMake config files, so we find them manually
+    find_library(OGG_LIBRARY NAMES ogg libogg REQUIRED)
+    find_library(THEORA_LIBRARY NAMES theora libtheora REQUIRED)
+    find_library(THEORADEC_LIBRARY NAMES theoradec libtheoradec REQUIRED)
+    find_path(OGG_INCLUDE_DIR ogg/ogg.h REQUIRED)
+    find_path(THEORA_INCLUDE_DIR theora/theora.h REQUIRED)
 else()
     find_package(OpenGL REQUIRED)
     find_package(GLEW REQUIRED)
@@ -40,6 +47,8 @@ else()
     pkg_check_modules(SDL2 REQUIRED sdl2)
     pkg_check_modules(VORBIS REQUIRED vorbis vorbisfile)
     pkg_check_modules(TINYXML2 REQUIRED tinyxml2)
+    pkg_check_modules(OGG REQUIRED ogg)
+    pkg_check_modules(THEORA REQUIRED theora theoradec)
 endif()
 
 # Check if RSDK decompilations exist
@@ -62,6 +71,12 @@ file(GLOB_RECURSE RSDKV4_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilatio
 # Exclude All.cpp to avoid duplicate symbols
 list(FILTER RSDKV4_SOURCES EXCLUDE REGEX ".*NativeObjects/All.cpp$")
 
+# Add additional C source files for Team Forever features
+list(APPEND RSDKV4_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/RSDKv4/fcaseopen.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/dependencies/all/theoraplay/theoraplay.c
+)
+
 # RSDK V4 Core library
 add_library(rsdk_core STATIC ${RSDKV4_SOURCES})
 
@@ -73,6 +88,7 @@ target_include_directories(rsdk_core PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/RSDKv4/NativeObjects
     ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/dependencies/all/asio/asio/include
     ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/dependencies/all/stb-image
+    ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/dependencies/all/theoraplay
 )
 
 if(WIN32)
@@ -80,6 +96,8 @@ if(WIN32)
         ${SDL2_INCLUDE_DIRS}
         ${OPENGL_INCLUDE_DIR}
         ${GLEW_INCLUDE_DIRS}
+        ${OGG_INCLUDE_DIR}
+        ${THEORA_INCLUDE_DIR}
     )
     target_link_libraries(rsdk_core PUBLIC
         SDL2::SDL2
@@ -89,6 +107,9 @@ if(WIN32)
         Vorbis::vorbis
         Vorbis::vorbisfile
         tinyxml2::tinyxml2
+        ${OGG_LIBRARY}
+        ${THEORA_LIBRARY}
+        ${THEORADEC_LIBRARY}
     )
 else()
     target_include_directories(rsdk_core PUBLIC
@@ -97,6 +118,8 @@ else()
         ${GLEW_INCLUDE_DIRS}
         ${VORBIS_INCLUDE_DIRS}
         ${TINYXML2_INCLUDE_DIRS}
+        ${OGG_INCLUDE_DIRS}
+        ${THEORA_INCLUDE_DIRS}
     )
     target_link_libraries(rsdk_core PUBLIC
         ${SDL2_LIBRARIES}
@@ -104,6 +127,8 @@ else()
         ${GLEW_LIBRARIES}
         ${VORBIS_LIBRARIES}
         ${TINYXML2_LIBRARIES}
+        ${OGG_LIBRARIES}
+        ${THEORA_LIBRARIES}
     )
 endif()
 
@@ -112,11 +137,8 @@ get_target_property(LIBS rsdk_core INTERFACE_LINK_LIBRARIES)
 
 # RSDK V3 Core library (for Sonic CD)
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/RSDKV3")
-    if(NOT WIN32)
-        file(GLOB_RECURSE RSDKV3_SOURCES "RSDKV3/RSDKv3/*.cpp")
-    else()
-        file(GLOB_RECURSE RSDKV3_SOURCES "RSDKV3/*.cpp")
-    endif()
+    # Only include core RSDKv3 sources, not platform-specific directories
+    file(GLOB_RECURSE RSDKV3_SOURCES "RSDKV3/RSDKv3/*.cpp")
 
     add_library(rsdkv3_core STATIC ${RSDKV3_SOURCES})
 
@@ -125,6 +147,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/RSDKV3")
 
     target_include_directories(rsdkv3_core PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV3
+        ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV3/RSDKv3
         ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV3/dependencies/all/theoraplay
     )
 
@@ -258,8 +281,99 @@ target_link_libraries(rsdkv4 PRIVATE
     rsdk_core
 )
 
+# Sonic Hybrid library - game progression and state management
+add_library(sonic_hybrid STATIC
+    sonic-hybrid/HybridEngine.cpp
+    sonic-hybrid/StateManager.cpp
+    sonic-hybrid/TransitionManager.cpp
+)
+
+target_include_directories(sonic_hybrid PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/sonic-hybrid
+    ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/RSDKv4
+    ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/RSDKv4/NativeObjects
+)
+
+set_target_properties(sonic_hybrid PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
+target_link_libraries(sonic_hybrid PUBLIC
+    rsdk_core
+)
+
+# RSDKv4 shared library for Custom Client P/Invoke
+add_library(RSDKv4 SHARED
+    RSDKv4Wrapper.cpp
+)
+
+target_include_directories(RSDKv4 PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/sonic-hybrid
+    ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/RSDKv4
+    ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/RSDKv4/NativeObjects
+)
+
+target_link_libraries(RSDKv4 PRIVATE
+    rsdk_core
+    sonic_hybrid
+)
+
+# Set visibility for exported functions on Linux
+if(NOT WIN32)
+    set_target_properties(RSDKv4 PROPERTIES
+        CXX_VISIBILITY_PRESET hidden
+        C_VISIBILITY_PRESET hidden
+    )
+endif()
+
+# Copy RSDKv4 library to Custom Client directory after build
+# .NET 6.0 with RuntimeIdentifier uses paths like bin/Release/net6.0-windows/win-x64/
+add_custom_command(TARGET RSDKv4 POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net6.0-windows/win-x64/
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        $<TARGET_FILE:RSDKv4>
+        ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net6.0-windows/win-x64/
+    COMMENT "Copying RSDKv4 library to Custom Client output directory (win-x64)"
+)
+
+# Also copy to non-RID path for compatibility
+add_custom_command(TARGET RSDKv4 POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net6.0-windows/
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        $<TARGET_FILE:RSDKv4>
+        ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net6.0-windows/
+    COMMENT "Copying RSDKv4 library to Custom Client output directory (non-RID)"
+)
+
+# Copy dependency DLLs to Custom Client directory on Windows (vcpkg provides these)
+if(WIN32)
+    add_custom_command(TARGET RSDKv4 POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E echo "Copying RSDKv4 dependencies to Custom Client directory..."
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            $<TARGET_RUNTIME_DLLS:RSDKv4>
+            ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net6.0-windows/win-x64/
+        COMMAND_EXPAND_LISTS
+        COMMENT "Copying RSDKv4 dependency DLLs to win-x64 directory"
+    )
+    add_custom_command(TARGET RSDKv4 POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            $<TARGET_RUNTIME_DLLS:RSDKv4>
+            ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net6.0-windows/
+        COMMAND_EXPAND_LISTS
+        COMMENT "Copying RSDKv4 dependency DLLs to non-RID directory"
+    )
+endif()
+
+# Also copy to the bin directory for standalone use
+add_custom_command(TARGET RSDKv4 POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/bin/
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        $<TARGET_FILE:RSDKv4>
+        ${CMAKE_BINARY_DIR}/bin/
+    COMMENT "Copying RSDKv4 library to bin directory"
+)
+
 # Install rules - include all available targets
-set(INSTALL_TARGETS rsdk_core rsdkv4 HybridRSDK)
+set(INSTALL_TARGETS rsdk_core rsdkv4 HybridRSDK RSDKv4)
 
 if(TARGET rsdkv3_core)
     list(APPEND INSTALL_TARGETS rsdkv3_core)

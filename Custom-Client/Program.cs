@@ -20,12 +20,15 @@ namespace SonicHybridUltimate
 
         private RichTextBox _logBox = null!;
         private Label _statusLabel = null!;
+        private Button _loadSonic1Button = null!;
+        private Button _loadSonicCDButton = null!;
         private Button _loadSonic2Button = null!;
         private Button _loadSonic3Button = null!;
         private System.Windows.Forms.Timer _updateTimer = null!;
 
         private string _currentGame = string.Empty;
         private bool _isTransitioning;
+        private bool _hasEncounteredFatalError = false;
 
         public MainForm(IServiceProvider services)
         {
@@ -37,6 +40,9 @@ namespace SonicHybridUltimate
 
             InitializeComponents();
             InitializeTimer();
+
+            // Auto-load Sonic 1 to start the progression
+            LoadSonic1_Click(this, EventArgs.Empty);
 
             _logger.LogInformation("MainForm initialized");
         }
@@ -67,6 +73,20 @@ namespace SonicHybridUltimate
                 Padding = new Padding(5)
             };
 
+            _loadSonic1Button = new Button
+            {
+                Text = "Load Sonic 1",
+                AutoSize = true
+            };
+            _loadSonic1Button.Click += LoadSonic1_Click;
+
+            _loadSonicCDButton = new Button
+            {
+                Text = "Load Sonic CD",
+                AutoSize = true
+            };
+            _loadSonicCDButton.Click += LoadSonicCD_Click;
+
             _loadSonic2Button = new Button
             {
                 Text = "Load Sonic 2",
@@ -78,11 +98,16 @@ namespace SonicHybridUltimate
             {
                 Text = "Load Sonic 3 & Knuckles",
                 AutoSize = true,
-                Enabled = false  // Disabled until Sonic 2 is completed
+                Enabled = true  // Allow users to manually load Sonic 3 AIR
             };
             _loadSonic3Button.Click += LoadSonic3_Click;
 
-            buttonPanel.Controls.AddRange(new Control[] { _loadSonic2Button, _loadSonic3Button });
+            buttonPanel.Controls.AddRange(new Control[] { 
+                _loadSonic1Button, 
+                _loadSonicCDButton, 
+                _loadSonic2Button, 
+                _loadSonic3Button 
+            });
 
             // Create log box
             _logBox = new RichTextBox
@@ -128,6 +153,108 @@ namespace SonicHybridUltimate
             };
             _updateTimer.Tick += UpdateTimer_Tick;
             _updateTimer.Start();
+        }
+
+        private void LoadSonic1_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                _logger.LogInformation("Loading Sonic 1...");
+
+                var defaultPath = Path.Combine("Hybrid-RSDK-Main", "Data", "sonic1.rsdk");
+                string gamePath = defaultPath;
+
+                if (!File.Exists(gamePath))
+                {
+                    using var ofd = new OpenFileDialog
+                    {
+                        Title = "Select Sonic 1 .rsdk file",
+                        Filter = "RSDK files (*.rsdk)|*.rsdk|All files (*.*)|*.*",
+                        CheckFileExists = true,
+                        Multiselect = false
+                    };
+
+                    if (ofd.ShowDialog() == DialogResult.OK)
+                    {
+                        gamePath = ofd.FileName;
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Sonic 1 .rsdk not provided by user");
+                        MessageBox.Show("Please provide a valid Sonic 1 .rsdk file to continue.", "RSDK File Required", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        return;
+                    }
+                }
+
+                if (_rsdkEngine.Initialize(gamePath))
+                {
+                    _currentGame = "sonic1";
+                    _statusLabel.Text = "Running: Sonic 1";
+                    _loadSonic1Button.Enabled = false;
+                    _logger.LogInformation("Sonic 1 loaded successfully");
+                }
+                else
+                {
+                    _logger.LogError("Failed to load Sonic 1");
+                    MessageBox.Show("Failed to load Sonic 1. Please check the log for details.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading Sonic 1");
+                MessageBox.Show($"Error loading Sonic 1: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void LoadSonicCD_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                _logger.LogInformation("Loading Sonic CD...");
+
+                var defaultPath = Path.Combine("Hybrid-RSDK-Main", "Data", "soniccd.rsdk");
+                string gamePath = defaultPath;
+
+                if (!File.Exists(gamePath))
+                {
+                    using var ofd = new OpenFileDialog
+                    {
+                        Title = "Select Sonic CD .rsdk file",
+                        Filter = "RSDK files (*.rsdk)|*.rsdk|All files (*.*)|*.*",
+                        CheckFileExists = true,
+                        Multiselect = false
+                    };
+
+                    if (ofd.ShowDialog() == DialogResult.OK)
+                    {
+                        gamePath = ofd.FileName;
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Sonic CD .rsdk not provided by user");
+                        MessageBox.Show("Please provide a valid Sonic CD .rsdk file to continue.", "RSDK File Required", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        return;
+                    }
+                }
+
+                if (_rsdkEngine.Initialize(gamePath))
+                {
+                    _currentGame = "soniccd";
+                    _statusLabel.Text = "Running: Sonic CD";
+                    _loadSonicCDButton.Enabled = false;
+                    _logger.LogInformation("Sonic CD loaded successfully");
+                }
+                else
+                {
+                    _logger.LogError("Failed to load Sonic CD");
+                    MessageBox.Show("Failed to load Sonic CD. Please check the log for details.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading Sonic CD");
+                MessageBox.Show($"Error loading Sonic CD: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private void LoadSonic2_Click(object sender, EventArgs e)
@@ -187,32 +314,32 @@ namespace SonicHybridUltimate
             {
                 _logger.LogInformation("Loading Sonic 3 & Knuckles...");
 
-                var defaultDll = Path.Combine("Sonic 3 AIR Main", "Oxygen", "sonic3air.dll");
-                string oxygenDll = defaultDll;
+                var defaultRom = Path.Combine("Sonic 3 AIR Main", "sonic3.bin");
+                string romFile = defaultRom;
 
-                if (!File.Exists(oxygenDll))
+                if (!File.Exists(romFile))
                 {
                     using var ofd = new OpenFileDialog
                     {
-                        Title = "Select Sonic 3 AIR oxygen DLL (sonic3air.dll)",
-                        Filter = "DLL files (*.dll)|*.dll|All files (*.*)|*.*",
+                        Title = "Select Sonic 3 & Knuckles ROM (sonic3.bin)",
+                        Filter = "ROM files (*.bin)|*.bin|All files (*.*)|*.*",
                         CheckFileExists = true,
                         Multiselect = false
                     };
 
                     if (ofd.ShowDialog() == DialogResult.OK)
                     {
-                        oxygenDll = ofd.FileName;
+                        romFile = ofd.FileName;
                     }
                     else
                     {
-                        _logger.LogWarning("Oxygen DLL not provided by user");
-                        MessageBox.Show("Please provide the Sonic 3 AIR 'sonic3air.dll' to continue.", "Oxygen DLL Required", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        _logger.LogWarning("Sonic 3 & Knuckles ROM not provided by user");
+                        MessageBox.Show("Please provide the Sonic 3 & Knuckles ROM file to continue.", "ROM Required", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         return;
                     }
                 }
 
-                if (_oxygenEngine.Initialize(oxygenDll))
+                if (_oxygenEngine.Initialize(romFile))
                 {
                     _currentGame = "sonic3";
                     _statusLabel.Text = "Running: Sonic 3 & Knuckles";
@@ -244,6 +371,14 @@ namespace SonicHybridUltimate
 
                 switch (_currentGame)
                 {
+                    case "sonic1":
+                        _rsdkEngine.Update();
+                        CheckSonic1Completion();
+                        break;
+                    case "soniccd":
+                        _rsdkEngine.Update();
+                        CheckSonicCDCompletion();
+                        break;
                     case "sonic2":
                         _rsdkEngine.Update();
                         CheckSonic2Completion();
@@ -256,6 +391,90 @@ namespace SonicHybridUltimate
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error in update loop");
+            }
+        }
+
+        private async void CheckSonic1Completion()
+        {
+            // Check if Sonic 1 has been completed and transition to Sonic CD
+            if (_rsdkEngine.IsGameComplete() && !_isTransitioning)
+            {
+                _logger.LogInformation("Sonic 1 completed! Automatically transitioning to Sonic CD...");
+                _isTransitioning = true;
+                _statusLabel.Text = "Transitioning to Sonic CD...";
+                
+                try
+                {
+                    _rsdkEngine.Cleanup();
+                    
+                    string sonicCDPath = Path.Combine(
+                        Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? "",
+                        "..", "rsdk-source-data", "soniccd.rsdk"
+                    );
+                    
+                    if (_rsdkEngine.Initialize(sonicCDPath))
+                    {
+                        _currentGame = "soniccd";
+                        _statusLabel.Text = "Running: Sonic CD (Palmtree Panic Zone)";
+                        _loadSonic1Button.Enabled = false;
+                        _logger.LogInformation("Successfully transitioned to Sonic CD");
+                    }
+                    else
+                    {
+                        throw new Exception("Failed to initialize Sonic CD");
+                    }
+                    
+                    _isTransitioning = false;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error during automatic transition to Sonic CD");
+                    MessageBox.Show($"Error transitioning to Sonic CD: {ex.Message}", "Transition Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    _isTransitioning = false;
+                    _statusLabel.Text = "Running: Sonic 1 (Transition Failed)";
+                }
+            }
+        }
+
+        private async void CheckSonicCDCompletion()
+        {
+            // Check if Sonic CD has been completed and transition to Sonic 2
+            if (_rsdkEngine.IsGameComplete() && !_isTransitioning)
+            {
+                _logger.LogInformation("Sonic CD completed! Automatically transitioning to Sonic 2...");
+                _isTransitioning = true;
+                _statusLabel.Text = "Transitioning to Sonic 2...";
+                
+                try
+                {
+                    _rsdkEngine.Cleanup();
+                    
+                    string sonic2Path = Path.Combine(
+                        Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? "",
+                        "..", "rsdk-source-data", "sonic2.rsdk"
+                    );
+                    
+                    if (_rsdkEngine.Initialize(sonic2Path))
+                    {
+                        _currentGame = "sonic2";
+                        _statusLabel.Text = "Running: Sonic 2 (Emerald Hill Zone)";
+                        _loadSonicCDButton.Enabled = false;
+                        _logger.LogInformation("Successfully transitioned to Sonic 2");
+                    }
+                    else
+                    {
+                        throw new Exception("Failed to initialize Sonic 2");
+                    }
+                    
+                    _isTransitioning = false;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error during automatic transition to Sonic 2");
+                    MessageBox.Show($"Error transitioning to Sonic 2: {ex.Message}", "Transition Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    _isTransitioning = false;
+                    _statusLabel.Text = "Running: Sonic CD (Transition Failed)";
+                }
             }
         }
 

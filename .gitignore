@@ -1,45 +1,24 @@
-# C# stuff
-bin/
-obj/
-.vs/
-Debug/
-Release/
-launchSettings.json
-
-# Copyrighted stuff
-rsdk-source-data/*.rsdk
-rsdk-source-data/sonic*/
-sonic-hybrid/Data/
-
-# Sonic 3&K ROM files (various extensions)
-rsdk-source-data/*.bin
-rsdk-source-data/*.md
-rsdk-source-data/*.gen
-
-# Unwanted generated stuff
-sonic-hybrid/*Data.bin
-sonic-hybrid/Settings.*
-
-# Don't Include RSDKv4 files
-sonic-hybrid/vorbis.dll
-sonic-hybrid/usage.txt
-sonic-hybrid/SDL2.dll
-sonic-hybrid/RSDKv4.exe
-sonic-hybrid/ogg.dll
-sonic-hybrid/log.txt
-sonic-hybrid/glew32.dll
-.vscode/settings.json
-build
-# vcpkg dependency manager
-vcpkg/
-vcpkg_installed/
-
-# RSDK decompilation repositories (fetched during build)
-Hybrid-RSDK-Main/RSDKV3/
-Hybrid-RSDK-Main/RSDKV4-Decompilation/
-Hybrid-RSDK-Main/RSDKV5/
-
-# CMake build directories
+# Build artifacts
 Hybrid-RSDK-Main/build/
-Custom-Client/bin/
-Custom-Client/obj/
+**/bin/
+**/obj/
+*.o
+*.a
+*.so
+*.exe
+*.dll
+
+# Game data files (copyrighted)
+*.rsdk
+*.bin
+*.sav
+
+# IDE and editor files
+.vscode/
+.vs/
+*.suo
+*.user
+
+# OS files
+.DS_Store
+Thumbs.db
