@@ -1,0 +1,17 @@
+# Ensure patch files maintain Unix line endings (LF) on all platforms
+*.patch text eol=lf
+
+# Ensure shell scripts maintain Unix line endings
+*.sh text eol=lf
+
+# Standard line ending handling for other files
+* text=auto
+
+# Binary files
+*.rsdk binary
+*.dll binary
+*.so binary
+*.exe binary
+*.png binary
+*.jpg binary
+*.gif binary
