@@ -6,11 +6,13 @@
 #include <SDL2/SDL.h>
 #include <string.h>
 #include <stdio.h>
-#include <unistd.h>  // For getcwd, chdir on Unix
+
 #ifdef _WIN32
 #include <direct.h>  // For _getcwd, _chdir on Windows
 #define getcwd _getcwd
 #define chdir _chdir
+#else
+#include <unistd.h>  // For getcwd, chdir on Unix
 #endif
 
 // Declare external symbols from RSDKv4
