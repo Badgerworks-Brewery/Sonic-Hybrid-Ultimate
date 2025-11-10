@@ -35,6 +35,31 @@ Custom-Client 0% (debugging Hybrid-RSDK-Main is the priority)
 
 ## Build Process
 
+⚠️ **IMPORTANT**: If you're experiencing crashes when loading games, see [CRASH_FIX_README.md](CRASH_FIX_README.md) for detailed troubleshooting steps.
+
+### Quick Start (Fix Crashes)
+
+If the application crashes when loading .rsdk or .bin files:
+
+**Windows:**
+```batch
+# Double-click build_native_libs.bat, or run:
+build_native_libs.bat
+```
+
+**Linux/macOS:**
+```bash
+chmod +x build_native_libs.sh
+./build_native_libs.sh
+```
+
+Then build and run the C# application:
+```bash
+cd Custom-Client
+dotnet build
+dotnet run
+```
+
 ### Prerequisites
 - CMake 3.15 or higher
 - C++17 compatible compiler
