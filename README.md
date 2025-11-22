@@ -2,16 +2,6 @@
 
 Aims to mix different Sonic the Hedgehog games into a single big game. Acts as a legal but cheaper version of Sonic Origins for fans that dont want to get scammed.
 
-**Now featuring Team Forever QOL enhancements!** This project integrates quality-of-life improvements from [Team Forever's RSDKv4 mods](https://github.com/ElspethThePict/TeamForever-v4-1.3), including:
-- **Mod Loader** - Built-in mod support with custom achievements and save redirection
-- **Multiplayer Networking** - Host and join Sonic 2 VS mode servers
-- **Enhanced Debug Tools** - F-key shortcuts for scene loading, hitbox visualization, palette overlay
-- **Settings System** - Persistent settings.ini configuration like Sonic Mania
-- **Idle Screen Dimming** - Configurable screen dimming feature from Sonic Mania Plus
-- **Built-in Script Compiler** - Compile RSDKv4 scripts at runtime
-
-See [TEAMFOREVER_INTEGRATION.md](TEAMFOREVER_INTEGRATION.md) for complete feature list.
-
 ![Sonic 1 in Sonic 2](docs/preview.png)
 
 ## How it's gonna work.
