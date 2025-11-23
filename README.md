@@ -27,6 +27,8 @@ Custom-Client 0% (debugging Hybrid-RSDK-Main is the priority)
 
 ⚠️ **IMPORTANT**: If you're experiencing crashes when loading games, see [CRASH_FIX_README.md](CRASH_FIX_README.md) for detailed troubleshooting steps.
 
+📋 **SONIC 3 & KNUCKLES SETUP**: For Sonic 3 & Knuckles support, see [SONIC3_AIR_SETUP.md](SONIC3_AIR_SETUP.md) for complete setup instructions.
+
 ### Quick Start (Fix Crashes)
 
 If the application crashes when loading .rsdk or .bin files:
