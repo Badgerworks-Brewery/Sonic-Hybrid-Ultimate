@@ -357,6 +357,26 @@ namespace SonicHybridUltimate
 
                 if (!File.Exists(romFile))
                 {
+                    // Try alternative common locations
+                    var alternativePaths = new[]
+                    {
+                        Path.Combine("rsdk-source-data", "sonic3.bin"),
+                        Path.Combine("..", "rsdk-source-data", "sonic3.bin"),
+                        "sonic3.bin"
+                    };
+
+                    foreach (var altPath in alternativePaths)
+                    {
+                        if (File.Exists(altPath))
+                        {
+                            romFile = altPath;
+                            break;
+                        }
+                    }
+                }
+
+                if (!File.Exists(romFile))
+                {
                     using var ofd = new OpenFileDialog
                     {
                         Title = "Select Sonic 3 & Knuckles ROM (sonic3.bin)",
@@ -389,18 +409,20 @@ namespace SonicHybridUltimate
                     _logger.LogError("Failed to load Sonic 3 & Knuckles");
                     MessageBox.Show(
                         "Failed to load Sonic 3 & Knuckles.\n\n" +
-                        "This could be because:\n" +
-                        "• The native libraries (OxygenEngine.dll) are missing\n" +
-                        "• Sonic 3 AIR executable is not found\n" +
-                        "• The ROM file is invalid or corrupted\n\n" +
-                        "Please check the log for detailed error information.\n\n" +
-                        "To fix this:\n" +
-                        "1. Run the build_native_libs.sh script to build required libraries\n" +
-                        "2. Ensure Sonic 3 AIR is properly installed\n" +
-                        "3. Verify the ROM file is a valid Sonic 3 & Knuckles ROM",
-                        "Error Loading Sonic 3 & Knuckles",
+                        "This is most likely because Sonic 3 AIR is not installed.\n\n" +
+                        "To fix this issue:\n" +
+                        "1. Download Sonic 3 AIR from: https://sonic3air.org/\n" +
+                        "2. Extract it to a 'Sonic 3 AIR Main' folder in your project directory\n" +
+                        "3. Make sure the sonic3air.exe file is present\n" +
+                        "4. Ensure you have a valid Sonic 3 & Knuckles ROM file\n\n" +
+                        "Alternative installation locations:\n" +
+                        "• C:/Program Files/Sonic 3 AIR/\n" +
+                        "• Same directory as this application\n\n" +
+                        "Note: You need BOTH the ROM file AND the Sonic 3 AIR executable.\n\n" +
+                        "Check the log for detailed error information.",
+                        "Sonic 3 AIR Required",
                         MessageBoxButtons.OK,
-                        MessageBoxIcon.Error);
+                        MessageBoxIcon.Information);
                 }
             }
             catch (Exception ex)
