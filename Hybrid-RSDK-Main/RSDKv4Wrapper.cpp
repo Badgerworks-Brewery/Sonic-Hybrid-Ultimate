@@ -37,7 +37,7 @@ static void LogMessage(const char* format, ...) {
     va_end(args);
     
     // Always output to stderr for debugging
-    LogMessage("%s", buffer);
+    fprintf(stderr, "%s", buffer);
     
     // Also call the callback if set
     if (logCallback) {
