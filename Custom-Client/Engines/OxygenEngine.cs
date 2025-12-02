@@ -43,11 +43,8 @@ namespace SonicHybridUltimate.Engines
 
         private static void NativeLogCallback(string message)
         {
-            // Remove trailing newline if present
-            if (message.EndsWith("\n"))
-            {
-                message = message.Substring(0, message.Length - 1);
-            }
+            // Remove trailing newlines
+            message = message.TrimEnd('\n');
             
             // Write to console which is connected to the UI logger
             Console.WriteLine($"[OXYGEN] {message}");
@@ -109,8 +106,14 @@ namespace SonicHybridUltimate.Engines
                     {
                         _isStubMode = NativeMethods.IsOxygenStubMode() == 1;
                     }
-                    catch
+                    catch (DllNotFoundException)
                     {
+                        // Native library not available, assume stub mode
+                        _isStubMode = false;
+                    }
+                    catch (EntryPointNotFoundException)
+                    {
+                        // Function not exported, assume non-stub mode
                         _isStubMode = false;
                     }
                     

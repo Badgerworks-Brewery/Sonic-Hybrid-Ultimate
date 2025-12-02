@@ -10,6 +10,51 @@ using SonicHybridUltimate.Core;
 
 namespace SonicHybridUltimate
 {
+    /// <summary>
+    /// Common search paths for game data files
+    /// </summary>
+    internal static class GamePaths
+    {
+        public static readonly string[] Sonic1SearchPaths = new[]
+        {
+            Path.Combine("Hybrid-RSDK-Main", "Data", "sonic1.rsdk"),
+            Path.Combine("Hybrid-RSDK-Main", "rsdk-source-data", "sonic1.rsdk"),
+            Path.Combine("rsdk-source-data", "sonic1.rsdk"),
+            Path.Combine("..", "rsdk-source-data", "sonic1.rsdk"),
+            "sonic1.rsdk",
+            "Data.rsdk"
+        };
+        
+        public static readonly string[] SonicCDSearchPaths = new[]
+        {
+            Path.Combine("Hybrid-RSDK-Main", "Data", "soniccd.rsdk"),
+            Path.Combine("Hybrid-RSDK-Main", "rsdk-source-data", "soniccd.rsdk"),
+            Path.Combine("rsdk-source-data", "soniccd.rsdk"),
+            Path.Combine("..", "rsdk-source-data", "soniccd.rsdk"),
+            "soniccd.rsdk",
+            "Data.rsdk"
+        };
+        
+        public static readonly string[] Sonic2SearchPaths = new[]
+        {
+            Path.Combine("Hybrid-RSDK-Main", "Data", "sonic2.rsdk"),
+            Path.Combine("Hybrid-RSDK-Main", "rsdk-source-data", "sonic2.rsdk"),
+            Path.Combine("rsdk-source-data", "sonic2.rsdk"),
+            Path.Combine("..", "rsdk-source-data", "sonic2.rsdk"),
+            "sonic2.rsdk",
+            "Data.rsdk"
+        };
+        
+        public static readonly string[] Sonic3SearchPaths = new[]
+        {
+            Path.Combine("Sonic 3 AIR Main", "sonic3.bin"),
+            Path.Combine("Hybrid-RSDK-Main", "rsdk-source-data", "sonic3.bin"),
+            Path.Combine("rsdk-source-data", "sonic3.bin"),
+            Path.Combine("..", "rsdk-source-data", "sonic3.bin"),
+            "sonic3.bin"
+        };
+    }
+    
     public partial class MainForm : Form
     {
         private readonly ILogger<MainForm> _logger;
@@ -68,34 +113,11 @@ namespace SonicHybridUltimate
             _logger.LogInformation("  OxygenEngine Library: {Status}", hasOxygenLib ? "✓ Available" : "✗ Not Found");
             _logger.LogInformation("");
             
-            // Check for game files
-            var sonic1Path = FindGameFile("sonic1.rsdk", new[] {
-                Path.Combine("Hybrid-RSDK-Main", "Data", "sonic1.rsdk"),
-                Path.Combine("Hybrid-RSDK-Main", "rsdk-source-data", "sonic1.rsdk"),
-                Path.Combine("rsdk-source-data", "sonic1.rsdk"),
-                "sonic1.rsdk"
-            });
-            
-            var sonicCDPath = FindGameFile("soniccd.rsdk", new[] {
-                Path.Combine("Hybrid-RSDK-Main", "Data", "soniccd.rsdk"),
-                Path.Combine("Hybrid-RSDK-Main", "rsdk-source-data", "soniccd.rsdk"),
-                Path.Combine("rsdk-source-data", "soniccd.rsdk"),
-                "soniccd.rsdk"
-            });
-            
-            var sonic2Path = FindGameFile("sonic2.rsdk", new[] {
-                Path.Combine("Hybrid-RSDK-Main", "Data", "sonic2.rsdk"),
-                Path.Combine("Hybrid-RSDK-Main", "rsdk-source-data", "sonic2.rsdk"),
-                Path.Combine("rsdk-source-data", "sonic2.rsdk"),
-                "sonic2.rsdk"
-            });
-            
-            var sonic3Path = FindGameFile("sonic3.bin", new[] {
-                Path.Combine("Sonic 3 AIR Main", "sonic3.bin"),
-                Path.Combine("Hybrid-RSDK-Main", "rsdk-source-data", "sonic3.bin"),
-                Path.Combine("rsdk-source-data", "sonic3.bin"),
-                "sonic3.bin"
-            });
+            // Check for game files using shared paths
+            var sonic1Path = FindGameFile("sonic1.rsdk", GamePaths.Sonic1SearchPaths);
+            var sonicCDPath = FindGameFile("soniccd.rsdk", GamePaths.SonicCDSearchPaths);
+            var sonic2Path = FindGameFile("sonic2.rsdk", GamePaths.Sonic2SearchPaths);
+            var sonic3Path = FindGameFile("sonic3.bin", GamePaths.Sonic3SearchPaths);
             
             _logger.LogInformation("Game Data Status:");
             _logger.LogInformation("  Sonic 1: {Status}", sonic1Path != null ? $"✓ Found at {sonic1Path}" : "✗ Not Found (select when prompted)");
@@ -225,15 +247,7 @@ namespace SonicHybridUltimate
             {
                 _logger.LogInformation("Loading Sonic 1...");
 
-                string? gamePath = FindGameFile("sonic1.rsdk", new[]
-                {
-                    Path.Combine("Hybrid-RSDK-Main", "Data", "sonic1.rsdk"),
-                    Path.Combine("Hybrid-RSDK-Main", "rsdk-source-data", "sonic1.rsdk"),
-                    Path.Combine("rsdk-source-data", "sonic1.rsdk"),
-                    Path.Combine("..", "rsdk-source-data", "sonic1.rsdk"),
-                    "sonic1.rsdk",
-                    "Data.rsdk"
-                });
+                string? gamePath = FindGameFile("sonic1.rsdk", GamePaths.Sonic1SearchPaths);
 
                 if (gamePath == null)
                 {
@@ -296,15 +310,7 @@ namespace SonicHybridUltimate
             {
                 _logger.LogInformation("Loading Sonic CD...");
 
-                string? gamePath = FindGameFile("soniccd.rsdk", new[]
-                {
-                    Path.Combine("Hybrid-RSDK-Main", "Data", "soniccd.rsdk"),
-                    Path.Combine("Hybrid-RSDK-Main", "rsdk-source-data", "soniccd.rsdk"),
-                    Path.Combine("rsdk-source-data", "soniccd.rsdk"),
-                    Path.Combine("..", "rsdk-source-data", "soniccd.rsdk"),
-                    "soniccd.rsdk",
-                    "Data.rsdk"
-                });
+                string? gamePath = FindGameFile("soniccd.rsdk", GamePaths.SonicCDSearchPaths);
 
                 if (gamePath == null)
                 {
@@ -367,15 +373,7 @@ namespace SonicHybridUltimate
             {
                 _logger.LogInformation("Loading Sonic 2...");
 
-                string? gamePath = FindGameFile("sonic2.rsdk", new[]
-                {
-                    Path.Combine("Hybrid-RSDK-Main", "Data", "sonic2.rsdk"),
-                    Path.Combine("Hybrid-RSDK-Main", "rsdk-source-data", "sonic2.rsdk"),
-                    Path.Combine("rsdk-source-data", "sonic2.rsdk"),
-                    Path.Combine("..", "rsdk-source-data", "sonic2.rsdk"),
-                    "sonic2.rsdk",
-                    "Data.rsdk"
-                });
+                string? gamePath = FindGameFile("sonic2.rsdk", GamePaths.Sonic2SearchPaths);
 
                 if (gamePath == null)
                 {
@@ -438,31 +436,9 @@ namespace SonicHybridUltimate
             {
                 _logger.LogInformation("Loading Sonic 3 & Knuckles...");
 
-                var defaultRom = Path.Combine("Sonic 3 AIR Main", "sonic3.bin");
-                string romFile = defaultRom;
+                string? romFile = FindGameFile("sonic3.bin", GamePaths.Sonic3SearchPaths);
 
-                if (!File.Exists(romFile))
-                {
-                    // Try alternative common locations
-                    var alternativePaths = new[]
-                    {
-                        Path.Combine("rsdk-source-data", "sonic3.bin"),
-                        Path.Combine("..", "rsdk-source-data", "sonic3.bin"),
-                        Path.Combine("Hybrid-RSDK-Main", "rsdk-source-data", "sonic3.bin"),
-                        "sonic3.bin"
-                    };
-
-                    foreach (var altPath in alternativePaths)
-                    {
-                        if (File.Exists(altPath))
-                        {
-                            romFile = altPath;
-                            break;
-                        }
-                    }
-                }
-
-                if (!File.Exists(romFile))
+                if (romFile == null)
                 {
                     using var ofd = new OpenFileDialog
                     {
