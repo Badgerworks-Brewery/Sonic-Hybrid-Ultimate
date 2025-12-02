@@ -47,10 +47,75 @@ namespace SonicHybridUltimate
             
             InitializeTimer();
 
-            // Don't auto-load - let user choose which game to play
-            // LoadSonic1_Click(this, EventArgs.Empty);
+            // Check for available games and native libraries
+            CheckGameAvailability();
 
             _logger.LogInformation("MainForm initialized");
+        }
+
+        private void CheckGameAvailability()
+        {
+            _logger.LogInformation("=== Sonic Hybrid Ultimate ===");
+            _logger.LogInformation("Checking available games and engines...");
+            _logger.LogInformation("");
+            
+            // Check native libraries
+            bool hasRsdkLib = NativeLibraryResolver.IsLibraryAvailable("RSDKv4");
+            bool hasOxygenLib = NativeLibraryResolver.IsLibraryAvailable("OxygenEngine");
+            
+            _logger.LogInformation("Engine Status:");
+            _logger.LogInformation("  RSDKv4 Library: {Status}", hasRsdkLib ? "✓ Available" : "✗ Not Found");
+            _logger.LogInformation("  OxygenEngine Library: {Status}", hasOxygenLib ? "✓ Available" : "✗ Not Found");
+            _logger.LogInformation("");
+            
+            // Check for game files
+            var sonic1Path = FindGameFile("sonic1.rsdk", new[] {
+                Path.Combine("Hybrid-RSDK-Main", "Data", "sonic1.rsdk"),
+                Path.Combine("Hybrid-RSDK-Main", "rsdk-source-data", "sonic1.rsdk"),
+                Path.Combine("rsdk-source-data", "sonic1.rsdk"),
+                "sonic1.rsdk"
+            });
+            
+            var sonicCDPath = FindGameFile("soniccd.rsdk", new[] {
+                Path.Combine("Hybrid-RSDK-Main", "Data", "soniccd.rsdk"),
+                Path.Combine("Hybrid-RSDK-Main", "rsdk-source-data", "soniccd.rsdk"),
+                Path.Combine("rsdk-source-data", "soniccd.rsdk"),
+                "soniccd.rsdk"
+            });
+            
+            var sonic2Path = FindGameFile("sonic2.rsdk", new[] {
+                Path.Combine("Hybrid-RSDK-Main", "Data", "sonic2.rsdk"),
+                Path.Combine("Hybrid-RSDK-Main", "rsdk-source-data", "sonic2.rsdk"),
+                Path.Combine("rsdk-source-data", "sonic2.rsdk"),
+                "sonic2.rsdk"
+            });
+            
+            var sonic3Path = FindGameFile("sonic3.bin", new[] {
+                Path.Combine("Sonic 3 AIR Main", "sonic3.bin"),
+                Path.Combine("Hybrid-RSDK-Main", "rsdk-source-data", "sonic3.bin"),
+                Path.Combine("rsdk-source-data", "sonic3.bin"),
+                "sonic3.bin"
+            });
+            
+            _logger.LogInformation("Game Data Status:");
+            _logger.LogInformation("  Sonic 1: {Status}", sonic1Path != null ? $"✓ Found at {sonic1Path}" : "✗ Not Found (select when prompted)");
+            _logger.LogInformation("  Sonic CD: {Status}", sonicCDPath != null ? $"✓ Found at {sonicCDPath}" : "✗ Not Found (select when prompted)");
+            _logger.LogInformation("  Sonic 2: {Status}", sonic2Path != null ? $"✓ Found at {sonic2Path}" : "✗ Not Found (select when prompted)");
+            _logger.LogInformation("  Sonic 3 ROM: {Status}", sonic3Path != null ? $"✓ Found at {sonic3Path}" : "✗ Not Found (select when prompted)");
+            _logger.LogInformation("");
+            
+            if (!hasRsdkLib)
+            {
+                _logger.LogWarning("Native RSDKv4 library not found. Run build_native_libs.sh to build it.");
+            }
+            
+            if (!hasOxygenLib)
+            {
+                _logger.LogWarning("Native OxygenEngine library not found. Run build_native_libs.sh to build it.");
+            }
+            
+            _logger.LogInformation("Click a game button above to start playing!");
+            _logger.LogInformation("=====================================");
         }
 
         private void InitializeComponents()
