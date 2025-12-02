@@ -24,63 +24,8 @@ namespace SonicHybridUltimate.Engines
 
         static RSDKEngine()
         {
-            // Set up DLL resolver to help find RSDKv4.dll
-            NativeLibrary.SetDllImportResolver(typeof(RSDKEngine).Assembly, DllImportResolver);
-        }
-
-        private static IntPtr DllImportResolver(string libraryName, Assembly assembly, DllImportSearchPath? searchPath)
-        {
-            if (libraryName != "RSDKv4")
-                return IntPtr.Zero;
-
-            // Try to load from various locations
-            var searchPaths = new[]
-            {
-                // Same directory as the executable
-                Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location),
-                // Current directory
-                Directory.GetCurrentDirectory(),
-                // Hybrid-RSDK-Main build output (relative to exe)
-                Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? "", "..", "Hybrid-RSDK-Main", "build", "lib"),
-                Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? "", "..", "Hybrid-RSDK-Main", "build", "bin"),
-                Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? "", "..", "Hybrid-RSDK-Main", "build", "bin", "Release"),
-            };
-
-            var dllNames = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-                ? new[] { "RSDKv4.dll" }
-                : new[] { "libRSDKv4.so", "RSDKv4.so" };
-
-            foreach (var basePath in searchPaths)
-            {
-                if (string.IsNullOrEmpty(basePath) || !Directory.Exists(basePath))
-                    continue;
-
-                foreach (var dllName in dllNames)
-                {
-                    var fullPath = Path.Combine(basePath, dllName);
-                    if (File.Exists(fullPath))
-                    {
-                        try
-                        {
-                            var handle = NativeLibrary.Load(fullPath);
-                            Console.WriteLine($"Successfully loaded RSDKv4 from: {fullPath}");
-                            return handle;
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine($"Failed to load {fullPath}: {ex.Message}");
-                        }
-                    }
-                }
-            }
-
-            Console.WriteLine($"Could not find RSDKv4 library in any of the search paths:");
-            foreach (var path in searchPaths)
-            {
-                Console.WriteLine($"  - {path}");
-            }
-
-            return IntPtr.Zero;
+            // Register the unified native library resolver
+            NativeLibraryResolver.Register();
         }
 
         public RSDKEngine(ILogger<RSDKEngine> logger)
