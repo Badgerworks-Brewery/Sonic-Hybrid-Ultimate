@@ -160,10 +160,17 @@ namespace SonicHybridUltimate
             {
                 _logger.LogInformation("Loading Sonic 1...");
 
-                var defaultPath = Path.Combine("Hybrid-RSDK-Main", "Data", "sonic1.rsdk");
-                string gamePath = defaultPath;
+                string? gamePath = FindGameFile("sonic1.rsdk", new[]
+                {
+                    Path.Combine("Hybrid-RSDK-Main", "Data", "sonic1.rsdk"),
+                    Path.Combine("Hybrid-RSDK-Main", "rsdk-source-data", "sonic1.rsdk"),
+                    Path.Combine("rsdk-source-data", "sonic1.rsdk"),
+                    Path.Combine("..", "rsdk-source-data", "sonic1.rsdk"),
+                    "sonic1.rsdk",
+                    "Data.rsdk"
+                });
 
-                if (!File.Exists(gamePath))
+                if (gamePath == null)
                 {
                     using var ofd = new OpenFileDialog
                     {
@@ -224,10 +231,17 @@ namespace SonicHybridUltimate
             {
                 _logger.LogInformation("Loading Sonic CD...");
 
-                var defaultPath = Path.Combine("Hybrid-RSDK-Main", "Data", "soniccd.rsdk");
-                string gamePath = defaultPath;
+                string? gamePath = FindGameFile("soniccd.rsdk", new[]
+                {
+                    Path.Combine("Hybrid-RSDK-Main", "Data", "soniccd.rsdk"),
+                    Path.Combine("Hybrid-RSDK-Main", "rsdk-source-data", "soniccd.rsdk"),
+                    Path.Combine("rsdk-source-data", "soniccd.rsdk"),
+                    Path.Combine("..", "rsdk-source-data", "soniccd.rsdk"),
+                    "soniccd.rsdk",
+                    "Data.rsdk"
+                });
 
-                if (!File.Exists(gamePath))
+                if (gamePath == null)
                 {
                     using var ofd = new OpenFileDialog
                     {
@@ -288,10 +302,17 @@ namespace SonicHybridUltimate
             {
                 _logger.LogInformation("Loading Sonic 2...");
 
-                var defaultPath = Path.Combine("Hybrid-RSDK-Main", "Data", "sonic2.rsdk");
-                string gamePath = defaultPath;
+                string? gamePath = FindGameFile("sonic2.rsdk", new[]
+                {
+                    Path.Combine("Hybrid-RSDK-Main", "Data", "sonic2.rsdk"),
+                    Path.Combine("Hybrid-RSDK-Main", "rsdk-source-data", "sonic2.rsdk"),
+                    Path.Combine("rsdk-source-data", "sonic2.rsdk"),
+                    Path.Combine("..", "rsdk-source-data", "sonic2.rsdk"),
+                    "sonic2.rsdk",
+                    "Data.rsdk"
+                });
 
-                if (!File.Exists(gamePath))
+                if (gamePath == null)
                 {
                     using var ofd = new OpenFileDialog
                     {
@@ -362,6 +383,7 @@ namespace SonicHybridUltimate
                     {
                         Path.Combine("rsdk-source-data", "sonic3.bin"),
                         Path.Combine("..", "rsdk-source-data", "sonic3.bin"),
+                        Path.Combine("Hybrid-RSDK-Main", "rsdk-source-data", "sonic3.bin"),
                         "sonic3.bin"
                     };
 
@@ -400,29 +422,40 @@ namespace SonicHybridUltimate
                 if (_oxygenEngine.Initialize(romFile))
                 {
                     _currentGame = "sonic3";
-                    _statusLabel.Text = "Running: Sonic 3 & Knuckles";
-                    _loadSonic3Button.Enabled = false;
-                    _logger.LogInformation("Sonic 3 & Knuckles loaded successfully");
+                    
+                    // Check if we're in stub mode
+                    if (_oxygenEngine.IsStubMode)
+                    {
+                        _statusLabel.Text = "Sonic 3 & Knuckles (Setup Required)";
+                        _logger.LogWarning("Sonic 3 & Knuckles initialized in stub mode - Sonic 3 AIR not found");
+                        MessageBox.Show(
+                            "Sonic 3 & Knuckles ROM validated!\n\n" +
+                            "However, Sonic 3 AIR is not installed. To play:\n\n" +
+                            "1. Download Sonic 3 AIR from: https://sonic3air.org/\n" +
+                            "2. Extract to 'Sonic 3 AIR Main' folder\n" +
+                            "3. Restart the application\n\n" +
+                            "Your ROM file is ready and will be used when Sonic 3 AIR is installed.",
+                            "Sonic 3 AIR Setup Required",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Information);
+                    }
+                    else
+                    {
+                        _statusLabel.Text = "Running: Sonic 3 & Knuckles";
+                        _loadSonic3Button.Enabled = false;
+                        _logger.LogInformation("Sonic 3 & Knuckles loaded successfully");
+                    }
                 }
                 else
                 {
                     _logger.LogError("Failed to load Sonic 3 & Knuckles");
                     MessageBox.Show(
                         "Failed to load Sonic 3 & Knuckles.\n\n" +
-                        "This is most likely because Sonic 3 AIR is not installed.\n\n" +
-                        "To fix this issue:\n" +
-                        "1. Download Sonic 3 AIR from: https://sonic3air.org/\n" +
-                        "2. Extract it to a 'Sonic 3 AIR Main' folder in your project directory\n" +
-                        "3. Make sure the sonic3air.exe file is present\n" +
-                        "4. Ensure you have a valid Sonic 3 & Knuckles ROM file\n\n" +
-                        "Alternative installation locations:\n" +
-                        "• C:/Program Files/Sonic 3 AIR/\n" +
-                        "• Same directory as this application\n\n" +
-                        "Note: You need BOTH the ROM file AND the Sonic 3 AIR executable.\n\n" +
+                        "Please check that you have a valid ROM file.\n\n" +
                         "Check the log for detailed error information.",
-                        "Sonic 3 AIR Required",
+                        "Error Loading Game",
                         MessageBoxButtons.OK,
-                        MessageBoxIcon.Information);
+                        MessageBoxIcon.Error);
                 }
             }
             catch (Exception ex)
@@ -588,6 +621,27 @@ namespace SonicHybridUltimate
                     _statusLabel.Text = "Running: Sonic 2 (Transition Failed)";
                 }
             }
+        }
+
+        /// <summary>
+        /// Searches for a game file in multiple locations.
+        /// </summary>
+        /// <param name="fileName">The file name to search for</param>
+        /// <param name="searchPaths">Paths to search in order</param>
+        /// <returns>The full path to the file if found, null otherwise</returns>
+        private string? FindGameFile(string fileName, string[] searchPaths)
+        {
+            foreach (var path in searchPaths)
+            {
+                if (File.Exists(path))
+                {
+                    _logger.LogInformation("Found {FileName} at: {Path}", fileName, path);
+                    return Path.GetFullPath(path);
+                }
+            }
+            
+            _logger.LogWarning("Could not find {FileName} in any search path", fileName);
+            return null;
         }
 
         private void Log(string message)
