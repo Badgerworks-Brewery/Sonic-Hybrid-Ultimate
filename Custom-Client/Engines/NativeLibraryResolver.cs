@@ -30,36 +30,37 @@ namespace SonicHybridUltimate.Engines
             }
         }
 
-        private static IntPtr DllImportResolver(string libraryName, Assembly assembly, DllImportSearchPath? searchPath)
+        /// <summary>
+        /// Gets the DLL file names for a given library name.
+        /// </summary>
+        private static string[]? GetDllNames(string libraryName)
         {
-            // Handle RSDKv4
             if (libraryName == "RSDKv4")
             {
-                return TryLoadLibrary(libraryName, 
-                    RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-                        ? new[] { "RSDKv4.dll" }
-                        : new[] { "libRSDKv4.so", "RSDKv4.so" });
+                return RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+                    ? new[] { "RSDKv4.dll" }
+                    : new[] { "libRSDKv4.so", "RSDKv4.so" };
             }
 
-            // Handle OxygenEngine
             if (libraryName == "OxygenEngine")
             {
-                return TryLoadLibrary(libraryName,
-                    RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-                        ? new[] { "OxygenEngine.dll" }
-                        : new[] { "libOxygenEngine.so", "OxygenEngine.so" });
+                return RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+                    ? new[] { "OxygenEngine.dll" }
+                    : new[] { "libOxygenEngine.so", "OxygenEngine.so" };
             }
 
-            // Let other libraries be resolved by the default resolver
-            return IntPtr.Zero;
+            return null;
         }
 
-        private static IntPtr TryLoadLibrary(string libraryName, string[] dllNames)
+        /// <summary>
+        /// Gets the search paths for native libraries.
+        /// </summary>
+        private static string[] GetSearchPaths()
         {
-            var searchPaths = new[]
+            return new[]
             {
                 // Same directory as the executable
-                Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location),
+                Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? "",
                 // Current directory
                 Directory.GetCurrentDirectory(),
                 // Hybrid-RSDK-Main build output (relative to exe)
@@ -67,6 +68,23 @@ namespace SonicHybridUltimate.Engines
                 Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? "", "..", "Hybrid-RSDK-Main", "build", "bin"),
                 Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? "", "..", "Hybrid-RSDK-Main", "build", "bin", "Release"),
             };
+        }
+
+        private static IntPtr DllImportResolver(string libraryName, Assembly assembly, DllImportSearchPath? searchPath)
+        {
+            var dllNames = GetDllNames(libraryName);
+            if (dllNames == null)
+            {
+                // Let other libraries be resolved by the default resolver
+                return IntPtr.Zero;
+            }
+
+            return TryLoadLibrary(libraryName, dllNames);
+        }
+
+        private static IntPtr TryLoadLibrary(string libraryName, string[] dllNames)
+        {
+            var searchPaths = GetSearchPaths();
 
             foreach (var basePath in searchPaths)
             {
@@ -106,31 +124,13 @@ namespace SonicHybridUltimate.Engines
         /// </summary>
         public static bool IsLibraryAvailable(string libraryName)
         {
-            string[] dllNames;
-            
-            if (libraryName == "RSDKv4")
-            {
-                dllNames = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-                    ? new[] { "RSDKv4.dll" }
-                    : new[] { "libRSDKv4.so", "RSDKv4.so" };
-            }
-            else if (libraryName == "OxygenEngine")
-            {
-                dllNames = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-                    ? new[] { "OxygenEngine.dll" }
-                    : new[] { "libOxygenEngine.so", "OxygenEngine.so" };
-            }
-            else
+            var dllNames = GetDllNames(libraryName);
+            if (dllNames == null)
             {
                 return false;
             }
 
-            var searchPaths = new[]
-            {
-                Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location),
-                Directory.GetCurrentDirectory(),
-                Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? "", "..", "Hybrid-RSDK-Main", "build", "lib"),
-            };
+            var searchPaths = GetSearchPaths();
 
             foreach (var basePath in searchPaths)
             {
