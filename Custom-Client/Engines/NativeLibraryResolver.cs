@@ -32,8 +32,9 @@ namespace SonicHybridUltimate.Engines
 
         /// <summary>
         /// Gets the DLL file names for a given library name.
+        /// Returns empty array if the library name is not recognized.
         /// </summary>
-        private static string[]? GetDllNames(string libraryName)
+        private static string[] GetDllNames(string libraryName)
         {
             if (libraryName == "RSDKv4")
             {
@@ -49,7 +50,7 @@ namespace SonicHybridUltimate.Engines
                     : new[] { "libOxygenEngine.so", "OxygenEngine.so" };
             }
 
-            return null;
+            return Array.Empty<string>();
         }
 
         /// <summary>
@@ -57,23 +58,24 @@ namespace SonicHybridUltimate.Engines
         /// </summary>
         private static string[] GetSearchPaths()
         {
+            var exeDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? "";
             return new[]
             {
                 // Same directory as the executable
-                Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? "",
+                exeDir,
                 // Current directory
                 Directory.GetCurrentDirectory(),
                 // Hybrid-RSDK-Main build output (relative to exe)
-                Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? "", "..", "Hybrid-RSDK-Main", "build", "lib"),
-                Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? "", "..", "Hybrid-RSDK-Main", "build", "bin"),
-                Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? "", "..", "Hybrid-RSDK-Main", "build", "bin", "Release"),
+                Path.Combine(exeDir, "..", "Hybrid-RSDK-Main", "build", "lib"),
+                Path.Combine(exeDir, "..", "Hybrid-RSDK-Main", "build", "bin"),
+                Path.Combine(exeDir, "..", "Hybrid-RSDK-Main", "build", "bin", "Release"),
             };
         }
 
         private static IntPtr DllImportResolver(string libraryName, Assembly assembly, DllImportSearchPath? searchPath)
         {
             var dllNames = GetDllNames(libraryName);
-            if (dllNames == null)
+            if (dllNames.Length == 0)
             {
                 // Let other libraries be resolved by the default resolver
                 return IntPtr.Zero;
@@ -125,7 +127,7 @@ namespace SonicHybridUltimate.Engines
         public static bool IsLibraryAvailable(string libraryName)
         {
             var dllNames = GetDllNames(libraryName);
-            if (dllNames == null)
+            if (dllNames.Length == 0)
             {
                 return false;
             }
