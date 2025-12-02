@@ -10,10 +10,13 @@ namespace SonicHybridUltimate.Engines
     {
         private readonly ILogger<OxygenEngine> _logger;
         private bool _isInitialized;
+        private bool _isStubMode;
         private string _currentScript = string.Empty;
         private bool _isDisposed;
+        private static NativeMethods.LogCallback? _logCallbackDelegate;
 
-        public bool IsRunning => _isInitialized;
+        public bool IsRunning => _isInitialized && !_isStubMode;
+        public bool IsStubMode => _isStubMode;
         public string CurrentGame => _currentScript;
 
         static OxygenEngine()
@@ -25,6 +28,29 @@ namespace SonicHybridUltimate.Engines
         public OxygenEngine(ILogger<OxygenEngine> logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            
+            // Set up native logging callback (keep delegate alive)
+            try
+            {
+                _logCallbackDelegate = NativeLogCallback;
+                NativeMethods.SetOxygenLogCallback(_logCallbackDelegate);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Failed to set native logging callback - this is expected if native library is not yet loaded");
+            }
+        }
+
+        private static void NativeLogCallback(string message)
+        {
+            // Remove trailing newline if present
+            if (message.EndsWith("\n"))
+            {
+                message = message.Substring(0, message.Length - 1);
+            }
+            
+            // Write to console which is connected to the UI logger
+            Console.WriteLine($"[OXYGEN] {message}");
         }
 
         public bool Initialize(string scriptPath)
@@ -44,14 +70,25 @@ namespace SonicHybridUltimate.Engines
                 // Check if the native library is available
                 if (!IsNativeLibraryAvailable())
                 {
-                    _logger.LogError("OxygenEngine native library is not available.");
-                    _logger.LogError("This means the OxygenEngine.dll was not built or is not in the correct location.");
-                    _logger.LogError("");
-                    _logger.LogError("To fix this:");
-                    _logger.LogError("1. Run the build_native_libs.sh script (Linux/Mac) or build_native_libs.ps1 (Windows)");
-                    _logger.LogError("2. Or build the project with CMake to generate the required DLLs");
-                    _logger.LogError("3. Ensure the OxygenEngine.dll is in the same directory as this application");
-                    return false;
+                    _logger.LogWarning("OxygenEngine native library is not available.");
+                    _logger.LogWarning("Sonic 3 & Knuckles will run in stub mode.");
+                    _logger.LogInformation("");
+                    _logger.LogInformation("To enable full Sonic 3 support:");
+                    _logger.LogInformation("1. Build the native libraries: ./build_native_libs.sh");
+                    _logger.LogInformation("2. Download Sonic 3 AIR from: https://sonic3air.org/");
+                    _logger.LogInformation("3. Place sonic3air.exe in 'Sonic 3 AIR Main' folder");
+                    
+                    // Still validate the ROM exists
+                    if (!File.Exists(scriptPath))
+                    {
+                        _logger.LogError("ROM file not found: {ScriptPath}", scriptPath);
+                        return false;
+                    }
+                    
+                    _isStubMode = true;
+                    _isInitialized = true;
+                    _currentScript = scriptPath;
+                    return true;
                 }
 
                 // Validate ROM file exists before attempting to initialize
@@ -59,7 +96,6 @@ namespace SonicHybridUltimate.Engines
                 {
                     _logger.LogError("ROM file not found: {ScriptPath}", scriptPath);
                     _logger.LogError("Please ensure you have selected a valid Sonic 3 & Knuckles ROM file.");
-                    _logger.LogError("The ROM file should be named something like 'sonic3.bin' or 'Sonic_Knuckles_Wii_VC.bin'");
                     return false;
                 }
 
@@ -68,35 +104,47 @@ namespace SonicHybridUltimate.Engines
 
                 if (_isInitialized)
                 {
+                    // Check if we're in stub mode
+                    try
+                    {
+                        _isStubMode = NativeMethods.IsOxygenStubMode() == 1;
+                    }
+                    catch
+                    {
+                        _isStubMode = false;
+                    }
+                    
                     _currentScript = scriptPath;
-                    _logger.LogInformation("Oxygen Engine initialized successfully");
+                    
+                    if (_isStubMode)
+                    {
+                        _logger.LogWarning("Oxygen Engine initialized in stub mode");
+                        _logger.LogWarning("Sonic 3 AIR executable was not found.");
+                        _logger.LogInformation("");
+                        _logger.LogInformation("To enable full Sonic 3 support:");
+                        _logger.LogInformation("1. Download Sonic 3 AIR from: https://sonic3air.org/");
+                        _logger.LogInformation("2. Extract to 'Sonic 3 AIR Main' folder");
+                        _logger.LogInformation("3. Or set SONIC3AIR_PATH environment variable");
+                    }
+                    else
+                    {
+                        _logger.LogInformation("Oxygen Engine initialized successfully");
+                    }
                 }
                 else
                 {
                     _logger.LogError("Failed to initialize Oxygen Engine");
-                    _logger.LogError("");
-                    _logger.LogError("This is most likely because Sonic 3 AIR is not installed or not found.");
-                    _logger.LogError("");
-                    _logger.LogError("To fix this issue:");
-                    _logger.LogError("1. Download Sonic 3 AIR from: https://sonic3air.org/");
-                    _logger.LogError("2. Extract it to a 'Sonic 3 AIR Main' folder in your project directory");
-                    _logger.LogError("3. Make sure the sonic3air.exe file is present");
-                    _logger.LogError("4. Verify your ROM file is valid: {ScriptPath}", scriptPath);
-                    _logger.LogError("");
-                    _logger.LogError("Alternative locations for Sonic 3 AIR:");
-                    _logger.LogError("- C:/Program Files/Sonic 3 AIR/");
-                    _logger.LogError("- Same directory as this application");
-                    _logger.LogError("");
-                    _logger.LogError("Note: You need BOTH the ROM file AND the Sonic 3 AIR executable.");
                 }
 
                 return _isInitialized;
             }
             catch (DllNotFoundException ex)
             {
-                _logger.LogError(ex, "OxygenEngine native library not found. Please build the native libraries first.");
-                _logger.LogError("Run: ./build_native_libs.sh or build the CMake project to generate OxygenEngine.dll");
-                return false;
+                _logger.LogWarning(ex, "OxygenEngine native library not found - running in stub mode");
+                _isStubMode = true;
+                _isInitialized = true;
+                _currentScript = scriptPath;
+                return true;
             }
             catch (Exception ex)
             {
@@ -110,6 +158,12 @@ namespace SonicHybridUltimate.Engines
             ThrowIfDisposed();
 
             if (!_isInitialized)
+            {
+                return;
+            }
+
+            // In stub mode, there's nothing to update
+            if (_isStubMode)
             {
                 return;
             }
@@ -135,8 +189,14 @@ namespace SonicHybridUltimate.Engines
             try
             {
                 _logger.LogInformation("Cleaning up Oxygen Engine");
-                NativeMethods.CleanupOxygenEngine();
+                
+                if (!_isStubMode)
+                {
+                    NativeMethods.CleanupOxygenEngine();
+                }
+                
                 _isInitialized = false;
+                _isStubMode = false;
                 _currentScript = string.Empty;
             }
             catch (Exception ex)
@@ -177,6 +237,12 @@ namespace SonicHybridUltimate.Engines
 
         private static class NativeMethods
         {
+            [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+            public delegate void LogCallback([MarshalAs(UnmanagedType.LPStr)] string message);
+            
+            [DllImport("OxygenEngine", CallingConvention = CallingConvention.Cdecl)]
+            public static extern void SetOxygenLogCallback(LogCallback callback);
+            
             [DllImport("OxygenEngine", CallingConvention = CallingConvention.Cdecl)]
             public static extern int InitOxygenEngine(string scriptPath);
 
@@ -185,6 +251,12 @@ namespace SonicHybridUltimate.Engines
 
             [DllImport("OxygenEngine", CallingConvention = CallingConvention.Cdecl)]
             public static extern void CleanupOxygenEngine();
+            
+            [DllImport("OxygenEngine", CallingConvention = CallingConvention.Cdecl)]
+            public static extern int IsOxygenStubMode();
+            
+            [DllImport("OxygenEngine", CallingConvention = CallingConvention.Cdecl)]
+            public static extern int IsOxygenFullyOperational();
         }
     }
 }
