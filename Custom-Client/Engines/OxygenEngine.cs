@@ -1,4 +1,6 @@
 using System;
+using System.IO;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 
@@ -13,6 +15,12 @@ namespace SonicHybridUltimate.Engines
 
         public bool IsRunning => _isInitialized;
         public string CurrentGame => _currentScript;
+
+        static OxygenEngine()
+        {
+            // Register the unified native library resolver
+            NativeLibraryResolver.Register();
+        }
 
         public OxygenEngine(ILogger<OxygenEngine> logger)
         {
@@ -148,22 +156,7 @@ namespace SonicHybridUltimate.Engines
 
         private bool IsNativeLibraryAvailable()
         {
-            try
-            {
-                // Try to load the library by attempting to get a function pointer
-                // This is a safer way to check if the DLL exists and is loadable
-                var handle = NativeMethods.LoadLibrary("OxygenEngine");
-                if (handle != IntPtr.Zero)
-                {
-                    NativeMethods.FreeLibrary(handle);
-                    return true;
-                }
-                return false;
-            }
-            catch
-            {
-                return false;
-            }
+            return NativeLibraryResolver.IsLibraryAvailable("OxygenEngine");
         }
 
         public void Dispose()
@@ -192,13 +185,6 @@ namespace SonicHybridUltimate.Engines
 
             [DllImport("OxygenEngine", CallingConvention = CallingConvention.Cdecl)]
             public static extern void CleanupOxygenEngine();
-
-            // Windows API functions for library loading checks
-            [DllImport("kernel32.dll", SetLastError = true)]
-            public static extern IntPtr LoadLibrary(string lpFileName);
-
-            [DllImport("kernel32.dll", SetLastError = true)]
-            public static extern bool FreeLibrary(IntPtr hModule);
         }
     }
 }
