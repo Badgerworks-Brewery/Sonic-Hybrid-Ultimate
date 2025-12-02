@@ -4,6 +4,21 @@ Aims to mix different Sonic the Hedgehog games into a single big game. Acts as a
 
 ![Sonic 1 in Sonic 2](docs/preview.png)
 
+## What You Need
+
+To play Sonic Hybrid Ultimate, you need:
+
+1. **The SonicHybrid executable** - Built from this project
+2. **Game data files** - You must provide your own legally obtained game files:
+   - `sonic1.rsdk` - Sonic 1 data file (from Sonic 1 mobile/remaster)
+   - `soniccd.rsdk` - Sonic CD data file (from Sonic CD mobile/remaster)  
+   - `sonic2.rsdk` - Sonic 2 data file (from Sonic 2 mobile/remaster)
+   - `sonic3.bin` - Sonic 3 & Knuckles ROM (your own legally obtained copy)
+
+3. **For Sonic 3 & Knuckles support**: [Sonic 3 AIR](https://sonic3air.org/) - Download and extract to `Sonic 3 AIR Main` folder
+
+⚠️ **Note**: Due to copyright, game data files cannot be distributed with this project. You must obtain them legally.
+
 ## How it's gonna work.
 Instead of mixing 3 AIR'S Engine (called Oxygen) with the RSDK/Retro engine or compiling rsdk and 3 air as seperate EXEs to be laucnhed in one window, both of which is what this project gets confused as being, the project will have 3 (main) working parts:
 
