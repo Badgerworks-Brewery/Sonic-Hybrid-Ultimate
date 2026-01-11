@@ -134,6 +134,52 @@ if [ "$PLATFORM" == "linux" ]; then
 fi
 echo ""
 
+echo "Step 6.5: Copying Sonic 3 AIR files..."
+echo "-----------------------------------"
+
+# Copy Sonic 3 AIR executable from build
+SONIC3AIR_EXE="$BUILD_DIR/bin/sonic3air$EXE_EXT"
+if [ -f "$SONIC3AIR_EXE" ]; then
+    cp "$SONIC3AIR_EXE" "$OUTPUT_DIR/"
+    echo "✓ Copied sonic3air$EXE_EXT"
+else
+    # Try alternative location
+    SONIC3AIR_EXE="$BUILD_DIR/sonic3air/sonic3air_linux"
+    if [ -f "$SONIC3AIR_EXE" ]; then
+        cp "$SONIC3AIR_EXE" "$OUTPUT_DIR/sonic3air$EXE_EXT"
+        chmod +x "$OUTPUT_DIR/sonic3air$EXE_EXT"
+        echo "✓ Copied sonic3air (from alternate location)"
+    else
+        echo "⚠ sonic3air executable not found - Sonic 3 will run in stub mode"
+    fi
+fi
+
+# Copy Sonic 3 AIR data files
+S3AIR_SOURCE="$PROJECT_ROOT/vendor/sonic3air/Oxygen/sonic3air"
+S3AIR_DATA="$S3AIR_SOURCE/data"
+S3AIR_SCRIPTS="$S3AIR_SOURCE/scripts"
+S3AIR_INTERNAL="$S3AIR_SOURCE/___internal"
+
+if [ -d "$S3AIR_DATA" ]; then
+    mkdir -p "$OUTPUT_DIR/data"
+    cp -r "$S3AIR_DATA"/* "$OUTPUT_DIR/data/" 2>/dev/null || true
+    echo "✓ Copied Sonic 3 AIR data files"
+fi
+
+if [ -d "$S3AIR_SCRIPTS" ]; then
+    mkdir -p "$OUTPUT_DIR/scripts"
+    cp -r "$S3AIR_SCRIPTS"/* "$OUTPUT_DIR/scripts/" 2>/dev/null || true
+    echo "✓ Copied Sonic 3 AIR scripts"
+fi
+
+if [ -d "$S3AIR_INTERNAL" ]; then
+    mkdir -p "$OUTPUT_DIR/___internal"
+    cp -r "$S3AIR_INTERNAL"/* "$OUTPUT_DIR/___internal/" 2>/dev/null || true
+    echo "✓ Copied Sonic 3 AIR internal files"
+fi
+
+echo ""
+
 echo "Step 7: Creating GameData readme..."
 echo "-----------------------------------"
 cat > "$OUTPUT_DIR/GameData/README.txt" << 'EOF'
