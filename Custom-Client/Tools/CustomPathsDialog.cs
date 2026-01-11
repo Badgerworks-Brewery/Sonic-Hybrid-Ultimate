@@ -14,7 +14,7 @@ namespace SonicHybridUltimate.Tools
     public class CustomPathsDialog : Form
     {
         private readonly UserSettings _userSettings;
-        private readonly ILogger _logger;
+        private readonly Microsoft.Extensions.Logging.ILogger _logger;
         
         private ListBox _pathsList = null!;
         private Button _addButton = null!;
@@ -25,7 +25,7 @@ namespace SonicHybridUltimate.Tools
         private Label _infoLabel = null!;
         private CheckBox _autoImportCheckBox = null!;
 
-        public CustomPathsDialog(UserSettings userSettings, ILogger logger)
+        public CustomPathsDialog(UserSettings userSettings, Microsoft.Extensions.Logging.ILogger logger)
         {
             _userSettings = userSettings ?? throw new ArgumentNullException(nameof(userSettings));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
