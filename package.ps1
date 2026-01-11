@@ -111,6 +111,61 @@ if (Test-Path $BIN_RELEASE) {
 
 Write-Host ""
 
+# Step 6.5: Copy Sonic 3 AIR executable and data files
+Write-Host "Step 6.5: Copying Sonic 3 AIR files..." -ForegroundColor Yellow
+Write-Host "-----------------------------------" -ForegroundColor Yellow
+
+# Copy Sonic 3 AIR executable from build
+$SONIC3AIR_EXE = Join-Path $BUILD_DIR "bin\sonic3air.exe"
+if (Test-Path $SONIC3AIR_EXE) {
+    Copy-Item $SONIC3AIR_EXE $OUTPUT_DIR
+    Write-Host "✓ Copied sonic3air.exe" -ForegroundColor Green
+} else {
+    # Try alternative location
+    $SONIC3AIR_EXE = Join-Path $BUILD_DIR "sonic3air\sonic3air_windows.exe"
+    if (Test-Path $SONIC3AIR_EXE) {
+        Copy-Item $SONIC3AIR_EXE (Join-Path $OUTPUT_DIR "sonic3air.exe")
+        Write-Host "✓ Copied sonic3air.exe (from alternate location)" -ForegroundColor Green
+    } else {
+        Write-Host "⚠ sonic3air.exe not found - Sonic 3 will run in stub mode" -ForegroundColor Yellow
+    }
+}
+
+# Copy Sonic 3 AIR data files
+$S3AIR_SOURCE = Join-Path $PROJECT_ROOT "vendor\sonic3air\Oxygen\sonic3air"
+$S3AIR_DATA = Join-Path $S3AIR_SOURCE "data"
+$S3AIR_SCRIPTS = Join-Path $S3AIR_SOURCE "scripts"
+$S3AIR_INTERNAL = Join-Path $S3AIR_SOURCE "___internal"
+
+if (Test-Path $S3AIR_DATA) {
+    $TARGET_DATA = Join-Path $OUTPUT_DIR "data"
+    if (-not (Test-Path $TARGET_DATA)) {
+        New-Item -ItemType Directory -Path $TARGET_DATA | Out-Null
+    }
+    Copy-Item -Path "$S3AIR_DATA\*" -Destination $TARGET_DATA -Recurse -Force
+    Write-Host "✓ Copied Sonic 3 AIR data files" -ForegroundColor Green
+}
+
+if (Test-Path $S3AIR_SCRIPTS) {
+    $TARGET_SCRIPTS = Join-Path $OUTPUT_DIR "scripts"
+    if (-not (Test-Path $TARGET_SCRIPTS)) {
+        New-Item -ItemType Directory -Path $TARGET_SCRIPTS | Out-Null
+    }
+    Copy-Item -Path "$S3AIR_SCRIPTS\*" -Destination $TARGET_SCRIPTS -Recurse -Force
+    Write-Host "✓ Copied Sonic 3 AIR scripts" -ForegroundColor Green
+}
+
+if (Test-Path $S3AIR_INTERNAL) {
+    $TARGET_INTERNAL = Join-Path $OUTPUT_DIR "___internal"
+    if (-not (Test-Path $TARGET_INTERNAL)) {
+        New-Item -ItemType Directory -Path $TARGET_INTERNAL | Out-Null
+    }
+    Copy-Item -Path "$S3AIR_INTERNAL\*" -Destination $TARGET_INTERNAL -Recurse -Force
+    Write-Host "✓ Copied Sonic 3 AIR internal files" -ForegroundColor Green
+}
+
+Write-Host ""
+
 # Step 7: Create GameData readme
 Write-Host "Step 7: Creating GameData readme..." -ForegroundColor Yellow
 Write-Host "-----------------------------------" -ForegroundColor Yellow
