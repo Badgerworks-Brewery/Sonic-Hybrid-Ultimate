@@ -43,7 +43,7 @@ Write-Host ""
 Write-Host "Step 3: Building Custom Client..." -ForegroundColor Yellow
 Write-Host "-----------------------------------" -ForegroundColor Yellow
 Set-Location $CLIENT_DIR
-dotnet publish -c Release -r $RID --self-contained true -p:PublishSingleFile=false -p:IncludeNativeLibrariesForSelfExtract=false
+dotnet publish -c Release -r $RID --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeAllContentForSelfExtract=true
 Write-Host "✓ Custom Client built" -ForegroundColor Green
 Write-Host ""
 

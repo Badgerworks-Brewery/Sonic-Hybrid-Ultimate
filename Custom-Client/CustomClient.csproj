@@ -25,16 +25,6 @@
     <Content Include="icon.ico" />
   </ItemGroup> -->
 
-  <!-- Embed native libraries and content files into single executable -->
-  <ItemGroup>
-    <None Update="Hybrid-RSDK-Main\**">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="Sonic 3 AIR Main\**">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-
   <!-- Copy RSDKv4 library and ALL dependencies from build output -->
   <ItemGroup>
     <!-- RSDKv4 library -->
@@ -66,28 +56,5 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="6.0.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.0" />
   </ItemGroup>
-
-  <Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="'$(OS)' == 'Windows_NT'">
-    <Exec Command="if not exist &quot;$(TargetDir)Hybrid-RSDK-Main&quot; mkdir &quot;$(TargetDir)Hybrid-RSDK-Main&quot;" />
-    <Exec Command="if not exist &quot;$(TargetDir)Sonic 3 AIR Main&quot; mkdir &quot;$(TargetDir)Sonic 3 AIR Main&quot;" />
-    <!-- Copy RSDKv4.dll from various possible locations -->
-    <Exec Command="if exist &quot;$(ProjectDir)..\Hybrid-RSDK-Main\build\lib\RSDKv4.dll&quot; copy /Y &quot;$(ProjectDir)..\Hybrid-RSDK-Main\build\lib\RSDKv4.dll&quot; &quot;$(TargetDir)&quot;" ContinueOnError="true" />
-    <Exec Command="if exist &quot;$(ProjectDir)..\Hybrid-RSDK-Main\build\bin\Release\RSDKv4.dll&quot; copy /Y &quot;$(ProjectDir)..\Hybrid-RSDK-Main\build\bin\Release\RSDKv4.dll&quot; &quot;$(TargetDir)&quot;" ContinueOnError="true" />
-    <!-- Copy OxygenEngine.dll from various possible locations -->
-    <Exec Command="if exist &quot;$(ProjectDir)..\Hybrid-RSDK-Main\build\lib\OxygenEngine.dll&quot; copy /Y &quot;$(ProjectDir)..\Hybrid-RSDK-Main\build\lib\OxygenEngine.dll&quot; &quot;$(TargetDir)&quot;" ContinueOnError="true" />
-    <Exec Command="if exist &quot;$(ProjectDir)..\Hybrid-RSDK-Main\build\bin\Release\OxygenEngine.dll&quot; copy /Y &quot;$(ProjectDir)..\Hybrid-RSDK-Main\build\bin\Release\OxygenEngine.dll&quot; &quot;$(TargetDir)&quot;" ContinueOnError="true" />
-    <!-- Copy all DLL dependencies from build directories -->
-    <Exec Command="if exist &quot;$(ProjectDir)..\Hybrid-RSDK-Main\build\bin\Release\*.dll&quot; copy /Y &quot;$(ProjectDir)..\Hybrid-RSDK-Main\build\bin\Release\*.dll&quot; &quot;$(TargetDir)&quot;" ContinueOnError="true" />
-    <Exec Command="if exist &quot;$(ProjectDir)..\Hybrid-RSDK-Main\build\lib\*.dll&quot; copy /Y &quot;$(ProjectDir)..\Hybrid-RSDK-Main\build\lib\*.dll&quot; &quot;$(TargetDir)&quot;" ContinueOnError="true" />
-  </Target>
-
-  <Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="'$(OS)' != 'Windows_NT'">
-    <Exec Command="mkdir -p &quot;$(TargetDir)Hybrid-RSDK-Main&quot;" />
-    <Exec Command="mkdir -p &quot;$(TargetDir)Sonic 3 AIR Main&quot;" />
-    <!-- Copy libRSDKv4.so if it exists -->
-    <Exec Command="if [ -f &quot;$(ProjectDir)../Hybrid-RSDK-Main/build/lib/libRSDKv4.so&quot; ]; then cp &quot;$(ProjectDir)../Hybrid-RSDK-Main/build/lib/libRSDKv4.so&quot; &quot;$(TargetDir)&quot;; fi" ContinueOnError="true" />
-    <!-- Copy libOxygenEngine.so if it exists -->
-    <Exec Command="if [ -f &quot;$(ProjectDir)../Hybrid-RSDK-Main/build/lib/libOxygenEngine.so&quot; ]; then cp &quot;$(ProjectDir)../Hybrid-RSDK-Main/build/lib/libOxygenEngine.so&quot; &quot;$(TargetDir)&quot;; fi" ContinueOnError="true" />
-  </Target>
 
 </Project>

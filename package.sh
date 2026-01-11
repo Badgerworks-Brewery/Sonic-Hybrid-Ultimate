@@ -59,7 +59,7 @@ echo ""
 echo "Step 3: Building Custom Client..."
 echo "-----------------------------------"
 cd "$CLIENT_DIR"
-dotnet publish -c Release -r $RID --self-contained true -p:PublishSingleFile=false -p:IncludeNativeLibrariesForSelfExtract=false
+dotnet publish -c Release -r $RID --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeAllContentForSelfExtract=true
 echo "✓ Custom Client built"
 echo ""
 
