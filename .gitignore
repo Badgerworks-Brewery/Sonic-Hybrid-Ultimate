@@ -13,6 +13,10 @@ Hybrid-RSDK-Main/build/
 *.bin
 *.sav
 
+# Exception: Allow launcher scripts in sonic-hybrid
+!Hybrid-RSDK-Main/sonic-hybrid/*.sh
+!Hybrid-RSDK-Main/sonic-hybrid/*.bat
+
 # IDE and editor files
 .vscode/
 .vs/

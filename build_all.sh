@@ -89,6 +89,40 @@ fi
 
 cd ../..
 
+# Generate hybrid data if source files are available
+echo ""
+echo "Checking for hybrid data generation..."
+if [ -f "Hybrid-RSDK-Main/rsdk-source-data/soniccd.rsdk" ] && \
+   [ -f "Hybrid-RSDK-Main/rsdk-source-data/sonic1.rsdk" ] && \
+   [ -f "Hybrid-RSDK-Main/rsdk-source-data/sonic2.rsdk" ]; then
+    echo "Source .rsdk files found - generating Sonic Hybrid Ultimate data..."
+    cd "Hybrid-RSDK-Main"
+    
+    # Build the generator
+    dotnet build SonicHybridRsdk.Build/SonicHybridRsdk.Build.csproj -c Release
+    if [ $? -ne 0 ]; then
+        echo "⚠️  Failed to build hybrid data generator"
+    else
+        # Run the generator
+        dotnet run --project SonicHybridRsdk.Build/SonicHybridRsdk.Build.csproj -c Release --no-build
+        if [ $? -eq 0 ]; then
+            echo "✅ Hybrid data generated successfully at sonic-hybrid/Data.rsdk"
+        else
+            echo "⚠️  Hybrid data generation failed - check for errors above"
+        fi
+    fi
+    
+    cd ..
+else
+    echo "ℹ️  Source .rsdk files not found in Hybrid-RSDK-Main/rsdk-source-data/"
+    echo "   To enable hybrid mode, place the following files there:"
+    echo "     - soniccd.rsdk (from Sonic CD)"
+    echo "     - sonic1.rsdk (from Sonic 1)"
+    echo "     - sonic2.rsdk (from Sonic 2)"
+    echo "   See Hybrid-RSDK-Main/rsdk-source-data/README.md for details"
+fi
+echo ""
+
 # Build Custom Client
 echo "Building Custom Client..."
 cd "Custom-Client"

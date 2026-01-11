@@ -15,6 +15,16 @@ namespace SonicHybridUltimate
     /// </summary>
     internal static class GamePaths
     {
+        // Priority 1: Unified hybrid data (all games in one)
+        public static readonly string[] HybridSearchPaths = new[]
+        {
+            Path.Combine("Hybrid-RSDK-Main", "sonic-hybrid", "Data.rsdk"),
+            Path.Combine("..", "Hybrid-RSDK-Main", "sonic-hybrid", "Data.rsdk"),
+            Path.Combine("sonic-hybrid", "Data.rsdk"),
+            Path.Combine("..", "sonic-hybrid", "Data.rsdk"),
+        };
+        
+        // Priority 2: Individual game files (fallback)
         public static readonly string[] Sonic1SearchPaths = new[]
         {
             Path.Combine("Hybrid-RSDK-Main", "Data", "sonic1.rsdk"),

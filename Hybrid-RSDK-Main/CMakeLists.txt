@@ -67,6 +67,56 @@ if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/RSDKV5")
     execute_process(COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/../fetch_rsdkv5.sh WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..)
 endif()
 
+# Hybrid data generation using C# build tools
+find_program(DOTNET_EXECUTABLE dotnet)
+if(DOTNET_EXECUTABLE)
+    message(STATUS "Found .NET SDK for hybrid data generation: ${DOTNET_EXECUTABLE}")
+    
+    set(SOURCE_RSDK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/rsdk-source-data")
+    set(HYBRID_OUTPUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/sonic-hybrid")
+    
+    # Check if all required source .rsdk files exist
+    set(SONICCD_RSDK "${SOURCE_RSDK_DIR}/soniccd.rsdk")
+    set(SONIC1_RSDK "${SOURCE_RSDK_DIR}/sonic1.rsdk")
+    set(SONIC2_RSDK "${SOURCE_RSDK_DIR}/sonic2.rsdk")
+    
+    if(EXISTS "${SONICCD_RSDK}" AND 
+       EXISTS "${SONIC1_RSDK}" AND 
+       EXISTS "${SONIC2_RSDK}")
+        
+        message(STATUS "Source .rsdk files found - hybrid data generation enabled")
+        message(STATUS "  Sonic CD: ${SONICCD_RSDK}")
+        message(STATUS "  Sonic 1:  ${SONIC1_RSDK}")
+        message(STATUS "  Sonic 2:  ${SONIC2_RSDK}")
+        
+        # Custom target to build and run the hybrid generator
+        add_custom_target(hybrid_data
+            COMMAND ${CMAKE_COMMAND} -E echo "Building hybrid data generator..."
+            COMMAND ${DOTNET_EXECUTABLE} build SonicHybridRsdk.Build/SonicHybridRsdk.Build.csproj -c Release
+            COMMAND ${CMAKE_COMMAND} -E echo "Running hybrid data generator..."
+            COMMAND ${DOTNET_EXECUTABLE} run --project SonicHybridRsdk.Build/SonicHybridRsdk.Build.csproj -c Release --no-build
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+            COMMENT "Generating unified Sonic Hybrid Ultimate data..."
+            VERBATIM
+        )
+        
+        # Create a stamp file to track if hybrid data was generated
+        add_custom_command(TARGET hybrid_data POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_BINARY_DIR}/hybrid_data.stamp
+            COMMENT "Marking hybrid data as generated"
+        )
+        
+    else()
+        message(STATUS "Source .rsdk files not found in ${SOURCE_RSDK_DIR}")
+        message(STATUS "Hybrid data generation will be skipped")
+        message(STATUS "To enable: Place soniccd.rsdk, sonic1.rsdk, and sonic2.rsdk in:")
+        message(STATUS "  ${SOURCE_RSDK_DIR}/")
+    endif()
+else()
+    message(STATUS ".NET SDK not found - hybrid data generation disabled")
+    message(STATUS "Install .NET 6.0 SDK or later to enable hybrid data generation")
+endif()
+
 file(GLOB_RECURSE RSDKV4_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/RSDKv4/*.cpp)
 # Exclude All.cpp to avoid duplicate symbols
 list(FILTER RSDKV4_SOURCES EXCLUDE REGEX ".*NativeObjects/All.cpp$")
