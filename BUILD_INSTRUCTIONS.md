@@ -79,21 +79,67 @@ Missing optional components will result in warnings but won't prevent the build 
 
 ## Game Files
 
-**IMPORTANT**: The build system does NOT include game files. After building, you need to:
+**IMPORTANT**: The build system does NOT include game files due to copyright.
 
-1. Obtain `Data.rsdk` files from your legally purchased copies of the games
-2. Place these files in the same directory as the built executables
+### For Hybrid Mode (Recommended)
 
-### File Locations
-- **Executables**: `Hybrid-RSDK-Main/build/bin/`
-- **Custom Client**: `Custom-Client/bin/`
+To enable the unified Sonic 1 + CD + 2 experience:
+
+1. **Obtain legally** the following Data.rsdk files:
+   - Sonic CD (2011 remaster)
+   - Sonic 1 (2013 mobile remaster)
+   - Sonic 2 (2013 mobile remaster)
+
+2. **Rename and place** them in `Hybrid-RSDK-Main/rsdk-source-data/`:
+   ```
+   rsdk-source-data/
+   ├── soniccd.rsdk  (from Sonic CD)
+   ├── sonic1.rsdk   (from Sonic 1)
+   └── sonic2.rsdk   (from Sonic 2)
+   ```
+
+3. **Run the build** - The system will automatically:
+   - Unpack and convert the games
+   - Merge them into a unified experience
+   - Generate `Hybrid-RSDK-Main/sonic-hybrid/Data.rsdk`
+
+4. **Play** using:
+   ```bash
+   cd Hybrid-RSDK-Main/sonic-hybrid
+   ./run_hybrid.sh  # Linux/macOS
+   run_hybrid.bat   # Windows
+   ```
+
+See `Hybrid-RSDK-Main/rsdk-source-data/README.md` for detailed instructions on obtaining game files.
+
+### For Individual Games (Fallback)
+
+If you don't have all three games, you can still play them individually:
+
+1. Place individual `Data.rsdk` files in the executable directory
+2. Run the Custom Client and select the game
+3. Or run `rsdkv4` directly with the data file in the same directory
+
+### File Locations After Build
+
+- **RSDKv4 Engine**: `Hybrid-RSDK-Main/build/bin/rsdkv4`
+- **Hybrid Data**: `Hybrid-RSDK-Main/sonic-hybrid/Data.rsdk` (if generated)
+- **Custom Client**: `Custom-Client/bin/Release/net6.0-windows/`
+- **Sonic 3 AIR**: `Sonic 3 AIR Main/` (if configured)
 
 ### Supported Games
-- Sonic the Hedgehog (2013)
-- Sonic the Hedgehog 2 (2013)
-- Sonic CD (2011)
-- Sonic Mania (if RSDKv5 is built)
-- Sonic Mania Plus (if RSDKv5 is built)
+
+**Via Hybrid Mode (RSDKv4):**
+- ✅ Sonic the Hedgehog (2013 remaster)
+- ✅ Sonic CD (2011 remaster)
+- ✅ Sonic the Hedgehog 2 (2013 remaster)
+
+**Via Individual Mode:**
+- Sonic 1, CD, 2 (as above)
+- Sonic Mania / Mania Plus (if RSDKv5 is built - experimental)
+
+**Via Sonic 3 AIR (separate):**
+- Sonic 3 & Knuckles (requires ROM file and AIR setup)
 
 ## Troubleshooting
 

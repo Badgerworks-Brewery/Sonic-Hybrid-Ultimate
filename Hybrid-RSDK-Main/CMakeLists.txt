@@ -67,6 +67,56 @@ if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/RSDKV5")
     execute_process(COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/../fetch_rsdkv5.sh WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..)
 endif()
 
+# Hybrid data generation using C# build tools
+find_program(DOTNET_EXECUTABLE dotnet)
+if(DOTNET_EXECUTABLE)
+    message(STATUS "Found .NET SDK for hybrid data generation: ${DOTNET_EXECUTABLE}")
+    
+    set(SOURCE_RSDK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/rsdk-source-data")
+    set(HYBRID_OUTPUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/sonic-hybrid")
+    
+    # Check if all required source .rsdk files exist
+    set(SONICCD_RSDK "${SOURCE_RSDK_DIR}/soniccd.rsdk")
+    set(SONIC1_RSDK "${SOURCE_RSDK_DIR}/sonic1.rsdk")
+    set(SONIC2_RSDK "${SOURCE_RSDK_DIR}/sonic2.rsdk")
+    
+    if(EXISTS "${SONICCD_RSDK}" AND 
+       EXISTS "${SONIC1_RSDK}" AND 
+       EXISTS "${SONIC2_RSDK}")
+        
+        message(STATUS "Source .rsdk files found - hybrid data generation enabled")
+        message(STATUS "  Sonic CD: ${SONICCD_RSDK}")
+        message(STATUS "  Sonic 1:  ${SONIC1_RSDK}")
+        message(STATUS "  Sonic 2:  ${SONIC2_RSDK}")
+        
+        # Custom target to build and run the hybrid generator
+        add_custom_target(hybrid_data
+            COMMAND ${CMAKE_COMMAND} -E echo "Building hybrid data generator..."
+            COMMAND ${DOTNET_EXECUTABLE} build SonicHybridRsdk.Build/SonicHybridRsdk.Build.csproj -c Release
+            COMMAND ${CMAKE_COMMAND} -E echo "Running hybrid data generator..."
+            COMMAND ${DOTNET_EXECUTABLE} run --project SonicHybridRsdk.Build/SonicHybridRsdk.Build.csproj -c Release --no-build
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+            COMMENT "Generating unified Sonic Hybrid Ultimate data..."
+            VERBATIM
+        )
+        
+        # Create a stamp file to track if hybrid data was generated
+        add_custom_command(TARGET hybrid_data POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_BINARY_DIR}/hybrid_data.stamp
+            COMMENT "Marking hybrid data as generated"
+        )
+        
+    else()
+        message(STATUS "Source .rsdk files not found in ${SOURCE_RSDK_DIR}")
+        message(STATUS "Hybrid data generation will be skipped")
+        message(STATUS "To enable: Place soniccd.rsdk, sonic1.rsdk, and sonic2.rsdk in:")
+        message(STATUS "  ${SOURCE_RSDK_DIR}/")
+    endif()
+else()
+    message(STATUS ".NET SDK not found - hybrid data generation disabled")
+    message(STATUS "Install .NET 6.0 SDK or later to enable hybrid data generation")
+endif()
+
 file(GLOB_RECURSE RSDKV4_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/RSDKv4/*.cpp)
 # Exclude All.cpp to avoid duplicate symbols
 list(FILTER RSDKV4_SOURCES EXCLUDE REGEX ".*NativeObjects/All.cpp$")
@@ -401,6 +451,101 @@ add_custom_command(TARGET RSDKv4 POST_BUILD
         ${CMAKE_BINARY_DIR}/bin/
     COMMENT "Copying RSDKv4 library to bin directory"
 )
+
+# ============================================================================
+# Sonic 3 AIR (Oxygen Engine) Integration
+# ============================================================================
+
+# Option to build Sonic 3 AIR from source
+# Sonic 3 AIR build is currently only supported on Unix-like systems
+# Windows builds use prebuilt binaries or require manual Sonic 3 AIR setup
+if(WIN32)
+    option(BUILD_SONIC3AIR "Build Sonic 3 AIR (Oxygen Engine) from source" OFF)
+else()
+    option(BUILD_SONIC3AIR "Build Sonic 3 AIR (Oxygen Engine) from source" ON)
+endif()
+
+if(BUILD_SONIC3AIR)
+    message(STATUS "=================================================")
+    message(STATUS "Building Sonic 3 AIR (Oxygen Engine) from source")
+    message(STATUS "=================================================")
+    
+    # Check if sonic3air submodule is initialized
+    set(SONIC3AIR_CMAKE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../vendor/sonic3air/Oxygen/sonic3air/build/_cmake")
+    if(NOT EXISTS "${SONIC3AIR_CMAKE_DIR}/CMakeLists.txt")
+        message(STATUS "Sonic 3 AIR submodule not initialized. Initializing...")
+        execute_process(
+            COMMAND git submodule update --init --recursive vendor/sonic3air
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..
+            RESULT_VARIABLE SUBMODULE_RESULT
+        )
+        if(NOT SUBMODULE_RESULT EQUAL 0)
+            message(WARNING "Failed to initialize sonic3air submodule. Sonic 3 support will be limited.")
+            set(BUILD_SONIC3AIR OFF)
+        endif()
+    endif()
+    
+    if(BUILD_SONIC3AIR)
+        # Set Sonic 3 AIR build options to minimize dependencies
+        set(BUILD_SDL_STATIC ON CACHE BOOL "Build SDL as static library" FORCE)
+        set(USE_DISCORD OFF CACHE BOOL "Disable Discord integration" FORCE)
+        set(BUILD_OXYGEN_SERVER OFF CACHE BOOL "Don't build Oxygen server" FORCE)
+        set(BUILD_OXYGEN_ENGINEAPP OFF CACHE BOOL "Don't build standalone Oxygen app" FORCE)
+        set(USE_IMGUI OFF CACHE BOOL "Disable ImGui for production builds" FORCE)
+        
+        message(STATUS "Sonic 3 AIR build configuration:")
+        message(STATUS "  BUILD_SDL_STATIC = ON")
+        message(STATUS "  USE_DISCORD = OFF")
+        message(STATUS "  BUILD_OXYGEN_SERVER = OFF")
+        message(STATUS "  BUILD_OXYGEN_ENGINEAPP = OFF")
+        message(STATUS "  USE_IMGUI = OFF")
+        
+        # Add Sonic 3 AIR as subdirectory
+        add_subdirectory(
+            ${SONIC3AIR_CMAKE_DIR}
+            ${CMAKE_BINARY_DIR}/sonic3air
+            EXCLUDE_FROM_ALL
+        )
+        
+        # Link Sonic 3 AIR libraries to OxygenEngine wrapper
+        # This enables embedded mode instead of external process launching
+        if(TARGET sonic3air)
+            target_link_libraries(OxygenEngine PRIVATE sonic3air)
+            target_compile_definitions(OxygenEngine PRIVATE OXYGEN_EMBEDDED_MODE)
+            message(STATUS "✓ OxygenEngine will use embedded Sonic 3 AIR")
+        else()
+            message(WARNING "sonic3air target not found after adding subdirectory")
+        endif()
+        
+        # Copy Sonic 3 AIR executable and data files to distribution
+        if(TARGET sonic3air)
+            add_custom_command(TARGET sonic3air POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E echo "Copying Sonic 3 AIR executable..."
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    $<TARGET_FILE:sonic3air>
+                    ${CMAKE_BINARY_DIR}/bin/
+                COMMENT "Copying Sonic 3 AIR executable to bin directory"
+            )
+            
+            # Copy to Custom Client directory for dev builds
+            add_custom_command(TARGET sonic3air POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E make_directory 
+                    ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net6.0-windows/win-x64/
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    $<TARGET_FILE:sonic3air>
+                    ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net6.0-windows/win-x64/
+                COMMENT "Copying Sonic 3 AIR to Custom Client directory"
+            )
+        endif()
+        
+        message(STATUS "=================================================")
+        message(STATUS "Sonic 3 AIR integration complete")
+        message(STATUS "=================================================")
+    endif()
+else()
+    message(STATUS "Sonic 3 AIR build disabled (BUILD_SONIC3AIR=OFF)")
+    message(STATUS "Sonic 3 will run in stub mode - external executable required")
+endif()
 
 # Install rules - include all available targets
 set(INSTALL_TARGETS rsdk_core rsdkv4 HybridRSDK RSDKv4)

@@ -1,28 +1,118 @@
 # Sonic Hybrid Ultimate
 
-Aims to mix different Sonic the Hedgehog games into a single big game. Acts as a legal but cheaper version of Sonic Origins for fans that dont want to get scammed.
+Aims to mix different Sonic the Hedgehog games into a single big game. Acts as a legal but cheaper version of Sonic Origins for fans that don't want to get scammed.
 
 ![Sonic 1 in Sonic 2](docs/preview.png)
 
-## What You Need
+## 🎮 What You Get
 
-To play Sonic Hybrid Ultimate, you need:
+Sonic Hybrid Ultimate merges **Sonic 1**, **Sonic CD**, and **Sonic 2** into a single continuous adventure:
+- Start with Green Hill Zone (Sonic 1)
+- Seamlessly transition to Palmtree Panic (Sonic CD)  
+- Continue to Emerald Hill Zone (Sonic 2)
+- Play through to Death Egg Zone!
 
-1. **The SonicHybrid executable** - Built from this project
-2. **Game data files** - You must provide your own legally obtained game files:
-   - `sonic1.rsdk` - Sonic 1 data file (from Sonic 1 mobile/remaster)
-   - `soniccd.rsdk` - Sonic CD data file (from Sonic CD mobile/remaster)  
-   - `sonic2.rsdk` - Sonic 2 data file (from Sonic 2 mobile/remaster)
-   - `sonic3.bin` - Sonic 3 & Knuckles ROM (your own legally obtained copy)
+All three games flow together with custom transitions and unified progression.
 
-3. **For Sonic 3 & Knuckles support**: [Sonic 3 AIR](https://sonic3air.org/) - Download and extract to `Sonic 3 AIR Main` folder
+## 📦 What You Need
 
-⚠️ **Note**: Due to copyright, game data files cannot be distributed with this project. You must obtain them legally.
+To build and play Sonic Hybrid Ultimate, you need:
 
-## How it's gonna work.
-Instead of mixing 3 AIR'S Engine (called Oxygen) with the RSDK/Retro engine or compiling rsdk and 3 air as seperate EXEs to be laucnhed in one window, both of which is what this project gets confused as being, the project will have 3 (main) working parts:
+### 1. Build Tools
+- CMake 3.15 or later
+- C++ compiler (GCC, Clang, or MSVC)
+- .NET 6.0 SDK or later
+- Git with submodules support
 
-Sonic 3 AIR/Oxygen Engine.
+### 2. Game Data Files (Legally Obtained)
+
+Place these files in `Hybrid-RSDK-Main/rsdk-source-data/`:
+- **`soniccd.rsdk`** - From Sonic CD (2011 remaster) 
+- **`sonic1.rsdk`** - From Sonic the Hedgehog (2013 mobile remaster)
+- **`sonic2.rsdk`** - From Sonic the Hedgehog 2 (2013 mobile remaster)
+
+Get these from:
+- iOS App Store / Google Play Store (mobile versions)
+- Steam (Sonic CD)
+
+⚠️ **Copyright Notice**: Game data files cannot be distributed with this project. You must obtain them legally.
+
+See `Hybrid-RSDK-Main/rsdk-source-data/README.md` for detailed instructions.
+
+### 3. Optional: Sonic 3 & Knuckles Support
+
+For Sonic 3 & Knuckles (separate from the hybrid experience):
+- Download [Sonic 3 AIR](https://sonic3air.org/)
+- Extract to `Sonic 3 AIR Main` folder
+- Provide your legally obtained `sonic3.bin` ROM
+- See [SONIC3_AIR_SETUP.md](SONIC3_AIR_SETUP.md) for setup
+
+## 🏗️ How It Works
+
+Sonic Hybrid Ultimate has three main components:
+
+### 1. Hybrid RSDK (Sonic 1 + CD + 2)
+- **Build Tools** (C#): Unpack, convert, and merge the three games
+- **RSDKv4 Engine** (C++): Runs the unified hybrid experience
+- **Output**: Single `Data.rsdk` file containing all three games
+
+### 2. Sonic 3 AIR (Sonic 3 & Knuckles)
+- **Oxygen Engine**: Separate engine for Sonic 3 & Knuckles
+- Runs independently from RSDK games
+- Uses ROM hacking approach
+
+### 3. Custom Client (Frontend)
+- **Launcher Application**: Manages game selection
+- Can launch hybrid mode or individual games
+- Switches between engines as needed
+
+## 🚀 Quick Start
+
+### Linux/macOS
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/Sonic-Hybrid-Ultimate.git
+cd Sonic-Hybrid-Ultimate
+
+# Place game files (see "What You Need" above)
+# Put soniccd.rsdk, sonic1.rsdk, sonic2.rsdk in Hybrid-RSDK-Main/rsdk-source-data/
+
+# Build everything
+chmod +x build_all.sh
+./build_all.sh
+
+# Play the hybrid experience
+cd Hybrid-RSDK-Main/sonic-hybrid
+./run_hybrid.sh
+```
+
+### Windows
+
+```cmd
+REM Clone the repository
+git clone https://github.com/yourusername/Sonic-Hybrid-Ultimate.git
+cd Sonic-Hybrid-Ultimate
+
+REM Place game files (see "What You Need" above)
+REM Put soniccd.rsdk, sonic1.rsdk, sonic2.rsdk in Hybrid-RSDK-Main\rsdk-source-data\
+
+REM Build everything (requires vcpkg for dependencies)
+powershell -ExecutionPolicy Bypass -File build_all.ps1
+
+REM Play the hybrid experience
+cd Hybrid-RSDK-Main\sonic-hybrid
+run_hybrid.bat
+```
+
+## 📊 Completion Status
+
+- ✅ **RSDKv4 Engine**: Fully working with Team Forever enhancements
+- ✅ **Build Tools**: C# unpacking and generation tools integrated
+- ✅ **Hybrid Data Generation**: Automated in build process
+- ✅ **Custom Client**: Framework complete, multi-engine support
+- 🔄 **Sonic 3 AIR Integration**: Source code present, integration in progress
+- 🔄 **Full Game Flow**: Testing transitions between games
 
 Sonic Hybrid RSDK plus the Decompilations of RSDK Versions 3, 4 and/or 5U
 
