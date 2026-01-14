@@ -31,7 +31,7 @@ jobs:
       run: |
         sudo apt-get update
         sudo bash scripts/deps.sh
-        sudo apt-get install -y cmake build-essential pkg-config libsdl2-dev libgl1-mesa-dev libglew-dev libvorbis-dev libtinyxml2-dev libtheora-dev
+        sudo apt-get install -y cmake build-essential pkg-config libsdl2-dev libgl1-mesa-dev libglu1-mesa-dev libglew-dev libvorbis-dev libtinyxml2-dev libtheora-dev libasound2-dev libpulse-dev libxcomposite-dev libxxf86vm-dev libcurl4-openssl-dev
 
     - name: Build project
       run: |

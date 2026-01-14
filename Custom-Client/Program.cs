@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Reflection;
 using System.Windows.Forms;
 using System.Drawing;
 using Microsoft.Extensions.Logging;
@@ -15,42 +16,74 @@ namespace SonicHybridUltimate
     /// </summary>
     internal static class GamePaths
     {
+        // Get the directory where the executable is located
+        private static string ExeDirectory => Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? "";
+        
+        // Primary location: GameData folder next to executable
+        private static string GameDataDir => Path.Combine(ExeDirectory, "GameData");
+        
+        // Priority 1: Unified hybrid data (all games in one)
+        public static readonly string[] HybridSearchPaths = new[]
+        {
+            Path.Combine("Hybrid-RSDK-Main", "sonic-hybrid", "Data.rsdk"),
+            Path.Combine("..", "Hybrid-RSDK-Main", "sonic-hybrid", "Data.rsdk"),
+            Path.Combine("sonic-hybrid", "Data.rsdk"),
+            Path.Combine("..", "sonic-hybrid", "Data.rsdk"),
+        };
+        
+        // Priority 2: Individual game files (fallback)
         public static readonly string[] Sonic1SearchPaths = new[]
         {
+            // Primary: GameData folder (for packaged distribution)
+            Path.Combine(GameDataDir, "sonic1.rsdk"),
+            // Fallback: Development paths
             Path.Combine("Hybrid-RSDK-Main", "Data", "sonic1.rsdk"),
             Path.Combine("Hybrid-RSDK-Main", "rsdk-source-data", "sonic1.rsdk"),
             Path.Combine("rsdk-source-data", "sonic1.rsdk"),
             Path.Combine("..", "rsdk-source-data", "sonic1.rsdk"),
+            Path.Combine("GameData", "sonic1.rsdk"),
             "sonic1.rsdk",
             "Data.rsdk"
         };
         
         public static readonly string[] SonicCDSearchPaths = new[]
         {
+            // Primary: GameData folder (for packaged distribution)
+            Path.Combine(GameDataDir, "soniccd.rsdk"),
+            // Fallback: Development paths
             Path.Combine("Hybrid-RSDK-Main", "Data", "soniccd.rsdk"),
             Path.Combine("Hybrid-RSDK-Main", "rsdk-source-data", "soniccd.rsdk"),
             Path.Combine("rsdk-source-data", "soniccd.rsdk"),
             Path.Combine("..", "rsdk-source-data", "soniccd.rsdk"),
+            Path.Combine("GameData", "soniccd.rsdk"),
             "soniccd.rsdk",
             "Data.rsdk"
         };
         
         public static readonly string[] Sonic2SearchPaths = new[]
         {
+            // Primary: GameData folder (for packaged distribution)
+            Path.Combine(GameDataDir, "sonic2.rsdk"),
+            // Fallback: Development paths
             Path.Combine("Hybrid-RSDK-Main", "Data", "sonic2.rsdk"),
             Path.Combine("Hybrid-RSDK-Main", "rsdk-source-data", "sonic2.rsdk"),
             Path.Combine("rsdk-source-data", "sonic2.rsdk"),
             Path.Combine("..", "rsdk-source-data", "sonic2.rsdk"),
+            Path.Combine("GameData", "sonic2.rsdk"),
             "sonic2.rsdk",
             "Data.rsdk"
         };
         
         public static readonly string[] Sonic3SearchPaths = new[]
         {
+            // Primary: GameData folder (for packaged distribution)
+            Path.Combine(GameDataDir, "sonic3.bin"),
+            // Fallback: Development paths
             Path.Combine("Sonic 3 AIR Main", "sonic3.bin"),
             Path.Combine("Hybrid-RSDK-Main", "rsdk-source-data", "sonic3.bin"),
             Path.Combine("rsdk-source-data", "sonic3.bin"),
             Path.Combine("..", "rsdk-source-data", "sonic3.bin"),
+            Path.Combine("GameData", "sonic3.bin"),
             "sonic3.bin"
         };
     }
@@ -63,6 +96,8 @@ namespace SonicHybridUltimate
         private readonly OxygenEngine _oxygenEngine;
         private readonly RSDKAnalyzer _rsdkAnalyzer;
         private readonly UILoggerProvider _uiLoggerProvider;
+        private readonly UserSettings _userSettings;
+        private readonly GameFileAutoDetector _autoDetector;
 
         private RichTextBox _logBox = null!;
         private Label _statusLabel = null!;
@@ -84,6 +119,8 @@ namespace SonicHybridUltimate
             _rsdkEngine = _services.GetRequiredService<RSDKEngine>();
             _oxygenEngine = _services.GetRequiredService<OxygenEngine>();
             _rsdkAnalyzer = _services.GetRequiredService<RSDKAnalyzer>();
+            _userSettings = _services.GetRequiredService<UserSettings>();
+            _autoDetector = _services.GetRequiredService<GameFileAutoDetector>();
 
             InitializeComponents();
             
@@ -92,10 +129,70 @@ namespace SonicHybridUltimate
             
             InitializeTimer();
 
+            // Auto-detect and import game files
+            AutoDetectAndImportGames();
+
             // Check for available games and native libraries
             CheckGameAvailability();
 
             _logger.LogInformation("MainForm initialized");
+        }
+
+        private void AutoDetectAndImportGames()
+        {
+            try
+            {
+                _logger.LogInformation("╔══════════════════════════════════════════╗");
+                _logger.LogInformation("║     AUTO-DETECTING GAME FILES...         ║");
+                _logger.LogInformation("╚══════════════════════════════════════════╝");
+                _logger.LogInformation("");
+                
+                var detectedGames = _autoDetector.DetectAllGames();
+                
+                if (detectedGames.Any())
+                {
+                    _logger.LogInformation("✓ Found {Count} game file(s):", detectedGames.Count);
+                    foreach (var game in detectedGames)
+                    {
+                        _logger.LogInformation("  • {DisplayName}", game.DisplayName);
+                        _logger.LogInformation("    {FilePath}", game.FilePath);
+                    }
+                    _logger.LogInformation("");
+                    
+                    // Auto-import if enabled
+                    if (_userSettings.Current.AutoImportDetectedGames)
+                    {
+                        _logger.LogInformation("Auto-importing detected games to GameData folder...");
+                        var gameDataDir = Path.Combine(
+                            AppDomain.CurrentDomain.BaseDirectory,
+                            "GameData"
+                        );
+                        
+                        int importedCount = 0;
+                        foreach (var game in detectedGames)
+                        {
+                            if (_autoDetector.ImportDetectedGame(game, gameDataDir))
+                            {
+                                importedCount++;
+                                _logger.LogInformation("  ✓ Imported {GameType}", game.GameType);
+                            }
+                        }
+                        
+                        _logger.LogInformation("✓ Imported {Count} of {Total} game files", importedCount, detectedGames.Count);
+                    }
+                }
+                else
+                {
+                    _logger.LogInformation("No game files found in configured search paths.");
+                    _logger.LogInformation("Use Tools > Manage Game Locations to add custom folders.");
+                }
+                
+                _logger.LogInformation("");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during auto-detection");
+            }
         }
 
         private void CheckGameAvailability()
@@ -145,6 +242,31 @@ namespace SonicHybridUltimate
             Text = "Sonic Hybrid Ultimate";
             Size = new Size(1024, 768);
             StartPosition = FormStartPosition.CenterScreen;
+
+            // Create menu bar
+            var menuStrip = new MenuStrip();
+            
+            // File menu
+            var fileMenu = new ToolStripMenuItem("&File");
+            fileMenu.DropDownItems.Add("E&xit", null, (s, e) => Close());
+            
+            // Tools menu
+            var toolsMenu = new ToolStripMenuItem("&Tools");
+            toolsMenu.DropDownItems.Add("&Manage Game Locations...", null, ManageLocations_Click);
+            toolsMenu.DropDownItems.Add("&Scan for Games Now", null, ScanNow_Click);
+            toolsMenu.DropDownItems.Add(new ToolStripSeparator());
+            toolsMenu.DropDownItems.Add("&Settings...", null, Settings_Click);
+            
+            // Help menu
+            var helpMenu = new ToolStripMenuItem("&Help");
+            helpMenu.DropDownItems.Add("&About", null, About_Click);
+            
+            menuStrip.Items.Add(fileMenu);
+            menuStrip.Items.Add(toolsMenu);
+            menuStrip.Items.Add(helpMenu);
+            
+            Controls.Add(menuStrip);
+            MainMenuStrip = menuStrip;
 
             // Create main layout
             var mainLayout = new TableLayoutPanel
@@ -697,6 +819,49 @@ namespace SonicHybridUltimate
             _logBox.ScrollToCaret();
         }
 
+        private void ManageLocations_Click(object sender, EventArgs e)
+        {
+            using var dialog = new Tools.CustomPathsDialog(_userSettings, _logger);
+            dialog.ShowDialog(this);
+            
+            // Re-scan after dialog closes
+            AutoDetectAndImportGames();
+            CheckGameAvailability();
+        }
+
+        private void ScanNow_Click(object sender, EventArgs e)
+        {
+            _logger.LogInformation("Manual scan requested...");
+            AutoDetectAndImportGames();
+            CheckGameAvailability();
+        }
+
+        private void Settings_Click(object sender, EventArgs e)
+        {
+            MessageBox.Show(
+                "Settings dialog coming soon!\n\n" +
+                $"Current settings location:\n{Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "SonicHybridUltimate")}",
+                "Settings",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+        }
+
+        private void About_Click(object sender, EventArgs e)
+        {
+            MessageBox.Show(
+                "Sonic Hybrid Ultimate\n\n" +
+                "A unified Sonic experience combining:\n" +
+                "  • Sonic the Hedgehog 1\n" +
+                "  • Sonic CD\n" +
+                "  • Sonic the Hedgehog 2\n" +
+                "  • Sonic 3 & Knuckles\n\n" +
+                "Built on RSDK and Sonic 3 AIR engines.\n\n" +
+                "Visit: https://github.com/Badgerworks-Brewery/Sonic-Hybrid-Ultimate",
+                "About Sonic Hybrid Ultimate",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+        }
+
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
             _updateTimer.Stop();
@@ -721,6 +886,10 @@ namespace SonicHybridUltimate
 
             // Create UILoggerProvider that will be configured later
             var uiLoggerProvider = new UILoggerProvider();
+            
+            // Load user settings
+            var userSettings = new UserSettings();
+            userSettings.Load();
 
             var services = new ServiceCollection()
                 .AddLogging(builder =>
@@ -733,6 +902,8 @@ namespace SonicHybridUltimate
                 .AddSingleton<OxygenEngine>()
                 .AddSingleton<RSDKAnalyzer>()
                 .AddSingleton(uiLoggerProvider) // Register so MainForm can access it
+                .AddSingleton(userSettings) // Register UserSettings
+                .AddSingleton<GameFileAutoDetector>() // Register auto-detector
                 .AddSingleton<MainForm>()
                 .BuildServiceProvider();
 
