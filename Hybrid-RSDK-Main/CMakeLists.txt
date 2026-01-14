@@ -457,7 +457,13 @@ add_custom_command(TARGET RSDKv4 POST_BUILD
 # ============================================================================
 
 # Option to build Sonic 3 AIR from source
-option(BUILD_SONIC3AIR "Build Sonic 3 AIR (Oxygen Engine) from source" ON)
+# Sonic 3 AIR build is currently only supported on Unix-like systems
+# Windows builds use prebuilt binaries or require manual Sonic 3 AIR setup
+if(WIN32)
+    option(BUILD_SONIC3AIR "Build Sonic 3 AIR (Oxygen Engine) from source" OFF)
+else()
+    option(BUILD_SONIC3AIR "Build Sonic 3 AIR (Oxygen Engine) from source" ON)
+endif()
 
 if(BUILD_SONIC3AIR)
     message(STATUS "=================================================")
