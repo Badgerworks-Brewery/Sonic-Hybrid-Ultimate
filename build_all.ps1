@@ -40,34 +40,39 @@ if ($LASTEXITCODE -ne 0) {
 }
 Set-Location $PSScriptRoot
 
+# Initialize submodules
+# The RSDKv4 decompilation is the actual engine source (RSDKV4-Decompilation is a
+# git submodule). Without this the CMake glob finds no sources and rsdk_core is empty.
+Write-Host "Initializing submodules..." -ForegroundColor Yellow
+git submodule update --init --recursive
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Error: git submodule update failed" -ForegroundColor Red
+    exit 1
+}
+
 # Fetch RSDK decompilations
 Write-Host "Fetching RSDK decompilations..." -ForegroundColor Yellow
 
-if (-not (Test-Path "Hybrid-RSDK-Main/RSDKV4-Decompilation")) {
-    Write-Host "Cloning RSDKv4 Decompilation..."
-    git clone https://github.com/RSDKModding/RSDKv4-Decompilation.git "Hybrid-RSDK-Main/RSDKV4-Decompilation"
-}
-
-if (-not (Test-Path "Hybrid-RSDK-Main/RSDKV3")) {
-    Write-Host "Cloning RSDKv3 Decompilation..."
-    git clone https://github.com/RSDKModding/RSDKv3-Decompilation.git "Hybrid-RSDK-Main/RSDKV3"
-}
-
-if (-not (Test-Path "Hybrid-RSDK-Main/RSDKV5")) {
-    Write-Host "Cloning RSDKv5 Decompilation..."
-    git clone https://github.com/RSDKModding/RSDKv5-Decompilation.git "Hybrid-RSDK-Main/RSDKV5"
+if (-not (Test-Path "Hybrid-RSDK-Main/RSDKV4-Decompilation/RSDKv4")) {
+    Write-Host "Error: Hybrid-RSDK-Main/RSDKV4-Decompilation is empty." -ForegroundColor Red
+    Write-Host "The engine sources are a git submodule. Run:" -ForegroundColor Red
+    Write-Host "  git submodule update --init --recursive" -ForegroundColor Red
+    exit 1
 }
 
 # Build Hybrid RSDK engine
+#
+# Configure from the repository root rather than Hybrid-RSDK-Main/build:
+#  - the root CMakeLists.txt also pulls in vendor/theoraplay, which the engine needs
+#  - run_hybrid.bat looks for the engine at <repo-root>\build\bin\Release\rsdkv4.exe
+#  - CMakePresets.json already targets ${sourceDir}/build
 Write-Host "Building Hybrid RSDK engine..." -ForegroundColor Yellow
-Set-Location "Hybrid-RSDK-Main"
 
 # Clean previous build
 if (Test-Path "build") {
     Remove-Item -Recurse -Force "build"
 }
 New-Item -ItemType Directory -Path "build" -Force | Out-Null
-Set-Location "build"
 
 # Configure and build
 $vcpkgDir = Join-Path $PSScriptRoot "vcpkg"
@@ -81,25 +86,50 @@ $env:VCPKG_ROOT = $vcpkgDir
 $env:VCPKG_INSTALLED_DIR = Join-Path $PSScriptRoot "vcpkg_installed"
 
 Write-Host "Configuring CMake..." -ForegroundColor Cyan
-cmake .. `
+cmake -S . -B build `
     -DCMAKE_TOOLCHAIN_FILE="$vcpkgToolchain" `
     -DVCPKG_TARGET_TRIPLET=x64-windows `
     -DVCPKG_MANIFEST_MODE=ON `
     -DVCPKG_MANIFEST_DIR="$PSScriptRoot" `
-    -DVCPKG_INSTALLED_DIR="$env:VCPKG_INSTALLED_DIR"
+    -DVCPKG_INSTALLED_DIR="$env:VCPKG_INSTALLED_DIR" `
+    -DBUILD_SONIC3AIR=OFF
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Error: CMake configuration failed" -ForegroundColor Red
     exit 1
 }
 
-cmake --build . --config Release
+cmake --build build --config Release
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Error: Build failed" -ForegroundColor Red
     exit 1
 }
 
-Set-Location "../.."
+# Generate the unified hybrid Data.rsdk (S1 + SCD + S2) if the source files are present.
+Write-Host ""
+Write-Host "Checking for hybrid data generation..." -ForegroundColor Yellow
+$srcDir = Join-Path $PSScriptRoot "Hybrid-RSDK-Main/rsdk-source-data"
+if ((Test-Path (Join-Path $srcDir "soniccd.rsdk")) -and
+    (Test-Path (Join-Path $srcDir "sonic1.rsdk")) -and
+    (Test-Path (Join-Path $srcDir "sonic2.rsdk"))) {
+
+    Write-Host "Source .rsdk files found - generating unified Data.rsdk..." -ForegroundColor Cyan
+    Push-Location (Join-Path $PSScriptRoot "Hybrid-RSDK-Main")
+    try {
+        dotnet run --project SonicHybridRsdk.Build/SonicHybridRsdk.Build.csproj -c Release
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "Hybrid data generated: Hybrid-RSDK-Main/sonic-hybrid/Data.rsdk" -ForegroundColor Green
+        } else {
+            Write-Host "Error: hybrid data generation failed" -ForegroundColor Red
+            exit 1
+        }
+    } finally {
+        Pop-Location
+    }
+} else {
+    Write-Host "Source .rsdk files not found in Hybrid-RSDK-Main/rsdk-source-data/ - skipping data generation." -ForegroundColor Yellow
+    Write-Host "Place soniccd.rsdk, sonic1.rsdk and sonic2.rsdk there to enable hybrid mode." -ForegroundColor Yellow
+}
 
 # Build Custom Client
 Write-Host "Building Custom Client..." -ForegroundColor Yellow
@@ -114,5 +144,5 @@ Set-Location ".."
 
 Write-Host "Build completed successfully!" -ForegroundColor Green
 Write-Host "Executables are located in:" -ForegroundColor Cyan
-Write-Host "  - Hybrid-RSDK-Main/build/bin/" -ForegroundColor White
+Write-Host "  - build/bin/Release/" -ForegroundColor White
 Write-Host "  - Custom-Client/bin/" -ForegroundColor White

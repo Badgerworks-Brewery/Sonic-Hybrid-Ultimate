@@ -62,17 +62,20 @@ chmod +x "${SCRIPT_DIR}/apply_teamforever.sh"
 # Script always exits 0 now - patch application is optional
 
 # Build Hybrid-RSDK-Main engine
+#
+# Configure from the repository root rather than Hybrid-RSDK-Main/build:
+#  - the root CMakeLists.txt also pulls in vendor/theoraplay, which the engine needs
+#  - run_hybrid.sh / run_hybrid.bat look for the engine at <repo-root>/build/bin/rsdkv4
+#  - CMakePresets.json already targets ${sourceDir}/build
 echo "Building Hybrid-RSDK-Main engine..."
-cd "Hybrid-RSDK-Main"
 
 # Clean previous build
 rm -rf build
 mkdir -p build
-cd build
 
 # Configure and build
 echo "Configuring CMake..."
-cmake ..
+cmake -S . -B build
 if [ $? -ne 0 ]; then
     echo "Error: CMake configuration failed"
     echo "Please check that all dependencies are installed:"
@@ -81,13 +84,12 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "Building native components..."
-cmake --build . --config Release
+cmake --build build --config Release
 if [ $? -ne 0 ]; then
     echo "Error: Build failed"
     exit 1
 fi
 
-cd ../..
 
 # Generate hybrid data if source files are available
 echo ""
@@ -138,7 +140,7 @@ echo ""
 echo "🎉 Build completed successfully!"
 echo ""
 echo "Executables are located in:"
-echo "  - Hybrid-RSDK-Main/build/bin/"
+echo "  - build/bin/"
 echo "  - Custom-Client/bin/"
 echo ""
 echo "📋 IMPORTANT: To run the games, you need to provide the following files:"

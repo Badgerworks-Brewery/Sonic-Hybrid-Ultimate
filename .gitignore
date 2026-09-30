@@ -1,28 +1,78 @@
+# ---------------------------------------------------------------------------
 # Build artifacts
-Hybrid-RSDK-Main/build/
+# ---------------------------------------------------------------------------
+# NB: patterns containing a "/" are anchored to the repo root, so a bare
+# "sonic-hybrid/Data/" would NOT match "Hybrid-RSDK-Main/sonic-hybrid/Data/".
+# Always use a leading **/ (or a root-anchored path) when the directory can
+# appear at more than one depth.
+build/
+**/build/
 **/bin/
 **/obj/
+Debug/
+Release/
+.vs/
 *.o
 *.a
 *.so
 *.exe
 *.dll
+*.lib
+*.exp
+*.pdb
+*.tlog
+*.obj
+*.pch
+*.ipch
 
-# Game data files (copyrighted)
+# vcpkg
+vcpkg_installed/
+
+# ---------------------------------------------------------------------------
+# Copyrighted game data - NEVER COMMIT
+# ---------------------------------------------------------------------------
 *.rsdk
 *.bin
 *.sav
 
-# Exception: Allow launcher scripts in sonic-hybrid
-!Hybrid-RSDK-Main/sonic-hybrid/*.sh
-!Hybrid-RSDK-Main/sonic-hybrid/*.bat
+# Unpacked/intermediate game data produced by the generator.
+# These contain extracted copyrighted assets (.gif/.txt/.ogg/...) that the
+# *.bin rule above does not cover.
+rsdk-source-data/*
+!rsdk-source-data/README.md
+Hybrid-RSDK-Main/rsdk-source-data/*
+!Hybrid-RSDK-Main/rsdk-source-data/README.md
+**/sonic-hybrid/Data/
 
-# IDE and editor files
-.vscode/
+# Generated Sonic 3 & Knuckles ROM
+sonic3.bin
+*.gen
+
+# The unified hybrid pack is a build output, not source.
+Hybrid-RSDK-Main/sonic-hybrid/Data.rsdk
+
+# RSDKv4 runtime writes these next to the game data / engine.
+log.txt
+stdout.txt
+stderr.txt
+settings.ini
+
+# ---------------------------------------------------------------------------
+# C# project files
+# ---------------------------------------------------------------------------
+**/launchSettings.json
+**/*.user
+
+# ---------------------------------------------------------------------------
+# IDE / editor
+# ---------------------------------------------------------------------------
+.vscode/settings.json
 .vs/
 *.suo
 *.user
 
+# ---------------------------------------------------------------------------
 # OS files
+# ---------------------------------------------------------------------------
 .DS_Store
 Thumbs.db

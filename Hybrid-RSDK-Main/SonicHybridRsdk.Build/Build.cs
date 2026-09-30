@@ -48,6 +48,35 @@ try
     Console.WriteLine("✓ Hybrid data generated");
     Console.WriteLine();
 
+    // The engine loads assets from a "Data.rsdk" pack. The generator emits a loose
+    // "Data/" tree, and the script text lives in a separate tracked "Scripts/" folder,
+    // so both have to be packed into the archive before the game can run.
+    //
+    // Mount points matter: the engine asks for "Data/Game/GameConfig.bin" and
+    // "Data/Scripts/GHZ/GHZSetup.txt", then lowercases before hashing. Both sources
+    // therefore have to land under the "data/" prefix or every lookup silently misses.
+    Console.WriteLine("Packing data archive...");
+    SonicHybridRsdk.Generator.RsdkPacker.Pack(
+        DestinationData + "Data.rsdk",
+        (DestinationData + "Data", "data"),
+        (DestinationData + "Scripts", "data/scripts"));
+    Console.WriteLine("✓ Data archive packed");
+    Console.WriteLine();
+
+    if (!File.Exists(DestinationData + "Data.rsdk"))
+        throw new InvalidOperationException("Packing reported success but Data.rsdk was not created.");
+
+    // Fail loudly if the pack is missing anything the engine asks for by name.
+    SonicHybridRsdk.Generator.RsdkPacker.Verify(
+        DestinationData + "Data.rsdk",
+        "data/game/gameconfig.bin",
+        "data/scripts/global/stagesetup.txt",
+        "data/scripts/ghz/ghzsetup.txt",
+        "data/scripts/ehz/ehzsetup.txt",
+        "data/stages/zoneghz/backgrounds.bin",
+        "data/stages/zoneehz/backgrounds.bin");
+    Console.WriteLine("✓ Data archive verified against engine lookup paths");
+
     Console.WriteLine("===================================");
     Console.WriteLine("SUCCESS: Hybrid data created at:");
     Console.WriteLine($"  {Path.GetFullPath(DestinationData + "Data.rsdk")}");

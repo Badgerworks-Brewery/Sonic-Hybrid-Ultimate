@@ -51,20 +51,27 @@ else()
     pkg_check_modules(THEORA REQUIRED theora theoradec)
 endif()
 
-# Check if RSDK decompilations exist
-if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation")
-    message(STATUS "RSDKv4 Decompilation not found, fetching...")
-    execute_process(COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/../fetch_rsdkv4.sh)
+# Check if RSDK decompilations exist.
+#
+# NB: an uninitialised git submodule is an *empty but existing* directory, so testing
+# for the directory alone is not enough - probe for real sources. Getting this wrong
+# makes the RSDKv3 glob return nothing and CMake aborts with
+# "No SOURCES given to target: rsdkv3_core".
+if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/RSDKv4/main.cpp")
+    message(FATAL_ERROR
+        "RSDKv4 engine sources are missing from Hybrid-RSDK-Main/RSDKV4-Decompilation.\n"
+        "They are a git submodule. Initialise it with:\n"
+        "    git submodule update --init --recursive\n"
+        "Without it there is no engine to build.")
 endif()
 
-if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/RSDKV3")
-    message(STATUS "RSDKv3 not found, fetching...")
-    execute_process(COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/../fetch_rsdkv3.sh WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..)
+if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/RSDKV3/RSDKv3")
+    message(STATUS "RSDKv3 sources not found - Sonic CD engine target will be skipped "
+                   "(run: git submodule update --init --recursive to enable)")
 endif()
 
-if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/RSDKV5")
-    message(STATUS "RSDKv5 not found, fetching...")
-    execute_process(COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/../fetch_rsdkv5.sh WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..)
+if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/RSDKV5/RSDKv5")
+    message(STATUS "RSDKv5 sources not found - RSDKv5 target is disabled anyway")
 endif()
 
 # Hybrid data generation using C# build tools
@@ -89,8 +96,9 @@ if(DOTNET_EXECUTABLE)
         message(STATUS "  Sonic 1:  ${SONIC1_RSDK}")
         message(STATUS "  Sonic 2:  ${SONIC2_RSDK}")
         
-        # Custom target to build and run the hybrid generator
-        add_custom_target(hybrid_data
+        # Custom target to build and run the hybrid generator.
+        # Part of ALL so a plain `cmake --build` actually produces Data.rsdk.
+        add_custom_target(hybrid_data ALL
             COMMAND ${CMAKE_COMMAND} -E echo "Building hybrid data generator..."
             COMMAND ${DOTNET_EXECUTABLE} build SonicHybridRsdk.Build/SonicHybridRsdk.Build.csproj -c Release
             COMMAND ${CMAKE_COMMAND} -E echo "Running hybrid data generator..."
@@ -99,13 +107,7 @@ if(DOTNET_EXECUTABLE)
             COMMENT "Generating unified Sonic Hybrid Ultimate data..."
             VERBATIM
         )
-        
-        # Create a stamp file to track if hybrid data was generated
-        add_custom_command(TARGET hybrid_data POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_BINARY_DIR}/hybrid_data.stamp
-            COMMENT "Marking hybrid data as generated"
-        )
-        
+
     else()
         message(STATUS "Source .rsdk files not found in ${SOURCE_RSDK_DIR}")
         message(STATUS "Hybrid data generation will be skipped")
@@ -186,10 +188,14 @@ endif()
 get_target_property(LIBS rsdk_core INTERFACE_LINK_LIBRARIES)
 
 # RSDK V3 Core library (for Sonic CD)
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/RSDKV3")
-    # Only include core RSDKv3 sources, not platform-specific directories
-    file(GLOB_RECURSE RSDKV3_SOURCES "RSDKV3/RSDKv3/*.cpp")
+#
+# Keyed off the glob result, not the directory: an uninitialised submodule is an
+# empty directory that still "exists", and add_library() hard-fails on an empty
+# source list ("No SOURCES given to target: rsdkv3_core").
+file(GLOB_RECURSE RSDKV3_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/RSDKV3/RSDKv3/*.cpp")
 
+if(RSDKV3_SOURCES)
+    message(STATUS "RSDKv3 sources found - building rsdkv3_core")
     add_library(rsdkv3_core STATIC ${RSDKV3_SOURCES})
 
     # Add -fPIC for shared library compatibility
@@ -351,25 +357,33 @@ target_link_libraries(sonic_hybrid PUBLIC
 )
 
 # RSDKv4 shared library for Custom Client P/Invoke
-add_library(RSDKv4 SHARED
+#
+# NB: the target must NOT be called "RSDKv4" - that differs from the "rsdkv4"
+# executable target only by case, and on case-insensitive filesystems (Windows)
+# CMake puts both in the same <target>.dir intermediate folder, so the two targets
+# overwrite each other and the executable is never produced. OUTPUT_NAME keeps the
+# on-disk DLL named RSDKv4.dll for the Custom Client's P/Invoke loader.
+add_library(rsdkv4_shared SHARED
     RSDKv4Wrapper.cpp
 )
 
-target_include_directories(RSDKv4 PRIVATE
+set_target_properties(rsdkv4_shared PROPERTIES OUTPUT_NAME "RSDKv4")
+
+target_include_directories(rsdkv4_shared PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/sonic-hybrid
     ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/RSDKv4
     ${CMAKE_CURRENT_SOURCE_DIR}/RSDKV4-Decompilation/RSDKv4/NativeObjects
 )
 
-target_link_libraries(RSDKv4 PRIVATE
+target_link_libraries(rsdkv4_shared PRIVATE
     rsdk_core
     sonic_hybrid
 )
 
 # Set visibility for exported functions on Linux
 if(NOT WIN32)
-    set_target_properties(RSDKv4 PROPERTIES
+    set_target_properties(rsdkv4_shared PROPERTIES
         CXX_VISIBILITY_PRESET hidden
         C_VISIBILITY_PRESET hidden
     )
@@ -407,36 +421,36 @@ add_custom_command(TARGET OxygenEngine POST_BUILD
 
 # Copy RSDKv4 library to Custom Client directory after build
 # .NET 6.0 with RuntimeIdentifier uses paths like bin/Release/net6.0-windows/win-x64/
-add_custom_command(TARGET RSDKv4 POST_BUILD
+add_custom_command(TARGET rsdkv4_shared POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net6.0-windows/win-x64/
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        $<TARGET_FILE:RSDKv4>
+        $<TARGET_FILE:rsdkv4_shared>
         ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net6.0-windows/win-x64/
     COMMENT "Copying RSDKv4 library to Custom Client output directory (win-x64)"
 )
 
 # Also copy to non-RID path for compatibility
-add_custom_command(TARGET RSDKv4 POST_BUILD
+add_custom_command(TARGET rsdkv4_shared POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net6.0-windows/
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        $<TARGET_FILE:RSDKv4>
+        $<TARGET_FILE:rsdkv4_shared>
         ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net6.0-windows/
     COMMENT "Copying RSDKv4 library to Custom Client output directory (non-RID)"
 )
 
 # Copy dependency DLLs to Custom Client directory on Windows (vcpkg provides these)
 if(WIN32)
-    add_custom_command(TARGET RSDKv4 POST_BUILD
+    add_custom_command(TARGET rsdkv4_shared POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E echo "Copying RSDKv4 dependencies to Custom Client directory..."
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            $<TARGET_RUNTIME_DLLS:RSDKv4>
+            $<TARGET_RUNTIME_DLLS:rsdkv4_shared>
             ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net6.0-windows/win-x64/
         COMMAND_EXPAND_LISTS
         COMMENT "Copying RSDKv4 dependency DLLs to win-x64 directory"
     )
-    add_custom_command(TARGET RSDKv4 POST_BUILD
+    add_custom_command(TARGET rsdkv4_shared POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            $<TARGET_RUNTIME_DLLS:RSDKv4>
+            $<TARGET_RUNTIME_DLLS:rsdkv4_shared>
             ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net6.0-windows/
         COMMAND_EXPAND_LISTS
         COMMENT "Copying RSDKv4 dependency DLLs to non-RID directory"
@@ -444,10 +458,10 @@ if(WIN32)
 endif()
 
 # Also copy to the bin directory for standalone use
-add_custom_command(TARGET RSDKv4 POST_BUILD
+add_custom_command(TARGET rsdkv4_shared POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/bin/
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        $<TARGET_FILE:RSDKv4>
+        $<TARGET_FILE:rsdkv4_shared>
         ${CMAKE_BINARY_DIR}/bin/
     COMMENT "Copying RSDKv4 library to bin directory"
 )
@@ -548,7 +562,7 @@ else()
 endif()
 
 # Install rules - include all available targets
-set(INSTALL_TARGETS rsdk_core rsdkv4 HybridRSDK RSDKv4)
+set(INSTALL_TARGETS rsdk_core rsdkv4 HybridRSDK rsdkv4_shared)
 
 if(TARGET rsdkv3_core)
     list(APPEND INSTALL_TARGETS rsdkv3_core)
