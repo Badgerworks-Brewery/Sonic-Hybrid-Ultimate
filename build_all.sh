@@ -20,9 +20,28 @@ if ! command -v dotnet &> /dev/null; then
     exit 1
 fi
 
-# Initialize submodules
+# Initialize submodules.
+#
+# The RSDKv4 decompilation is the actual engine source. Without this the CMake
+# glob finds no sources and rsdk_core is empty.
+#
+# NB: do NOT use a blanket "--recursive" here. vendor/theoraplay and
+# vendor/sonic3air carry their own nested submodules (including a full extra
+# Microsoft vcpkg checkout), which is hundreds of megabytes this build never
+# uses, and one network hiccup in any of them fails the whole build.
 echo "Initializing submodules..."
-git submodule update --init --recursive
+git submodule update --init || {
+    echo "Error: git submodule update failed"
+    exit 1
+}
+
+# The engine's own vendored dependencies (asio, stb-image, tinyxml2) are nested
+# submodules of the decompilation and are genuinely required to compile it.
+for d in Hybrid-RSDK-Main/RSDKV4-Decompilation Hybrid-RSDK-Main/RSDKV3; do
+    if [ -d "$d" ]; then
+        git submodule update --init --recursive -- "$d" || true
+    fi
+done
 
 # Fetch RSDK decompilations
 echo "Fetching RSDK decompilations..."

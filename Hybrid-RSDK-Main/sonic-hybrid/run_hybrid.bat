@@ -14,6 +14,11 @@ echo ===================================================================
 echo.
 
 REM Check if hybrid data exists
+REM
+REM NB: every "(" and ")" inside this block is caret-escaped. An unescaped ")" in
+REM an echo line terminates the if-block early, which makes the error path run
+REM unconditionally - the launcher then always printed "data not found" and exited
+REM even when Data.rsdk was present.
 if not exist "%DATA_FILE%" (
     echo X Error: Hybrid data file not found!
     echo.
@@ -21,7 +26,7 @@ if not exist "%DATA_FILE%" (
     echo.
     echo To generate the hybrid data:
     echo   1. Place soniccd.rsdk, sonic1.rsdk, sonic2.rsdk in ..\rsdk-source-data\
-    echo   2. Run the build process (build_all.ps1 or cmake --build)
+    echo   2. Run the build process ^(build_all.ps1 or cmake --build^)
     echo.
     echo See ..\rsdk-source-data\README.md for detailed instructions.
     pause
@@ -36,7 +41,8 @@ if not exist "%ENGINE_BINARY%" (
     echo.
     echo Expected: %ENGINE_BINARY%
     echo.
-    echo Please build the project first.
+    echo Please build the project first:
+    echo   powershell -ExecutionPolicy Bypass -File ..\..\build_all.ps1
     pause
     exit /b 1
 )

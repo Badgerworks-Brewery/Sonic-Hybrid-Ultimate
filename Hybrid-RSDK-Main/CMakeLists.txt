@@ -404,37 +404,37 @@ endif()
 
 # Copy OxygenEngine library to Custom Client directory
 add_custom_command(TARGET OxygenEngine POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net6.0-windows/win-x64/
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net8.0-windows/win-x64/
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         $<TARGET_FILE:OxygenEngine>
-        ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net6.0-windows/win-x64/
+        ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net8.0-windows/win-x64/
     COMMENT "Copying OxygenEngine library to Custom Client output directory (win-x64)"
 )
 
 add_custom_command(TARGET OxygenEngine POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net6.0-windows/
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net8.0-windows/
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         $<TARGET_FILE:OxygenEngine>
-        ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net6.0-windows/
+        ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net8.0-windows/
     COMMENT "Copying OxygenEngine library to Custom Client output directory (non-RID)"
 )
 
 # Copy RSDKv4 library to Custom Client directory after build
-# .NET 6.0 with RuntimeIdentifier uses paths like bin/Release/net6.0-windows/win-x64/
+# .NET 6.0 with RuntimeIdentifier uses paths like bin/Release/net8.0-windows/win-x64/
 add_custom_command(TARGET rsdkv4_shared POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net6.0-windows/win-x64/
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net8.0-windows/win-x64/
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         $<TARGET_FILE:rsdkv4_shared>
-        ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net6.0-windows/win-x64/
+        ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net8.0-windows/win-x64/
     COMMENT "Copying RSDKv4 library to Custom Client output directory (win-x64)"
 )
 
 # Also copy to non-RID path for compatibility
 add_custom_command(TARGET rsdkv4_shared POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net6.0-windows/
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net8.0-windows/
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         $<TARGET_FILE:rsdkv4_shared>
-        ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net6.0-windows/
+        ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net8.0-windows/
     COMMENT "Copying RSDKv4 library to Custom Client output directory (non-RID)"
 )
 
@@ -444,14 +444,14 @@ if(WIN32)
         COMMAND ${CMAKE_COMMAND} -E echo "Copying RSDKv4 dependencies to Custom Client directory..."
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             $<TARGET_RUNTIME_DLLS:rsdkv4_shared>
-            ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net6.0-windows/win-x64/
+            ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net8.0-windows/win-x64/
         COMMAND_EXPAND_LISTS
         COMMENT "Copying RSDKv4 dependency DLLs to win-x64 directory"
     )
     add_custom_command(TARGET rsdkv4_shared POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             $<TARGET_RUNTIME_DLLS:rsdkv4_shared>
-            ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net6.0-windows/
+            ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net8.0-windows/
         COMMAND_EXPAND_LISTS
         COMMENT "Copying RSDKv4 dependency DLLs to non-RID directory"
     )
@@ -544,10 +544,10 @@ if(BUILD_SONIC3AIR)
             # Copy to Custom Client directory for dev builds
             add_custom_command(TARGET sonic3air POST_BUILD
                 COMMAND ${CMAKE_COMMAND} -E make_directory 
-                    ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net6.0-windows/win-x64/
+                    ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net8.0-windows/win-x64/
                 COMMAND ${CMAKE_COMMAND} -E copy_if_different
                     $<TARGET_FILE:sonic3air>
-                    ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net6.0-windows/win-x64/
+                    ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net8.0-windows/win-x64/
                 COMMENT "Copying Sonic 3 AIR to Custom Client directory"
             )
         endif()

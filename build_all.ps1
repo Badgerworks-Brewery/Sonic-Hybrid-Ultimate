@@ -40,14 +40,32 @@ if ($LASTEXITCODE -ne 0) {
 }
 Set-Location $PSScriptRoot
 
-# Initialize submodules
-# The RSDKv4 decompilation is the actual engine source (RSDKV4-Decompilation is a
+# Initialize submodules.
+#
+# The RSDKV4 decompilation is the actual engine source (RSDKV4-Decompilation is a
 # git submodule). Without this the CMake glob finds no sources and rsdk_core is empty.
+#
+# NB: do NOT use a blanket "--recursive" here. vendor/theoraplay and
+# vendor/sonic3air carry their own nested submodules (including a full extra
+# Microsoft vcpkg checkout), which is hundreds of megabytes that this build never
+# uses, and a single network hiccup in one of them fails the whole build. So:
+# init the top level shallowly, then recurse only where it is actually needed.
 Write-Host "Initializing submodules..." -ForegroundColor Yellow
-git submodule update --init --recursive
+git submodule update --init
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Error: git submodule update failed" -ForegroundColor Red
     exit 1
+}
+
+# The engine's own vendored dependencies (asio, stb-image, tinyxml2) are nested
+# submodules of the decompilation and are genuinely required to compile it.
+foreach ($nested in @(
+    "Hybrid-RSDK-Main/RSDKV4-Decompilation",
+    "Hybrid-RSDK-Main/RSDKV3"
+)) {
+    if (Test-Path (Join-Path $PSScriptRoot $nested)) {
+        git submodule update --init --recursive -- $nested 2>&1 | Out-Null
+    }
 }
 
 # Fetch RSDK decompilations
