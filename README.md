@@ -119,18 +119,22 @@ Verified by building from a clean tree with real game data and running the engin
 ### Working
 
 - ✅ **C# build tools** compile and run (`.NET 8`). Unpacks all three `.rsdk` files and merges them into a unified `Data/` tree.
-- ✅ **Unified `Data.rsdk`** is produced by `SonicHybridRsdk.Generator.RsdkPacker` and verified against the engine's own lookup. The engine loads **all** game content from the pack, including stage scripts.
-- ✅ **RSDKv4 engine builds** on Windows (VS 2022 + vcpkg) and boots the merged `GameConfig.bin`.
-- ✅ **Custom-Client** builds on `.NET 8`.
+- ✅ **Unified `Data.rsdk`** is produced by `SonicHybridRsdk.Generator.RsdkPacker` and verified against the engine's own lookup. The engine loads **all** content from the pack — measured 152 loads, 0 from disk, 0 stage-script failures.
+- ✅ **Green Hill Zone loads and plays**: `ZoneGHZ/StageConfig.bin` loads from the pack and the full merged object table instantiates (Player, Tails, Stage Setup, HUD, Ring, Monitor, springs, spikes, Star Post, Sign Post, Animal Prison, …).
+- ✅ **`build_all.sh` / `build_all.ps1`** complete from a clean tree with 0 errors and produce `rsdkv4.exe`, `RSDKv4.dll`, `OxygenEngine.dll` and `Data.rsdk`.
+- ✅ **`run_hybrid.bat` / `run_hybrid.sh`** locate the data and engine and start the game.
+- ✅ **Custom-Client** builds and runs on `.NET 8` with the native engine DLLs staged.
+- ✅ Data generation is **deterministic** — the pack is byte-identical across runs.
 
 ### Known broken
 
 - ❌ **The S1 → CD → S2 stage chain is not implemented.** All three games' stages are present in the merged `GameConfig.bin`, but nothing navigates between them. There is no transition table in the generator, no script wiring, and no C++ implementation. Stage order in the list is adjacency, not a progression.
-- ❌ **Startup can hang.** The merged config references Sonic 1 / Sonic CD string IDs (`StageName13`–`StageName16`, `SaveStageName26`) that do not exist in the shipped `StringList.txt`, and the engine's string resolver spins on the missing keys.
-- ❌ **Wrong / missing stage names in menus** — same string-table root cause.
+- ❌ **Stage/menu names are wrong or missing.** `CopyResources` copies `Game/` in the order Sonic 1 → CD → Sonic 2, so Sonic 2's `StringList.txt` overwrites the other two. The merged config then references `StageName13`–`StageName16` / `SaveStageName26`, which do not exist — 5 string lookups fail at boot. Non-fatal, but it is the "wrong stage names" symptom. A real fix needs string-ID remapping in the generator, not a file union.
 - ❌ **No engine-side hybrid code.** `sonic-hybrid/*.cpp` are placeholders (`IsGameComplete()` returns `false`); the `rsdkv4` executable is stock upstream RSDKv4. All cross-game continuity today lives in the data, not the code.
-- ❌ **Sonic 3 AIR** is not integrated. The `OxygenEngine` wrapper only spawns an external `sonic3air` binary and otherwise enters a stub mode that reports success.
+- ❌ **Sonic 3 AIR is not integrated.** `OxygenEngine` only spawns an external `sonic3air` binary; there is no binary in the repo. When it cannot find one it enters stub mode and **returns success** (`OxygenWrapper.cpp:279`), so the frontend is told everything is fine while nothing is running. `IsOxygenStubMode()` and `IsOxygenFullyOperational()` can both return 0, so "stub" and "broken" are indistinguishable.
+- 🔄 After Green Hill loads, the engine sits at 100% CPU on one core with no further log output. It has not crashed and the scene is built, but it does not visibly progress in a non-interactive session.
 - 🔄 `Hybrid-RSDK-Main/RSDKV4/` is a stale, non-compilable copy of the engine (placeholder headers, missing `Text.cpp` / `NativeObjects/`). Nothing in the build references it, but the `sonic-hybrid` headers still `#include` it — an ODR violation. It should be deleted.
+- 🔄 The repo's own `test_build_fixes.sh` / `test_undefined_symbols.sh` are not real tests: they `grep` the stale `RSDKV4/` tree that is never compiled (assertions there pass that would fail against the tree that is built), and `test_undefined_symbols.sh` hardcodes `cd /workspace`.
 
 Sonic Hybrid RSDK plus the Decompilations of RSDK Versions 3, 4 and/or 5U
 
