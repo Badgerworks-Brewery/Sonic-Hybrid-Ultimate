@@ -1,0 +1,16 @@
+# Canonical attribution for this repository.
+#
+# Every commit originally made under these identities is the same person
+# (the project owner), so they are all mapped to a single canonical
+# author/committer to keep the history consistent.
+#
+# Format (see git-shortlog(1)):
+#   <canonical name> <canonical email> <commit name> <commit email>
+
+fgsoftware1 <fgsoftwarestudio@gmail.com> <charliephilp@outlook.com>
+fgsoftware1 <fgsoftwarestudio@gmail.com> <99685295+charlieduzstuf@users.noreply.github.com>
+fgsoftware1 <fgsoftwarestudio@gmail.com> <99685295+charliedusstuf@users.noreply.github.com>
+fgsoftware1 <fgsoftwarestudio@gmail.com> <99685295+CCIGAMES@users.noreply.github.com>
+fgsoftware1 <fgsoftwarestudio@gmail.com> <charlieduzstuf@users.noreply.github.com>
+fgsoftware1 <fgsoftwarestudio@gmail.com> <charliedusstuf@users.noreply.github.com>
+fgsoftware1 <fgsoftwarestudio@gmail.com> <ccigames@users.noreply.github.com>
