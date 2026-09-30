@@ -2,6 +2,13 @@
 
 Aims to mix different Sonic the Hedgehog games into a single big game. Acts as a legal but cheaper version of Sonic Origins for fans that don't want to get scammed.
 
+> **Note on the other Markdown files in this repository.**
+> `HYBRID_NOW_WORKING.md`, `FINAL_SUMMARY.txt`, `*_FIX*.md`, `*_SUMMARY.md`,
+> `ARCHITECTURE_PROPOSAL.md`, `BACKEND_ANALYSIS_AND_FIXES.md` and friends are
+> *historical working notes* from past attempts. Several of them claim the game
+> works. They do not describe the current tree. **The Status section in this
+> README is the only accurate description of what works today.**
+
 ![Sonic 1 in Sonic 2](docs/preview.png)
 
 ## 🎮 What You Get
@@ -21,7 +28,7 @@ To build and play Sonic Hybrid Ultimate, you need:
 ### 1. Build Tools
 - CMake 3.15 or later
 - C++ compiler (GCC, Clang, or MSVC)
-- .NET 6.0 SDK or later
+- .NET 8 SDK or later (net6.0/net5.0 are EOL and will not run)
 - Git with submodules support
 
 ### 2. Game Data Files (Legally Obtained)
@@ -105,14 +112,25 @@ cd Hybrid-RSDK-Main\sonic-hybrid
 run_hybrid.bat
 ```
 
-## 📊 Completion Status
+## 📊 Status
 
-- ✅ **RSDKv4 Engine**: Fully working with Team Forever enhancements
-- ✅ **Build Tools**: C# unpacking and generation tools integrated
-- ✅ **Hybrid Data Generation**: Automated in build process
-- ✅ **Custom Client**: Framework complete, multi-engine support
-- 🔄 **Sonic 3 AIR Integration**: Source code present, integration in progress
-- 🔄 **Full Game Flow**: Testing transitions between games
+Verified by building from a clean tree with real game data and running the engine.
+
+### Working
+
+- ✅ **C# build tools** compile and run (`.NET 8`). Unpacks all three `.rsdk` files and merges them into a unified `Data/` tree.
+- ✅ **Unified `Data.rsdk`** is produced by `SonicHybridRsdk.Generator.RsdkPacker` and verified against the engine's own lookup. The engine loads **all** game content from the pack, including stage scripts.
+- ✅ **RSDKv4 engine builds** on Windows (VS 2022 + vcpkg) and boots the merged `GameConfig.bin`.
+- ✅ **Custom-Client** builds on `.NET 8`.
+
+### Known broken
+
+- ❌ **The S1 → CD → S2 stage chain is not implemented.** All three games' stages are present in the merged `GameConfig.bin`, but nothing navigates between them. There is no transition table in the generator, no script wiring, and no C++ implementation. Stage order in the list is adjacency, not a progression.
+- ❌ **Startup can hang.** The merged config references Sonic 1 / Sonic CD string IDs (`StageName13`–`StageName16`, `SaveStageName26`) that do not exist in the shipped `StringList.txt`, and the engine's string resolver spins on the missing keys.
+- ❌ **Wrong / missing stage names in menus** — same string-table root cause.
+- ❌ **No engine-side hybrid code.** `sonic-hybrid/*.cpp` are placeholders (`IsGameComplete()` returns `false`); the `rsdkv4` executable is stock upstream RSDKv4. All cross-game continuity today lives in the data, not the code.
+- ❌ **Sonic 3 AIR** is not integrated. The `OxygenEngine` wrapper only spawns an external `sonic3air` binary and otherwise enters a stub mode that reports success.
+- 🔄 `Hybrid-RSDK-Main/RSDKV4/` is a stale, non-compilable copy of the engine (placeholder headers, missing `Text.cpp` / `NativeObjects/`). Nothing in the build references it, but the `sonic-hybrid` headers still `#include` it — an ODR violation. It should be deleted.
 
 Sonic Hybrid RSDK plus the Decompilations of RSDK Versions 3, 4 and/or 5U
 
@@ -120,13 +138,12 @@ And a seperate Frontend for managing both.
 
 The Frontend will oversee and run both parts seperately, after Sonic 2 ends, the Frontend begins launching Sonic 3 and Knuckles via Sonic 3 AIR, sort of like switching HDMI inputs from one device to another on a TV.
 
-## Completion Status:
-Hybrid-RSDK Debugging/Additons ?% (Hybrid-RSDK is still broken)
+## Completion Status
+Hybrid-RSDK Debugging/Additions — builds and boots, but the cross-game stage chain is not implemented yet.
 
-Sonic 3 AIR (Oxygen) Integration 50% (All the source code is in the repo, but we havent done the neccessary changes yet)
-Integration with Hybrid-RSDK-Main is in progress, focusing on resolving loading issues and graphical corruption.
+Sonic 3 AIR (Oxygen) Integration 0% — the wrapper only launches an external binary or reports a stub.
 
-Custom-Client 0% (debugging Hybrid-RSDK-Main is the priority)
+Custom-Client builds on .NET 8 but has not been tested against a running engine.
 
 ## Build Process
 
@@ -160,7 +177,7 @@ dotnet run
 ### Prerequisites
 - CMake 3.15 or higher
 - C++17 compatible compiler
-- .NET 6.0 SDK
+- .NET 8 SDK
 - Git with submodule support
 
 ### Dependencies (Linux/Ubuntu)
@@ -236,27 +253,30 @@ git pull --recurse-submodules
 
 ## Features
 
-* Play Sonic 1, Sonic CD, Sonic 2 and Sonic 3&k a single big game.
-* Star Posts in Sonic the Hedgehog 1 and CD will bring you to the Sonic the Hedgehog 2 special stages.
-* Completing Sonic the Hedgehog 1's Final Zone will bring you to Palmtree Panic Zone.
-* Completing Sonic the Hedgehog CD's Metallic Madness Act 3 will bring you to Emerald Hill Zone.
-* Completing Death Egg Zone in Sonic the Hedgehog 2 will bring you to Angel Island Zone.
-* The Stage Select in the debug menu will report all the implemented level names.
-* Sonic CD stages correctly transitions as the original game.
-* Metal Sonic is now a playable character.
-* Sonic 3 will be included.
+Planned target — items marked ❌ are **not** currently working.
+
+* Play Sonic 1, Sonic CD, Sonic 2 and Sonic 3&K in a single big game. *(data merge done; S3 not integrated)*
+* Completing Sonic 1's Final Zone will bring you to Palmtree Panic Zone. ❌
+* Completing Sonic CD's Metallic Madness Act 3 will bring you to Emerald Hill Zone. ❌
+* Completing Death Egg Zone in Sonic 2 will bring you to Angel Island Zone. ❌
+* Star Posts in Sonic 1 and CD will bring you to the Sonic 2 special stages. ❌
+* The Stage Select in the debug menu will report all the implemented level names. ❌
+* Sonic CD stages correctly transition as the original game. ❌
+* Metal Sonic is now a playable character. *(present in the player list; no engine-side selection logic)*
+* Sonic 3 will be included. ❌
 
 ## Known issues
-* **It runs, but when you load a level  it only loads the background**
-* No Sonic 3 yet.
-* Sonic 1 Special Stages are working from the Stage Select, but the graphics is corrupted.
-* The main menu of RSDK will report the wrong stage names.
-* The Giant Ring from Sonic the Hedgehog 1 will teleport to the Sonic the Hedgehog 2 special stages.
+
+* Stage loading works from `Data.rsdk`, but startup can hang while resolving
+  missing string IDs (see Status above).
+* Stage/menu names are wrong or missing.
+* No Sonic 3.
+* Sonic 1 Special Stages and the Sonic CD time-shift stages are only partially wired up.
 * Collision Chaos and Stardust Speedway are half-implemented.
 * Tidal Tempest, Quartz Quadrant, Wacky Workbench and Metallic Madness are barely implemented.
-* In Palmtree Panic Zone, the spinner will softlock the player.
-* Some Sonic CD's enemies and gimmicks might have the wrong palette.
-* Playable Metal Sonic has a "rolling" bugging collision.
+* In Palmtree Panic Zone, the spinner can softlock the player.
+* Some Sonic CD enemies and gimmicks have the wrong palette.
+* Playable Metal Sonic has a "rolling" collision bug.
 
 ## Resources
 
