@@ -87,24 +87,42 @@ table rather than by tracing execution.
 come from the function table, which gives each function's script and jump-table
 base pointers.
 
-## Stage 3 — opcode → RSDKv4 mapping (started; blocked on entry-point encoding)
+## Stage 3 — entry-point resolution (root cause found; one bug outstanding)
 
-`SonicHybridRsdk.Generator/RsdkV3ScriptWriter` exists and emits structured
-`if / else / end if`, `while / loop`, assignments, comparisons and the engine
-calls, recording anything it cannot map as an explicit `# TODO` rather than
-guessing.
+**Root cause of the "encoded" entry points — confirmed.** They are not encoded.
+The engine keeps a single global `scriptCode[]` array and appends each bytecode
+file to it, resetting only via `ClearScriptData()` (`Script.cpp:2123`).
+`GS000.bin` — the global object code — is loaded first, so every later stage
+file's stored entry points are indices into that shared array rather than into
+their own file.
 
-**Open problem — subroutine entry points are encoded, not plain offsets.**
-The script table stores four values per script (Main, PlayerInteraction, Draw,
-Startup). Some are the sentinel `0x3FFFF` ("no such subroutine"), but the real
-ones exceed the instruction stream: `RS019.bin` has 2411 instructions yet
-stores entry points such as `34554` and `35812`. So these values are encoded
-rather than raw indices, and the encoding is not decoded yet. Until it is, the
-writer throws instead of emitting an empty script — an earlier version silently
-produced nothing, which is the failure mode this project is trying to eliminate.
+The numbers confirm it exactly:
 
-Next step is to resolve that encoding by following how the engine consumes these
-values when it calls `ProcessScript(scriptCodeStart, jumpTableStart, scriptSub)`.
+```
+GS000 declared scriptCodeSize : 34554
+RS019 first stored entry point : 34554
+```
+
+so RS019's local index is `stored - 34554`. `RsdkV3ScriptReader` now exposes
+`ScriptCodeBase` / `JumpTableBase` and `Resolve()` for this, and `0x3FFFF` is
+recognised as the "no such subroutine" sentinel.
+
+**Outstanding bug.** After this change, resolving entry points against a base of
+5833 rather than 34554 leaves every pointer out of range, and GS000 itself
+decodes to 5833 code words in C# when its header declares 34554. An independent
+Python decode of the same bytes yields the full 34554 words and lands at the
+correct offset, so the format is right and the **C# `ReadBlocks` is wrong for
+this file**. Note the reader still reports exact byte consumption for all 88
+files, so the byte accounting is self-consistent while the word count is not —
+which is why the earlier "parses cleanly" checks did not catch it.
+
+Next step: reconcile C# `ReadBlocks` against the reference decoder for GS000,
+specifically the wide/narrow block selection, before any emission is trusted.
+
+Until then the writer correctly refuses to run: it throws when an entry point
+falls outside the instruction stream rather than emitting an empty script.
+
+## Stage 4 — opcode → RSDKv4 mapping (not yet started)
 
 ## Stage 4 — opcode → RSDKv4 mapping (not yet started)
 

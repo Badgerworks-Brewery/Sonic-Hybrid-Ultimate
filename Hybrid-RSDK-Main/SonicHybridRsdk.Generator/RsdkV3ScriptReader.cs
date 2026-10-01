@@ -66,6 +66,42 @@ public sealed class RsdkV3ScriptReader
     /// <summary>Bytes consumed by the whole container.</summary>
     public int BytesConsumed { get; private set; }
 
+    /// <summary>Sentinel stored for a subroutine that does not exist.</summary>
+    public const uint NoSubroutine = 0x3FFFF;
+
+    /// <summary>
+    /// Global <c>scriptCode[]</c> index at which this file's code begins.
+    /// </summary>
+    /// <remarks>
+    /// The engine keeps one global scriptCode array and appends each bytecode
+    /// file to it, only resetting via ClearScriptData(). GS000.bin (the global
+    /// object code) is loaded first, so every subsequent stage file's stored
+    /// entry points are indices into that shared array - not into this file.
+    /// RS019.bin, for example, stores its first entry point as 34554, which is
+    /// exactly GS000's word count.
+    /// </remarks>
+    public int ScriptCodeBase { get; set; }
+
+    /// <summary>Global <c>jumpTable[]</c> index at which this file's branches begin.</summary>
+    public int JumpTableBase { get; set; }
+
+    /// <summary>Converts a stored (global) pointer into a local index, or -1.</summary>
+    public static int ToLocal(uint globalPointer, int baseIndex)
+    {
+        if (globalPointer == NoSubroutine)
+            return -1;
+        var local = (int)(long)globalPointer - baseIndex;
+        return local < 0 ? -1 : local;
+    }
+
+    /// <summary>Resolved subroutine entry points for one script, in wire order.</summary>
+    public sealed record ResolvedScript(string Name, int[] ScriptCodePtrs, int[] JumpTablePtrs);
+
+    public ResolvedScript Resolve(ScriptEntry entry, int index)
+        => new($"script{index}",
+               entry.ScriptCodePtrs.Select(p => ToLocal(p, ScriptCodeBase)).ToArray(),
+               entry.JumpTablePtrs.Select(p => ToLocal(p, JumpTableBase)).ToArray());
+
     public sealed record FunctionEntry(string Name, uint ScriptCodePtr, uint JumpTablePtr);
 
     private static readonly string[]? VariableNames = BuildVariableNames();
