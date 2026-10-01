@@ -170,11 +170,18 @@ Reported by the build, not fatal. Two shapes:
 
 ## Stage 5 — emit the scripts (not yet done)
 
-The writer is correct but nothing calls it to produce files yet. Wiring it up has
-to answer one question first: RSDKv4 loads **either** text scripts **or**
-bytecode, chosen globally (`RSDKV4-Decompilation/RSDKv4/Scene.cpp:675`). Since
-Sonic 1 and Sonic 2 already ship text scripts, CD has to be emitted as text for
-all three to coexist in one pack.
+The writer is correct but nothing calls it to produce files yet.
+
+**How the three games can coexist — resolved, not assumed.** RSDKv4 picks text
+scripts or bytecode per scene with
+`if (bytecodeExists && !forceUseScripts)` (`Scene.cpp:675`, and again at 787).
+`bytecodeExists` is simply whether `Bytecode/GlobalCode.bin` is present in the
+data folder. So shipping that file is what turns bytecode on; omitting it leaves
+RSDKv4 on text scripts for everything.
+
+Since Sonic 1 and Sonic 2 already ship text scripts, the answer is to ship **no**
+bytecode and emit Sonic CD as text, so all three games run through the same
+script path. That is the whole of Stage 5, and it is now unblocked.
 
 ## Verification standard
 
