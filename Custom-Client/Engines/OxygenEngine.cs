@@ -99,23 +99,28 @@ namespace SonicHybridUltimate.Engines
                 var result = NativeMethods.InitOxygenEngine(scriptPath);
                 _isInitialized = (result == 1);
 
+                // Query stub mode unconditionally. It used to be checked only when
+                // init reported success, but the native stub path is now a failure
+                // result - so gating it here meant a stubbed engine looked identical
+                // to a missing DLL.
+                try
+                {
+                    _isStubMode = NativeMethods.IsOxygenStubMode() == 1;
+                }
+                catch (DllNotFoundException)
+                {
+                    // Native library not available at all - nothing can run
+                    _isInitialized = false;
+                    _isStubMode = true;
+                }
+                catch (EntryPointNotFoundException)
+                {
+                    // Function not exported, assume non-stub mode
+                    _isStubMode = false;
+                }
+
                 if (_isInitialized)
                 {
-                    // Check if we're in stub mode
-                    try
-                    {
-                        _isStubMode = NativeMethods.IsOxygenStubMode() == 1;
-                    }
-                    catch (DllNotFoundException)
-                    {
-                        // Native library not available, assume stub mode
-                        _isStubMode = false;
-                    }
-                    catch (EntryPointNotFoundException)
-                    {
-                        // Function not exported, assume non-stub mode
-                        _isStubMode = false;
-                    }
                     
                     _currentScript = scriptPath;
                     

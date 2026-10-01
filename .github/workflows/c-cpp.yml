@@ -25,7 +25,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '6.0.x'
+        dotnet-version: '8.0.x'
 
     - name: Install dependencies
       run: |
@@ -38,10 +38,15 @@ jobs:
         chmod +x build_all.sh
         ./build_all.sh
 
+    - name: Verify (run_tests.sh)
+      run: |
+        chmod +x run_tests.sh
+        KEEP_BUILD=1 ./run_tests.sh
+
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
         name: sonic-hybrid-ultimate
         path: |
-          Hybrid-RSDK-Main/build/bin/
+          build/bin/
           Custom-Client/bin/

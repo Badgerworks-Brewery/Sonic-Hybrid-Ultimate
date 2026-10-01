@@ -1,7 +1,11 @@
 #ifndef STATE_MANAGER_H
 #define STATE_MANAGER_H
 
-#include "../RSDKV4/RSDKV4/RetroEngine.hpp"
+// The engine headers come from the RSDKV4-Decompilation submodule, which is what
+// CMake actually compiles. They previously pointed at the stale in-tree engine copy
+// (deleted) whose headers were placeholders - an ODR violation, since the hybrid
+// libraries linked against the submodule while declaring against that other copy.
+#include "../RSDKV4-Decompilation/RSDKv4/RetroEngine.hpp"
 #include <vector>
 #include <string>
 

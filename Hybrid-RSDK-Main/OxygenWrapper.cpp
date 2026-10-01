@@ -160,6 +160,13 @@ static const char* FindExternalExecutable() {
 }
 
 EXPORT int InitOxygenEngine(const char* scriptPath) {
+    // Reset state first: these are file-scope flags, so a previous successful or
+    // stubbed attempt would otherwise leak into an attempt that bails out early
+    // (bad path, missing ROM) and mislabel it as "stubbed".
+    oxygenInitialized   = false;
+    oxygenUsingStubMode = false;
+    romPath[0]          = '\0';
+
     if (!scriptPath || strlen(scriptPath) == 0) {
         LogMessage("OxygenEngine: No ROM path provided\n");
         return 0;
@@ -269,14 +276,21 @@ EXPORT int InitOxygenEngine(const char* scriptPath) {
     LogMessage("OxygenEngine: OPTION 2 - Set Environment Variable:\n");
     LogMessage("OxygenEngine:   Set SONIC3AIR_PATH to your installation\n");
     LogMessage("OxygenEngine: \n");
-    LogMessage("OxygenEngine: ROM file is ready: %s\n", romPath);
+    if (romPath[0])
+        LogMessage("OxygenEngine: ROM located at: %s\n", romPath);
+    else
+        LogMessage("OxygenEngine: No usable ROM path was resolved.\n");
+    LogMessage("OxygenEngine: NOT starting. Sonic 3 & Knuckles is unavailable.\n");
     LogMessage("OxygenEngine: ============================================\n");
-    
-    // In stub mode, we mark as "initialized" so the UI works, but running will be limited
-    oxygenInitialized = true;
-    oxygenUsingStubMode = true;
-    
-    return 1; // Return success to allow graceful handling in the C# layer
+
+    // NB: stub mode is NOT success. Returning 1 here made the C# layer set
+    // _isInitialized = true, so the UI reported Sonic 3 & Knuckles as ready while
+    // nothing could ever run. Report failure, but keep oxygenUsingStubMode set so
+    // the caller can tell "deliberately stubbed" apart from "broken".
+    oxygenInitialized   = false; // nothing is running
+    oxygenUsingStubMode = true;  // but this is a known, deliberate stub
+
+    return 0; // failure: report honestly
 }
 
 EXPORT void UpdateOxygenEngine() {
