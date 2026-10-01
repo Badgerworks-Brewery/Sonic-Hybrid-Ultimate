@@ -70,6 +70,17 @@ public sealed class RsdkV3ScriptReader
     public const uint NoSubroutine = 0x3FFFF;
 
     /// <summary>
+    /// Raw word count of the opcode stream, which is what the base offsets are
+    /// measured in. This is NOT <see cref="ScriptCode"/>'s count: that is the
+    /// number of decoded instructions, and each instruction spans several words
+    /// (opcode plus tagged operands), so the two differ by roughly 6x.
+    /// </summary>
+    public int WordCount { get; private set; }
+
+    /// <summary>Raw word count of the jump table.</summary>
+    public int JumpWordCount { get; private set; }
+
+    /// <summary>
     /// Global <c>scriptCode[]</c> index at which this file's code begins.
     /// </summary>
     /// <remarks>
@@ -104,7 +115,13 @@ public sealed class RsdkV3ScriptReader
 
     public sealed record FunctionEntry(string Name, uint ScriptCodePtr, uint JumpTablePtr);
 
-    private static readonly string[]? VariableNames = BuildVariableNames();
+    /// <summary>RSDKv4 name for each RSDKv3 variable index; null where none exists.</summary>
+    private static readonly string?[] VariableNames = RsdkV3Variables.V4Names;
+
+    private static string EnumName(int varId)
+        => varId >= 0 && varId < RsdkV3Variables.EnumNames.Length
+            ? RsdkV3Variables.EnumNames[varId]
+            : "index " + varId;
 
     /// <summary>Opcode name and operand count, in opcode order.</summary>
     private static readonly (string Name, int Operands)[] Opcodes = BuildOpcodeTable();
@@ -120,7 +137,9 @@ public sealed class RsdkV3ScriptReader
     {
         int pos = 0;
         var code = ReadBlocks(data, ref pos, (int)ReadU32(data, ref pos));
+        WordCount = code.Count;
         JumpTable.AddRange(ReadBlocks(data, ref pos, (int)ReadU32(data, ref pos)));
+        JumpWordCount = JumpTable.Count;
 
         if (pos + 2 > data.Length)
             throw new InvalidDataException($"{SourceName}: no script table (file is {data.Length} bytes)");
@@ -264,10 +283,15 @@ public sealed class RsdkV3ScriptReader
                 }
 
                 var varId = Read(code, ref pc);
+                // Names come from the table generated off the engine source. A null
+                // entry means RSDKv3 exposes something RSDKv4 has no equivalent for;
+                // those are labelled loudly instead of being given a wrong name.
                 var varName = varId >= 0 && varId < VariableNames.Length
                     ? VariableNames[varId]
-                    : $"var{varId}";
-                var full = varName + index;
+                    : null;
+                var full = varName is null
+                    ? $"/*UNMAPPED v3 {EnumName(varId)}*/tempValue0{index}"
+                    : varName + index;
                 return new Operand { Kind = "var", Text = full, IntValue = varId };
             }
 
@@ -358,72 +382,6 @@ public sealed class RsdkV3ScriptReader
         ("LoadOnlineMenu",1),("EngineCallback",1),("HapticEffect",4),
     };
 
-    private static string[]? BuildVariableNames()
-    {
-        // The RSDKv3 ScrVariable enum has 233 members. The first 59 are the
-        // object/player properties; beyond that are stage, player-control and
-        // global variables. Names beyond the first block are not yet mapped -
-        // they are surfaced as varNNN so nothing is silently mislabelled.
-        var known = new (string, string)[]
-        {
-            ("VAR_TEMPVALUE0","temp0"),("VAR_TEMPVALUE1","temp1"),("VAR_TEMPVALUE2","temp2"),
-            ("VAR_TEMPVALUE3","temp3"),("VAR_TEMPVALUE4","temp4"),("VAR_TEMPVALUE5","temp5"),
-            ("VAR_TEMPVALUE6","temp6"),("VAR_TEMPVALUE7","temp7"),
-            ("VAR_CHECKRESULT","checkResult"),("VAR_ARRAYPOS0","arrayPos0"),("VAR_ARRAYPOS1","arrayPos1"),
-            ("VAR_GLOBAL","global"),
-            ("VAR_OBJECTENTITYNO","object.entityPos"),("VAR_OBJECTTYPE","object.type"),
-            ("VAR_OBJECTPROPERTYVALUE","object.propertyValue"),("VAR_OBJECTXPOS","object.xPos"),
-            ("VAR_OBJECTYPOS","object.yPos"),("VAR_OBJECTIXPOS","object.ixPos"),
-            ("VAR_OBJECTIYPOS","object.iyPos"),("VAR_OBJECTSTATE","object.state"),
-            ("VAR_OBJECTROTATION","object.rotation"),("VAR_OBJECTSCALE","object.scale"),
-            ("VAR_OBJECTPRIORITY","object.priority"),("VAR_OBJECTDRAWORDER","object.drawOrder"),
-            ("VAR_OBJECTDIRECTION","object.direction"),("VAR_OBJECTINKEFFECT","object.inkEffect"),
-            ("VAR_OBJECTALPHA","object.alpha"),("VAR_OBJECTFRAME","object.frame"),
-            ("VAR_OBJECTANIMATION","object.animation"),("VAR_OBJECTPREVANIMATION","object.prevAnimation"),
-            ("VAR_OBJECTANIMATIONSPEED","object.animationSpeed"),
-            ("VAR_OBJECTANIMATIONTIMER","object.animationTimer"),
-            ("VAR_OBJECTVALUE0","object.value0"),("VAR_OBJECTVALUE1","object.value1"),
-            ("VAR_OBJECTVALUE2","object.value2"),("VAR_OBJECTVALUE3","object.value3"),
-            ("VAR_OBJECTVALUE4","object.value4"),("VAR_OBJECTVALUE5","object.value5"),
-            ("VAR_OBJECTVALUE6","object.value6"),("VAR_OBJECTVALUE7","object.value7"),
-            ("VAR_OBJECTOUTOFBOUNDS","object.outOfBounds"),("VAR_OBJECTPUSHABLE","object.pushable"),
-            ("VAR_PLAYERTIMER","player.timer"),("VAR_PLAYEROBJECTINTERACTION","object.interaction"),
-            ("VAR_PLAYERCHARID","player.charID"),("VAR_PLAYERTILECOLLISIONS","player.tileCollisions"),
-            ("VAR_PLAYERGRAVITY","player.gravity"),("VAR_PLAYERANGULARPOS","player.anglePos"),
-            ("VAR_PLAYERSPEED","player.speed"),("VAR_PLAYERXVELOCITY","player.xVelocity"),
-            ("VAR_PLAYERYVELOCITY","player.yVelocity"),
-        };
 
-        var total = 233;
-        var names = new string[total];
-        for (var i = 0; i < total; ++i)
-            names[i] = "var" + i;
-        foreach (var (key, nice) in known)
-        {
-            var idx = Array.IndexOf(BuildEnumOrder(), key);
-            if (idx >= 0 && idx < total)
-                names[idx] = nice;
-        }
-        return names;
-    }
-
-    /// <summary>ScrVariable enum member names, in declaration order.</summary>
-    private static string[] BuildEnumOrder() => new[]
-    {
-        "VAR_TEMPVALUE0","VAR_TEMPVALUE1","VAR_TEMPVALUE2","VAR_TEMPVALUE3","VAR_TEMPVALUE4",
-        "VAR_TEMPVALUE5","VAR_TEMPVALUE6","VAR_TEMPVALUE7","VAR_CHECKRESULT","VAR_ARRAYPOS0",
-        "VAR_ARRAYPOS1","VAR_GLOBAL","VAR_OBJECTENTITYNO","VAR_OBJECTTYPE","VAR_OBJECTPROPERTYVALUE",
-        "VAR_OBJECTXPOS","VAR_OBJECTYPOS","VAR_OBJECTIXPOS","VAR_OBJECTIYPOS","VAR_OBJECTSTATE",
-        "VAR_OBJECTROTATION","VAR_OBJECTSCALE","VAR_OBJECTPRIORITY","VAR_OBJECTDRAWORDER",
-        "VAR_OBJECTDIRECTION","VAR_OBJECTINKEFFECT","VAR_OBJECTALPHA","VAR_OBJECTFRAME",
-        "VAR_OBJECTANIMATION","VAR_OBJECTPREVANIMATION","VAR_OBJECTANIMATIONSPEED",
-        "VAR_OBJECTANIMATIONTIMER","VAR_OBJECTVALUE0","VAR_OBJECTVALUE1","VAR_OBJECTVALUE2",
-        "VAR_OBJECTVALUE3","VAR_OBJECTVALUE4","VAR_OBJECTVALUE5","VAR_OBJECTVALUE6","VAR_OBJECTVALUE7",
-        "VAR_OBJECTOUTOFBOUNDS","VAR_OBJECTPUSHABLE","VAR_OBJECTBUBBLE","VAR_OBJECTHURT",
-        "VAR_OBJECTCHARID","VAR_OBJECTABILITY","VAR_OBJECTRESPAWNTIMER","VAR_PLAYERCHARID",
-        "VAR_PLAYERCONTROLMODE","VAR_PLAYERTILECOLLISIONS","VAR_PLAYERGRAVITY","VAR_PLAYERANGLEPOS",
-        "VAR_PLAYERGROUNDID","VAR_PLAYERDROPSHADOW","VAR_PLAYERINVULNERABILITYTIMER","VAR_PLAYERSPEED",
-        "VAR_PLAYERJUMPHEIGHT","VAR_PLAYERCONTROLLOCK","VAR_PLAYERCAMERACONTROL","VAR_PLAYERDIRECTION",
-        "VAR_PLAYERXVELOCITY","VAR_PLAYERYVELOCITY","VAR_PLAYERXSPEED","VAR_PLAYERYSPEED", };
 
 }

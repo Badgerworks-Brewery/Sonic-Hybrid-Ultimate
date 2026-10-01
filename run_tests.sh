@@ -54,6 +54,17 @@ check "hybrid headers include the compiled engine, not a stale copy" \
 check "no source references the deleted tree" \
     bash -c '! git grep -q "RSDKV4/RSDKV4" -- "*.cpp" "*.hpp" "*.txt" "*.cs" "*.ps1" "*.bat" 2>/dev/null'
 
+# The bytecode stores variables as an index into RSDKv3's ScrVariable enum. A
+# hand-written copy of that enum once contained 15 members RSDKv3 does not have
+# and drifted out of alignment at index 41, which mislabelled every variable
+# from there on without any error. The table is now generated from the engine
+# source, and this test fails if it is stale.
+check "generated v3 variable table is in sync with the engine sources" \
+    bash -c 'python scripts/gen_rsdkv3_variables.py | grep -q "^up to date:"'
+
+check "v3 variable mapping names only variables RSDKv4 defines" \
+    bash -c 'python scripts/gen_rsdkv3_variables.py >/dev/null'
+
 # ---------------------------------------------------------------------------
 head "2. Toolchain targets"
 
