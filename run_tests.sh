@@ -123,7 +123,24 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-head "5. Packer byte order"
+head "5. Unified stage list reachability"
+
+# The whole premise of the project is one continuous game. Boot the engine
+# directly into stages from all three games and confirm each loads from the
+# unified pack. This is what proves S1 + CD + S2 are navigable as one game
+# rather than three separate launches.
+if [ -f "build/bin/Release/rsdkv4.exe" ] || [ -f "build/bin/rsdkv4" ]; then
+    if python scripts/probe_stages.py; then
+        ok "stages from all three games load from the unified Data.rsdk"
+    else
+        bad "at least one probed stage failed to load from the unified pack"
+    fi
+else
+    printf '  SKIP  engine binary not built\n'
+fi
+
+# ---------------------------------------------------------------------------
+head "6. Packer byte order"
 
 # The engine rebuilds each hash word as (b0<<24)|(b1<<16)|(b2<<8)|b3, so archives
 # store little-endian words. Writing raw MD5 digest bytes produces an archive
@@ -133,7 +150,7 @@ check "packer byte-swaps each MD5 word" \
 
 # ---------------------------------------------------------------------------
 if [ "${KEEP_BUILD:-0}" != "1" ]; then
-    head "6. Full build"
+    head "7. Full build"
     if command -v cmake >/dev/null 2>&1; then
         if cmake --build build --config Release >/dev/null 2>&1; then
             ok "cmake --build"
