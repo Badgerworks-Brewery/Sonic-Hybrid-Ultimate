@@ -1,108 +1,103 @@
 #!/usr/bin/env python3
-"""Check that every shipped object script declares an RSDKv4 entry point.
+"""Check that every stage in the hybrid has object logic that will actually run.
 
-RSDKv4 runs an object through exactly three entry points. On startup they all
-point at a sentinel (Script.cpp:3318-3325), and only two things replace it:
+RSDKv4 runs an object through exactly three entry points, set only by:
 
-  * text parsing, when the script contains `eventObjectUpdate`,
-    `eventObjectDraw` or `eventObjectStartup`  (Script.cpp:2848-2864)
-  * loading bytecode                            (Script.cpp:3191-3209)
+  * text parsing, on `eventObjectUpdate` / `eventObjectDraw` / `eventObjectStartup`
+    (Script.cpp:2848-2864)
+  * loaded bytecode (Script.cpp:3191-3209)
 
-Object.cpp guards each call with `scriptCode[...scriptCodePtr] > 0`, so a script
-with none of those markers leaves the object with no behaviour at all - it will
-spawn, draw nothing and do nothing, and the engine will not complain.
+On startup all three point at a sentinel (Script.cpp:3318-3325) and Object.cpp
+guards every call with `scriptCode[...scriptCodePtr] > 0`, so an object with
+neither has no behaviour and the engine reports nothing.
 
-The `function <Name> ... end function` dialect used by the tracked Sonic 1 and
-Sonic 2 scripts is not an entry point. Those functions are only reachable through
-CallFunction, so a stage built from them loads its background and nothing else.
+Which path is taken is decided per stage load by whether
+`Bytecode/GlobalCode.bin` resolves (Scene.cpp:675). That is one global file, so
+it is all-or-nothing:
 
-This check exists because that is the exact symptom the project shipped with, and
-nothing in the build reported it: the scripts parse cleanly, the pack resolves,
-and every stage still "loads".
+  * absent  -> every stage loads text scripts
+  * present -> every stage loads `Bytecode/<stage folder>.bin`
+
+So the question is not "do the text scripts parse" but "does every stage resolve
+to script bytecode". A stage with no bytecode file while the bytecode path is
+active gets no object logic at all - the same silent failure.
 """
 
 import os
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SCRIPT_DIRS = [os.path.join(ROOT, "Hybrid-RSDK-Main", "sonic-hybrid", "Scripts")]
+DATA = os.path.join(ROOT, "Hybrid-RSDK-Main", "sonic-hybrid", "Data")
+BYTECODE = os.path.join(DATA, "Bytecode")
+STAGES = os.path.join(DATA, "Stages")
+MARKERS = ("eventobjectupdate", "eventobjectdraw", "eventobjectstartup")
 
-MARKERS = ("eventObjectUpdate", "eventObjectDraw", "eventObjectStartup")
 
-
-def report_bytecode():
-    """Report whether the pack could ever take the bytecode path.
-
-    RSDKv4 keys the text/bytecode choice on whether Bytecode/GlobalCode.bin
-    resolves (Scene.cpp:675). It is a single global file, so per-stage bytecode
-    without it changes nothing - the text path is still taken, and that is the
-    path with no entry points.
-    """
-    root = os.path.join(ROOT, "Hybrid-RSDK-Main", "sonic-hybrid")
-    shipped = os.path.join(root, "Data", "Bytecode", "GlobalCode.bin")
-    print()
-    print("bytecode path available: %s" % ("yes" if os.path.exists(shipped) else "no"))
-    if not os.path.exists(shipped):
-        print("  Data/Bytecode/GlobalCode.bin is absent, so every stage loads the")
-        print("  text scripts above - which have no entry points.")
-
-    for game in ("sonic1", "sonic2"):
-        d = os.path.join(ROOT, "Hybrid-RSDK-Main", "rsdk-source-data", game, "Bytecode")
-        if not os.path.isdir(d):
-            continue
-        names = sorted(n for n in os.listdir(d) if n.lower().endswith(".bin"))
-        print("  %s/Bytecode: %d .bin files available but not shipped" % (game, len(names)))
+def text_script_entrypoints():
+    """Count text scripts that declare an RSDKv4 entry point."""
+    scripts = os.path.join(ROOT, "Hybrid-RSDK-Main", "sonic-hybrid", "Scripts")
+    total = with_entry = 0
+    for dirpath, _dirs, files in os.walk(scripts):
+        for name in files:
+            if not name.lower().endswith(".txt"):
+                continue
+            total += 1
+            path = os.path.join(dirpath, name)
+            try:
+                with open(path, "r", encoding="utf-8", errors="replace") as fh:
+                    text = fh.read().lower()
+            except OSError:
+                continue
+            if any(m in text for m in MARKERS):
+                with_entry += 1
+    return total, with_entry
 
 
 def main():
-    files = []
-    for base in SCRIPT_DIRS:
-        for dirpath, _dirnames, filenames in os.walk(base):
-            for name in filenames:
-                if name.lower().endswith(".txt"):
-                    files.append(os.path.join(dirpath, name))
+    bytecode_active = os.path.exists(os.path.join(BYTECODE, "GlobalCode.bin"))
 
-    if not files:
-        sys.stderr.write("no script files found; check the path\n")
+    total_txt, with_entry = text_script_entrypoints()
+    print("text scripts: %d, declaring an entry point: %d" % (total_txt, with_entry))
+    print("bytecode path: %s" % ("active" if bytecode_active else "inactive"))
+
+    stages = []
+    if os.path.isdir(STAGES):
+        stages = sorted(n for n in os.listdir(STAGES)
+                        if os.path.isdir(os.path.join(STAGES, n)))
+
+    if not bytecode_active:
+        # Text path. Every stage depends on the text scripts having entry points.
+        print()
+        print("FAIL: no Data/Bytecode/GlobalCode.bin, so every stage loads text")
+        print("      scripts, and %d of %d declare an entry point." % (with_entry, total_txt))
         return 1
 
-    with_entry = []
-    without = []
+    print()
+    if with_entry == 0:
+        print("note: the text scripts are inert - they are not loaded while the")
+        print("      bytecode path is active, so their missing entry points do not")
+        print("      matter right now.")
 
-    for path in files:
-        try:
-            with open(path, "r", encoding="utf-8", errors="replace") as fh:
-                text = fh.read()
-        except OSError as exc:
-            sys.stderr.write("could not read %s: %s\n" % (path, exc))
-            return 1
+    missing = []
+    for stage in stages:
+        if not os.path.exists(os.path.join(BYTECODE, stage + ".bin")):
+            missing.append(stage)
 
-        low = text.lower()
-        if any(m in low for m in MARKERS):
-            with_entry.append(path)
-        else:
-            without.append(path)
+    have = len(stages) - len(missing)
+    print("stages: %d, with bytecode: %d, without: %d" % (len(stages), have, len(missing)))
 
-    rel = lambda p: os.path.relpath(p, ROOT)
-    print("object scripts: %d" % len(files))
-    print("  with an RSDKv4 entry point : %d" % len(with_entry))
-    print("  without one                : %d" % len(without))
-    report_bytecode()
-
-    if not without:
-        print("OK: every script declares eventObjectUpdate/Draw/Startup")
+    if not missing:
+        print("OK: every stage resolves to script bytecode")
         return 0
 
     print()
-    print("FAIL: %d script(s) declare no entry point, so the engine never runs" % len(without))
-    print("      them. Objects spawn with no Main, Draw or Startup. See")
-    print("      docs/rsdkv3-decompiler.md, 'Why no object logic runs in ANY of")
-    print("      the three games'.")
+    print("FAIL: %d stage(s) have no bytecode while the bytecode path is active," % len(missing))
+    print("      so their objects spawn with no Main, Draw or Startup. These stages")
+    print("      load their background and nothing else. See docs/rsdkv3-decompiler.md,")
+    print("      'Why no object logic runs in ANY of the three games'.")
     print()
-    for path in sorted(without)[:10]:
-        print("      " + rel(path))
-    if len(without) > 10:
-        print("      ... and %d more" % (len(without) - 10))
+    for stage in missing:
+        print("      " + stage)
     return 1
 
 

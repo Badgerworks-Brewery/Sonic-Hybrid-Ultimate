@@ -96,10 +96,17 @@ try
     // Mount points matter: the engine asks for "Data/Game/GameConfig.bin" and
     // "Data/Scripts/GHZ/GHZSetup.txt", then lowercases before hashing. Both sources
     // therefore have to land under the "data/" prefix or every lookup silently misses.
+    //
+    // Bytecode is the exception: RSDKv4 asks for "Bytecode/GlobalCode.bin" and
+    // "Bytecode/<stage folder>.bin" (Script.cpp:3075), with no Data/ prefix. It
+    // therefore needs its own "bytecode/" mount, or the engine logs
+    // "Couldn't load file" and silently falls back to the text scripts - which
+    // have no entry points, so objects spawn with no behaviour at all.
     Console.WriteLine("Packing data archive...");
     SonicHybridRsdk.Generator.RsdkPacker.Pack(
         DestinationData + "Data.rsdk",
         (DestinationData + "Data", "data"),
+        (DestinationData + "Data/Bytecode", "bytecode"),
         (DestinationData + "Scripts", "data/scripts"));
     Console.WriteLine("✓ Data archive packed");
     Console.WriteLine();
@@ -110,6 +117,16 @@ try
     // Fail loudly if the pack is missing anything the engine asks for by name.
     SonicHybridRsdk.Generator.RsdkPacker.Verify(
         DestinationData + "Data.rsdk",
+        // Bytecode is what actually runs the objects. RSDKv4 takes the bytecode
+        // path only if GlobalCode.bin resolves (Scene.cpp:675), and then looks up
+        // Bytecode/<stage folder>.bin (Script.cpp:3075). If any of these are
+        // missing the affected stage loads with no object logic and says nothing.
+        "data/bytecode/globalcode.bin",
+        "data/bytecode/zoneehz.bin",
+        "data/bytecode/zonecpz.bin",
+        "data/bytecode/zonearz.bin",
+        "data/bytecode/zonescz.bin",
+        "data/bytecode/zonedez.bin",
         "data/game/gameconfig.bin",
         "data/scripts/global/stagesetup.txt",
         "data/scripts/ghz/ghzsetup.txt",

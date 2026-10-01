@@ -291,6 +291,102 @@ namespace SonicHybridRsdk.Generator
                 UseStageV4(context1, StageType.StagesSpecial, "SPECIAL STAGE", i, "Special", "Special1");
 
             Create(Path.Combine(destinationDataRsdk, "Data/Game/GameConfig.bin"), sonicHybridConfig.Write);
+
+            // RSDKv4 runs an object only through eventObjectUpdate/Draw/Startup
+            // (Script.cpp:2848-2864) or through loaded bytecode
+            // (Script.cpp:3191-3209). The tracked Sonic 1/2 text scripts use
+            // neither, so without this the engine parses them and calls nothing.
+            CopyBytecodeV4(context2, destinationDataRsdk, Sonic2BytecodeFolders);
+        }
+
+        /// <summary>
+        /// Sonic 2 bytecode file name -> the folder name the merged stage list
+        /// uses for that stage. RSDKv4 resolves bytecode as
+        /// <c>Bytecode/&lt;stage folder&gt;.bin</c> (Script.cpp:3075-3085), so the
+        /// files have to be renamed to match, not just copied.
+        /// </summary>
+        /// <remarks>
+        /// GlobalCode.bin is absent from this list on purpose: it keeps its own
+        /// name, and it is the file whose presence decides whether the engine
+        /// takes the bytecode path at all.
+        /// </remarks>
+        private static readonly (string From, string To)[] Sonic2BytecodeFolders =
+        {
+            ("Zone01", "ZoneEHZ"),  ("Zone02", "ZoneCPZ"), ("Zone03", "ZoneARZ"),
+            ("Zone04", "ZoneCNZ"),  ("Zone05", "ZoneHTZ"), ("Zone06", "ZoneMCZ"),
+            ("Zone07", "ZoneOOZ"),  ("Zone08", "ZoneHPZ"), ("Zone09", "ZoneMPZ"),
+            ("Zone10", "ZoneSCZ"),  ("Zone11", "ZoneWFZ"), ("Zone12", "ZoneDEZ"),
+            ("Title", "TitleS2"),   ("LSelect", "LSelectS2"),
+            ("Credits", "CreditsS2"), ("Ending", "EndingS2"),
+            ("Continue", "ContinueS2"), ("Special", "Special2"),
+        };
+
+        /// <summary>
+        /// Copies a game's RSDKv4 bytecode into the hybrid, renaming the stage
+        /// files to the merged stage list's folder names.
+        /// </summary>
+        /// <remarks>
+        /// Only one game's bytecode can be shipped at a time. RSDKv4 keys the
+        /// text/bytecode choice on whether <c>Bytecode/GlobalCode.bin</c>
+        /// resolves (Scene.cpp:675) - a single global file - and loads one
+        /// GlobalCode for the whole process. Sonic 1 and Sonic 2 each ship their
+        /// own, and they disagree about what every object type is, so merging
+        /// them means rewriting each container's absolute pointers. Sonic 2 goes
+        /// first because it is the larger of the two and needs no merge.
+        /// </remarks>
+        private static void CopyBytecodeV4(
+            Context context, string destinationDataRsdk,
+            (string From, string To)[] stageFolders)
+        {
+            // Context.SrcPath points at <game>/Data; the bytecode sits beside it, in
+            // <game>/Bytecode.
+            var gameRoot = Path.GetDirectoryName(context.SrcPath.TrimEnd(
+                Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+            var srcByteCode = gameRoot == null
+                ? null
+                : Path.Combine(gameRoot, "Bytecode");
+            if (srcByteCode == null || !Directory.Exists(srcByteCode))
+            {
+                Console.WriteLine("  no Bytecode folder - the engine will fall back to text scripts");
+                return;
+            }
+
+            var dstByteCode = Path.Combine(destinationDataRsdk, "Data", "Bytecode");
+            Directory.CreateDirectory(dstByteCode);
+
+            var renamed = stageFolders.ToDictionary(x => x.From + ".bin", x => x.To + ".bin");
+            int copied = 0, renamedCount = 0, missing = 0;
+
+            foreach (var source in Directory.GetFiles(srcByteCode, "*.bin"))
+            {
+                var stem = Path.GetFileNameWithoutExtension(source);
+                if (renamed.TryGetValue(Path.GetFileName(source), out var mapped))
+                {
+                    File.Copy(source, Path.Combine(dstByteCode, mapped), true);
+                    ++renamedCount;
+                }
+                else
+                {
+                    File.Copy(source, Path.Combine(dstByteCode, Path.GetFileName(source)), true);
+                    ++copied;
+                }
+            }
+
+            // Every zone the merged stage list points at must resolve, or that
+            // stage silently gets no object scripts at all.
+            foreach (var (_, to) in stageFolders)
+            {
+                var path = Path.Combine(dstByteCode, to + ".bin");
+                if (!File.Exists(path))
+                {
+                    Console.WriteLine($"  WARNING: {to}.bin was not produced");
+                    ++missing;
+                }
+            }
+
+            Console.WriteLine($"  bytecode: {renamedCount + copied} files " +
+                              $"({renamedCount} zone files renamed)" +
+                              (missing > 0 ? $", {missing} zones MISSING" : ""));
         }
 
         private static void UseStageV4(
