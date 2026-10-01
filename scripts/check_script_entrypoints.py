@@ -30,6 +30,30 @@ SCRIPT_DIRS = [os.path.join(ROOT, "Hybrid-RSDK-Main", "sonic-hybrid", "Scripts")
 MARKERS = ("eventObjectUpdate", "eventObjectDraw", "eventObjectStartup")
 
 
+def report_bytecode():
+    """Report whether the pack could ever take the bytecode path.
+
+    RSDKv4 keys the text/bytecode choice on whether Bytecode/GlobalCode.bin
+    resolves (Scene.cpp:675). It is a single global file, so per-stage bytecode
+    without it changes nothing - the text path is still taken, and that is the
+    path with no entry points.
+    """
+    root = os.path.join(ROOT, "Hybrid-RSDK-Main", "sonic-hybrid")
+    shipped = os.path.join(root, "Data", "Bytecode", "GlobalCode.bin")
+    print()
+    print("bytecode path available: %s" % ("yes" if os.path.exists(shipped) else "no"))
+    if not os.path.exists(shipped):
+        print("  Data/Bytecode/GlobalCode.bin is absent, so every stage loads the")
+        print("  text scripts above - which have no entry points.")
+
+    for game in ("sonic1", "sonic2"):
+        d = os.path.join(ROOT, "Hybrid-RSDK-Main", "rsdk-source-data", game, "Bytecode")
+        if not os.path.isdir(d):
+            continue
+        names = sorted(n for n in os.listdir(d) if n.lower().endswith(".bin"))
+        print("  %s/Bytecode: %d .bin files available but not shipped" % (game, len(names)))
+
+
 def main():
     files = []
     for base in SCRIPT_DIRS:
@@ -63,6 +87,7 @@ def main():
     print("object scripts: %d" % len(files))
     print("  with an RSDKv4 entry point : %d" % len(with_entry))
     print("  without one                : %d" % len(without))
+    report_bytecode()
 
     if not without:
         print("OK: every script declares eventObjectUpdate/Draw/Startup")

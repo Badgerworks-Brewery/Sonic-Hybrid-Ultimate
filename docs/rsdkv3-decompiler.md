@@ -255,6 +255,47 @@ absent every stage uses text. That leaves two coherent routes:
 Route 1 is less work, because S1/S2 already have valid bytecode. It does mean
 writing a compiler rather than a decompiler.
 
+### Why the S1/S2 bytecode cannot simply be copied in
+
+Worth stating precisely, because the obvious fix is a trap.
+
+RSDKv4 resolves bytecode per stage as `Bytecode/<folder>.bin`, where `<folder>`
+is the stage's `Path` from the merged stage list (`Script.cpp:3075-3085`), plus
+`Bytecode/GlobalCode.bin` for global objects. The per-stage files could be
+renamed into place with no trouble:
+
+```
+sonic1/Bytecode/Zone01.bin  ->  ZoneGHZ.bin
+sonic2/Bytecode/Zone01.bin  ->  ZoneEHZ.bin
+```
+
+The collisions are all in the non-stage files, which have the *same names* in both
+games and each serve a different game:
+
+```
+Continue.bin  Credits.bin  Ending.bin  GlobalCode.bin
+LSelect.bin   Special.bin  Title.bin
+```
+
+`GlobalCode.bin` is the hard one. It holds the global object scripts indexed by
+object type, and RSDKv4 loads exactly one of them for the whole process. Sonic
+1's is 73,448 bytes and Sonic 2's is 88,160, and they disagree about what each
+object type is. Concatenating is not valid: the container is
+`scriptCode | jumpTable | scriptCount | per-script pointers`, and the pointers are
+absolute indices into the shared arrays, so merging needs the indices remapped.
+
+There is also no partial fix. The text/bytecode choice keys on whether
+`Bytecode/GlobalCode.bin` resolves, which is a single global file: if it is
+absent every stage uses the text scripts, and if it is present every stage uses
+bytecode. Shipping per-stage bytecode without a merged `GlobalCode.bin` would
+change nothing, because the text path would still be taken - and the text path is
+the one with no entry points.
+
+So the bytecode route needs a merger that concatenates two `GlobalCode.bin`
+containers and rewrites every pointer in the later one. That is the same kind of
+job as the compiler above: it needs the container format and the object-type
+table understood well enough to renumber them.
+
 ## Verification standard
 
 A stage only counts as working when it has been **run** and objects are seen
