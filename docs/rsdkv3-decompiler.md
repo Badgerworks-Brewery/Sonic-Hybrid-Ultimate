@@ -183,6 +183,78 @@ Since Sonic 1 and Sonic 2 already ship text scripts, the answer is to ship **no*
 bytecode and emit Sonic CD as text, so all three games run through the same
 script path. That is the whole of Stage 5, and it is now unblocked.
 
+## Why no object logic runs in ANY of the three games
+
+Found while wiring up Stage 5. This is not specific to Sonic CD and it predates
+the decompiler work.
+
+RSDKv4 runs an object through exactly three entry points. On startup every
+object's pointers are set to a sentinel:
+
+```
+Script.cpp:3318-3325   eventUpdate / eventDraw / eventStartup = SCRIPTCODE_COUNT - 1
+```
+
+Only two things ever overwrite that sentinel:
+
+```
+Script.cpp:2848/2856/2864   text parsing, on `eventObjectUpdate`,
+                            `eventObjectDraw`, `eventObjectStartup`
+Script.cpp:3191/3200/3209   loading bytecode
+```
+
+`Object.cpp` then guards every call with `scriptCode[...scriptCodePtr] > 0`, so an
+object whose pointers are still the sentinel has no behaviour whatsoever.
+
+**The tracked S1/S2 text scripts contain none of those markers.** Across all 748
+files:
+
+```
+eventObjectUpdate    0
+eventObjectDraw      0
+eventObjectStartup   0
+function Main        0
+function Draw        0
+function Update      0
+function StartUp     0
+files with no function at all : 319
+```
+
+They use a `function <Name> ... end function` dialect with names like
+`Bridge_DebugDraw`. Those functions are only reachable via `CallFunction`; they
+are not entry points. So the engine parses them, registers the functions, and
+never calls any of them.
+
+The pack does not ship bytecode either. `Build.cs` mounts only `Data/` and
+`Scripts/`, and `rsdk-source-data/sonic1/Bytecode/` and `sonic2/Bytecode/` —
+which contain `GlobalCode.bin`, `Zone01.bin` and the rest, i.e. the real object
+behaviour — are never copied. So `bytecodeExists` is false, RSDKv4 takes the text
+path, and every object ends up with sentinel entry points.
+
+That is the actual cause of the original symptom this project shipped with:
+stages load and draw their background, and nothing else happens. It is not a CD
+problem and not a decompiler problem.
+
+### What this means for the plan
+
+CD is not the odd one out. S1 and S2 have working RSDKv4 bytecode sitting
+un-copied in `rsdk-source-data/*/Bytecode/`; only CD needs converting, and CD's
+bytecode is RSDKv3 format.
+
+RSDKv4 picks bytecode or text **per stage load**, keyed on whether
+`Bytecode/GlobalCode.bin` resolves — a single global file. So the two formats
+cannot be mixed: if that file is present every stage uses bytecode, and if it is
+absent every stage uses text. That leaves two coherent routes:
+
+1. Ship S1/S2 bytecode and convert CD to RSDKv4 **bytecode**, which needs an
+   RSDKv4 script *compiler* (text or RSDKv3 bytecode in, RSDKv4 bytecode out).
+2. Emit everything as **text**, which means S1/S2's behaviour has to be
+   recovered from their bytecode first, since their `.txt` files are not in
+   engine format.
+
+Route 1 is less work, because S1/S2 already have valid bytecode. It does mean
+writing a compiler rather than a decompiler.
+
 ## Verification standard
 
 A stage only counts as working when it has been **run** and objects are seen

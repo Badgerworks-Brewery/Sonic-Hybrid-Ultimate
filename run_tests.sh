@@ -65,6 +65,14 @@ check "generated v3 variable table is in sync with the engine sources" \
 check "v3 variable mapping names only variables RSDKv4 defines" \
     bash -c 'python scripts/gen_rsdkv3_variables.py >/dev/null'
 
+# RSDKv4 only ever runs an object through eventObjectUpdate / eventObjectDraw /
+# eventObjectStartup (Script.cpp:2848-2864) or through loaded bytecode
+# (Script.cpp:3191-3209). An object script with none of those markers keeps the
+# sentinel pointers set at Script.cpp:3318-3325 and is never called at all.
+check "every object script declares an RSDKv4 entry point" \
+    bash -c 'scripts/check_script_entrypoints.py'
+
+
 # ---------------------------------------------------------------------------
 head "2. Toolchain targets"
 
