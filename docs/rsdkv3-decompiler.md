@@ -66,81 +66,115 @@ The reader therefore asserts exact byte consumption, and the build fails if any
 shipped script cannot be read — a silently partial decompiler would reproduce
 the original "loads a background and nothing else" symptom.
 
-## Stage 2 — control flow (specified, not yet implemented)
+## Stage 3 — entry-point resolution (done)
 
-The jump table stores **pairs**. For a conditional at slot `k`:
-
-| Opcode    | Behaviour |
-|-----------|-----------|
-| `IfEqual [k,a,b]`   | if `a != b` jump to `jumpTableStart + jumpTable[k]`; push `k` |
-| `else`              | jump to `jumpTableStart + jumpTable[top + 1]`; pop |
-| `endif`             | pop |
-| `WEqual [k,a,b]`    | if `a != b` jump to `jumpTableStart + jumpTable[k+1]`, else push `k` |
-| `loop`              | jump back to `jumpTableStart + jumpTable[top]` |
-
-So `jumpTable[k]` is the false-branch distance and `jumpTable[k+1]` is the
-loop-back / else distance. Structured `if / else / end if` and
-`while / loop` are recoverable by pattern-matching those opcodes against the
-table rather than by tracing execution.
-
-`switch` / `case` / `break` / `endswitch` and `CallFunction` / `EndFunction`
-come from the function table, which gives each function's script and jump-table
-base pointers.
-
-## Stage 3 — entry-point resolution (root cause found; one bug outstanding)
-
-**Root cause of the "encoded" entry points — confirmed.** They are not encoded.
-The engine keeps a single global `scriptCode[]` array and appends each bytecode
-file to it, resetting only via `ClearScriptData()` (`Script.cpp:2123`).
-`GS000.bin` — the global object code — is loaded first, so every later stage
-file's stored entry points are indices into that shared array rather than into
-their own file.
-
-The numbers confirm it exactly:
+The subroutine entry points are not encoded. The engine keeps a single global
+`scriptCode[]` array and appends each bytecode file to it, resetting only via
+`ClearScriptData()` (`Script.cpp:2123`). `GS000.bin` — the global object code —
+is loaded first, so every later stage file stores indices into that shared array
+rather than into its own file:
 
 ```
 GS000 declared scriptCodeSize : 34554
 RS019 first stored entry point : 34554
 ```
 
-so RS019's local index is `stored - 34554`. `RsdkV3ScriptReader` now exposes
-`ScriptCodeBase` / `JumpTableBase` and `Resolve()` for this, and `0x3FFFF` is
-recognised as the "no such subroutine" sentinel.
+`RsdkV3ScriptReader` carries `ScriptCodeBase` / `JumpTableBase` and `Resolve()`,
+converts stored global pointers to local indices, and treats `0x3FFFF` as the
+"no such subroutine" sentinel.
 
-**Outstanding bug.** After this change, resolving entry points against a base of
-5833 rather than 34554 leaves every pointer out of range, and GS000 itself
-decodes to 5833 code words in C# when its header declares 34554. An independent
-Python decode of the same bytes yields the full 34554 words and lands at the
-correct offset, so the format is right and the **C# `ReadBlocks` is wrong for
-this file**. Note the reader still reports exact byte consumption for all 88
-files, so the byte accounting is self-consistent while the word count is not —
-which is why the earlier "parses cleanly" checks did not catch it.
+**The base offset is measured in raw words, not decoded instructions.** GS000 is
+34554 words but only 5833 instructions, because each instruction spans several
+words (opcode plus tagged operands). Using the instruction count left every
+pointer out of range, which is what made this look like an unsolved encoding.
+All 82 entry points in RS019 resolve, and the 14 absent ones read as `0x3FFFF`.
 
-Next step: reconcile C# `ReadBlocks` against the reference decoder for GS000,
-specifically the wide/narrow block selection, before any emission is trusted.
+## Stage 4 — opcode mapping (done)
 
-Until then the writer correctly refuses to run: it throws when an entry point
-falls outside the instruction stream rather than emitting an empty script.
+`RsdkV3ScriptWriter` emits all 88 files:
 
-## Stage 4 — opcode → RSDKv4 mapping (not yet started)
+```
+subroutines emitted : 7481 / 7481
+write failures      : 0
+unmapped opcodes    : 0
+emitted lines       : 292,975
+control-flow anomalies : 13  (0.17%)
+```
 
-## Stage 4 — opcode → RSDKv4 mapping (not yet started)
+### Control flow
 
-`rsdkv3-to-rsdkv4.md` documents the semantic differences that matter:
+The bytecode is branch-based but laid out in structured order and marks every
+block, so emission is linear and uses those markers for nesting. The jump table
+supplies what the stream does not record. Given subroutine start `S` and
+jump-table base `J`:
 
-* `CopyPalette(a,b)` → `CopyPalette(a,0,b,0,256)`
-* `RotatePalette(a,b,c)` → `RotatePalette(0,a,b,c)`
-* `PlayerObjectCollision(t,l,top,r,b)` → a `foreach (GROUP_PLAYERS, ...)` loop
-  around `BoxCollisionTest`, since RSDKv3 hardcoded the single player
-* `PlaySfx(22,0)` → `PlaySfx(SfxName[Boss Hit], 0)` (numeric IDs become names)
-* properties: `Object.XVelocity` → `object.xvel`, `Player.Timer` →
-  `object.value1`, `TempValue0` → `temp0`, and so on (full table in the notes)
-* object-array scans (`while ArrayPos0 < 1056`) become `foreach`, which is both
-  shorter and dramatically faster
+- `If* [k,a,b]` — on failure jumps to `S + jt[k]`, the first instruction of the
+  `else` body, or the `endif` when there is no `else`. Pushes `k`.
+- `else` — pops `k` and jumps to `S + jt[k+1]`, past the matching `endif`. Both
+  paths out of an if therefore converge on `S + jt[k+1]`.
+- `W* [k,a,b]` — on failure jumps to `S + jt[k+1]` (the exit); otherwise pushes `k`.
+- `loop` — pops `k` and jumps back to `S + jt[k]`, which is the `while` itself,
+  so the condition is re-tested each pass.
+- `switch [k,sel]` — `low = jt[k]`, `high = jt[k+1]`; out-of-range values go to
+  `S + jt[k+2]`, in-range ones to `S + jt[k+4+(sel-low)]`.
 
-The 135-opcode table and the 233-entry `ScrVariable` enum are already
-extracted; only the variable-id → RSDKv4-name mapping beyond the object/player
-property block still needs filling in.
+Every one of these was confirmed against RS019's instruction stream: all jump
+entries land exactly on instruction boundaries. Switch **case values are not
+stored anywhere** — they are recovered because the case bodies appear in
+ascending case order, so `jt[k+4+i]` is the body for case `low+i`.
+
+Each construct is then cross-checked against the target the engine would use, and
+a mismatch is reported rather than emitted.
+
+### Variable names are generated, not typed
+
+The bytecode stores a variable as an index into RSDKv3's `ScrVariable` enum, so
+a wrong name does not crash — it silently reads a different property.
+`scripts/gen_rsdkv3_variables.py` parses both engine sources and emits the
+mapping; 207 of 229 variables map cleanly. See the commit message for the
+hand-written enum that this replaced and why it was wrong.
+
+The 22 with no RSDKv4 equivalent are RSDKv3's per-script player physics tuning
+(`topSpeed`, `acceleration`, `jumpStrength`, …), which RSDKv4 does not expose.
+They are 1649 references, 0.5% of the total, and are emitted as
+`/*UNMAPPED v3 NAME*/` rather than given a wrong name.
+
+### Opcodes that cannot be emitted verbatim
+
+Emitted as `// TODO` with the reason, counted by the build:
+
+| occurrences | note |
+|--|--|
+| 1784 | `PlayerObjectCollision` — RSDKv4 needs `foreach (GROUP_PLAYERS,…)` + `BoxCollisionTest` |
+| 912 | `CallFunction` — RSDKv4 calls a function by name, not index |
+| 697 | `Sin` — different unit |
+| 312 | `Cos` — different unit |
+| 60 | `CopyPalette` — RSDKv4 takes five arguments |
+| 51 | `Rand` — different arguments |
+| 46 | `Cos256` |
+| 38 | `Sin256` |
+| 36 | `ATan2` — different return range |
+| 20 | `RotatePalette` — RSDKv4 takes four arguments |
+| 2 | `EngineCallback` — no equivalent |
+
+### Known remaining anomalies — 13 of 7481
+
+Reported by the build, not fatal. Two shapes:
+
+- 4 routines where a switch's out-of-range target is not its `endswitch`.
+- 9 routines with an `else`/`endif` pair that has no open `if`. `RS030`
+  `script2.PlayerInteraction` is the clearest: its routine contains six `if`s and
+  seven `endif`s, so the engine's own `jumpTableStack` goes negative there. The
+  bytecode is unbalanced, not the decompiler — these are flagged for a human
+  rather than guessed at.
+
+## Stage 5 — emit the scripts (not yet done)
+
+The writer is correct but nothing calls it to produce files yet. Wiring it up has
+to answer one question first: RSDKv4 loads **either** text scripts **or**
+bytecode, chosen globally (`RSDKV4-Decompilation/RSDKv4/Scene.cpp:675`). Since
+Sonic 1 and Sonic 2 already ship text scripts, CD has to be emitted as text for
+all three to coexist in one pack.
 
 ## Verification standard
 

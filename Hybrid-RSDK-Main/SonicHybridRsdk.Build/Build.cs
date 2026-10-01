@@ -60,6 +60,29 @@ try
             "RSDKv3 bytecode reader failed:\n  " + string.Join("\n  ", report.Failures.Take(10)));
     if (report.Files == 0)
         Console.WriteLine("  (no bytecode found - Sonic CD stages will load without gameplay)");
+    else
+    {
+        // Now check the decompiler, not just the reader. A reader that parses but
+        // a writer that cannot emit, or an opcode nobody has mapped, would both
+        // produce scripts that are quietly wrong - the exact failure this build
+        // exists to prevent.
+        var decomp = SonicHybridRsdk.Generator.RsdkV3BytecodeReport.RunDecompiler(byteCodeDir);
+        Console.WriteLine($"  decompiled {decomp.Emitted}/{decomp.Subroutines} subroutines, " +
+                          $"{decomp.WriteFailures} write failures, " +
+                          $"{decomp.UnknownOpcodes} unmapped opcodes, " +
+                          $"{decomp.AnomalousSubroutines} with control-flow anomalies");
+
+        if (decomp.WriteFailures > 0 || decomp.UnknownOpcodes > 0)
+            throw new InvalidOperationException(
+                "RSDKv3 script writer failed:\n  " + string.Join("\n  ", decomp.Notes.Take(10)));
+
+        // Reported, not fatal: a few shipped routines have unbalanced block
+        // markers, and guessing at them would be worse than flagging them.
+        if (decomp.AnomalousSubroutines > 0)
+            Console.WriteLine($"  note: {decomp.AnomalousSubroutines} subroutines have " +
+                              "control-flow anomalies:\n    "
+                              + string.Join("\n    ", decomp.AnomalySamples.Take(5)));
+    }
 
     Console.WriteLine("Generating Sonic Hybrid Ultimate...");
     SonicHybridRsdk.Generator.Program.Generate(SourceData, DestinationData);
