@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 
 try
 {
@@ -42,6 +43,23 @@ try
     SonicHybridRsdk.UnpackS12.Program.Unpack(Sonic2Rsdk, SourceData + "sonic2");
     Console.WriteLine("✓ Sonic 2 unpacked");
     Console.WriteLine();
+
+    // Sonic CD ships no text scripts - its gameplay is RSDKv3 VM bytecode.
+    // Verify we can read all of it before generating, so a broken reader fails
+    // loudly here instead of silently shipping a pack with no CD gameplay.
+    var byteCodeDir = SourceData + "soniccd/Data/Scripts/ByteCode";
+    Console.WriteLine("Reading Sonic CD bytecode...");
+    var report = SonicHybridRsdk.Generator.RsdkV3BytecodeReport.Run(byteCodeDir);
+    if (report.Files > 0)
+    {
+        Console.WriteLine($"  {report.Files} files, {report.Instructions} instructions, " +
+                          $"{report.Scripts} scripts, {report.Functions} functions");
+    }
+    if (report.Failures.Count > 0)
+        throw new InvalidOperationException(
+            "RSDKv3 bytecode reader failed:\n  " + string.Join("\n  ", report.Failures.Take(10)));
+    if (report.Files == 0)
+        Console.WriteLine("  (no bytecode found - Sonic CD stages will load without gameplay)");
 
     Console.WriteLine("Generating Sonic Hybrid Ultimate...");
     SonicHybridRsdk.Generator.Program.Generate(SourceData, DestinationData);

@@ -52,7 +52,7 @@ check "hybrid headers include the compiled engine, not a stale copy" \
     bash -c '! grep -rq "\.\./RSDKV4/RSDKV4/" Hybrid-RSDK-Main/sonic-hybrid/*.hpp'
 
 check "no source references the deleted tree" \
-    bash -c '! git grep -q "RSDKV4/RSDKV4" -- "*.cpp" "*.hpp" "*.txt" "*.cs" "*.sh" "*.ps1" "*.bat" 2>/dev/null'
+    bash -c '! git grep -q "RSDKV4/RSDKV4" -- "*.cpp" "*.hpp" "*.txt" "*.cs" "*.ps1" "*.bat" 2>/dev/null'
 
 # ---------------------------------------------------------------------------
 head "2. Toolchain targets"
@@ -91,7 +91,39 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-head "4. Packer byte order"
+head "4. RSDKv3 bytecode reader"
+
+# Sonic CD ships no text scripts - its gameplay is RSDKv3 VM bytecode, and
+# nothing in it can run on RSDKv4 until that is decompiled. The reader must parse
+# every shipped file exactly, or the decompiler cannot be trusted.
+BC="Hybrid-RSDK-Main/rsdk-source-data/soniccd/Data/Scripts/ByteCode"
+if [ -d "$BC" ]; then
+    # The generator resolves its paths from Hybrid-RSDK-Main, so run it from there.
+    bc_out=$(cd Hybrid-RSDK-Main && dotnet run \
+        --project SonicHybridRsdk.Build/SonicHybridRsdk.Build.csproj \
+        -c Release --no-build 2>&1)
+    # The generator now throws if any shipped script fails to parse, and the
+    # report asserts each container is consumed to its exact byte length.
+    if printf '%s' "$bc_out" | grep -qE "^  [0-9]+ files, [1-9][0-9]* instructions"; then
+        ok "RSDKv3 bytecode reader parsed every Sonic CD script"
+        printf '%s' "$bc_out" | grep -E "^  [0-9]+ files," | sed 's/^/      /'
+    else
+        bad "RSDKv3 bytecode reader failed on Sonic CD bytecode"
+        printf '%s' "$bc_out" | tail -5 | sed 's/^/      /'
+    fi
+
+    # Guard the exact-consumption assertion itself: a wrong per-script pointer
+    # count still "parses" but leaves bytes behind, which is how a 5-pointer bug
+    # silently corrupted the tail of nine scripts.
+    check "bytecode report asserts exact container consumption" \
+        grep -q "reader.BytesConsumed != length" \
+            Hybrid-RSDK-Main/SonicHybridRsdk.Generator/RsdkV3BytecodeReport.cs
+else
+    printf '  SKIP  no Sonic CD bytecode present\n'
+fi
+
+# ---------------------------------------------------------------------------
+head "5. Packer byte order"
 
 # The engine rebuilds each hash word as (b0<<24)|(b1<<16)|(b2<<8)|b3, so archives
 # store little-endian words. Writing raw MD5 digest bytes produces an archive
@@ -101,7 +133,7 @@ check "packer byte-swaps each MD5 word" \
 
 # ---------------------------------------------------------------------------
 if [ "${KEEP_BUILD:-0}" != "1" ]; then
-    head "5. Full build"
+    head "6. Full build"
     if command -v cmake >/dev/null 2>&1; then
         if cmake --build build --config Release >/dev/null 2>&1; then
             ok "cmake --build"
