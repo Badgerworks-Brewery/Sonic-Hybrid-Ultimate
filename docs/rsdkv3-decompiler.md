@@ -87,7 +87,26 @@ table rather than by tracing execution.
 come from the function table, which gives each function's script and jump-table
 base pointers.
 
-## Stage 3 — opcode → RSDKv4 mapping (not yet started)
+## Stage 3 — opcode → RSDKv4 mapping (started; blocked on entry-point encoding)
+
+`SonicHybridRsdk.Generator/RsdkV3ScriptWriter` exists and emits structured
+`if / else / end if`, `while / loop`, assignments, comparisons and the engine
+calls, recording anything it cannot map as an explicit `# TODO` rather than
+guessing.
+
+**Open problem — subroutine entry points are encoded, not plain offsets.**
+The script table stores four values per script (Main, PlayerInteraction, Draw,
+Startup). Some are the sentinel `0x3FFFF` ("no such subroutine"), but the real
+ones exceed the instruction stream: `RS019.bin` has 2411 instructions yet
+stores entry points such as `34554` and `35812`. So these values are encoded
+rather than raw indices, and the encoding is not decoded yet. Until it is, the
+writer throws instead of emitting an empty script — an earlier version silently
+produced nothing, which is the failure mode this project is trying to eliminate.
+
+Next step is to resolve that encoding by following how the engine consumes these
+values when it calls `ProcessScript(scriptCodeStart, jumpTableStart, scriptSub)`.
+
+## Stage 4 — opcode → RSDKv4 mapping (not yet started)
 
 `rsdkv3-to-rsdkv4.md` documents the semantic differences that matter:
 
