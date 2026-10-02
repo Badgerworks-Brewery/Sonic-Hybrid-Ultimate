@@ -163,17 +163,29 @@ namespace SonicHybridRsdk.Generator
                 StagesSpecial = new List<Stage>(),
             };
 
-            var hybridObjects = new Dictionary<string, GameObject>();
-            foreach (var obj in sonic2Config.GameObjects)
-                hybridObjects.Add(obj.Name, obj);
-            foreach (var obj in sonic1Config.GameObjects)
-            {
-                if (!hybridObjects.ContainsKey(obj.Name))
-                    hybridObjects.Add(obj.Name, obj);
-            }
-            sonicHybridConfig.GameObjects = hybridObjects.Values.ToList();
+            // The object table has to line up index-for-index with the merged bytecode,
+            // which is Sonic 2's 39 global scripts followed by Sonic 1's 38. RSDKv4
+            // pairs config entry i with script slot i+1 (Scene.cpp:664,691), so
+            // deduping by name would shift every later object onto the wrong
+            // script.
+            //
+            // The two games share 33 of their object names - "HUD", "Ring",
+            // "Star Post" and so on - but those are *different* objects with
+            // different scripts, so both are kept and the later one wins when a
+            // name is looked up. Order is: all of Sonic 2's, then all of
+            // Sonic 1's.
+            var hybridObjects = new List<GameObject>();
+            hybridObjects.AddRange(sonic2Config.GameObjects);
+            hybridObjects.AddRange(sonic1Config.GameObjects);
+            sonicHybridConfig.GameObjects = hybridObjects;
 
-            var dicHybridObjects = sonicHybridConfig.GameObjects.Select((x, i) => (Id: i, Obj: x)).ToDictionary(x => x.Obj.Name, x => x.Id);
+            // Name -> object index. Duplicates resolve to the last (Sonic 1's),
+            // so Sonic 1 stages reach Sonic 1 scripts and Sonic 2 stages, whose
+            // layouts reference the earlier indices directly, keep theirs.
+            var dicHybridObjects = new Dictionary<string, int>();
+            for (var i = 0; i < hybridObjects.Count; ++i)
+                dicHybridObjects[hybridObjects[i].Name] = i;
+
             dicHybridObjects["Lamp Post"] = dicHybridObjects["Star Post"]; // Sonic 1
             dicHybridObjects["LampPost"] = dicHybridObjects["Star Post"]; // Sonic CD
             dicHybridObjects["SignPost"] = dicHybridObjects["Sign Post"]; // Sonic CD
@@ -353,7 +365,12 @@ namespace SonicHybridRsdk.Generator
             // (Script.cpp:2848-2864) or through loaded bytecode
             // (Script.cpp:3191-3209). The tracked Sonic 1/2 text scripts use
             // neither, so without this the engine parses them and calls nothing.
-            CopyBytecodeV4(context2, destinationDataRsdk, Sonic2BytecodeFolders);
+            //
+            // GlobalCode.bin is NOT copied here. RSDKv4 loads exactly one for the
+            // whole process and decides text-vs-bytecode on whether it resolves
+            // (Scene.cpp:675), so the two games' containers have to be merged -
+            // scripts/emit_merged_bytecode.py does that between this step and the
+            // packer, along with both games' per-stage files.
         }
 
         /// <summary>
@@ -413,10 +430,20 @@ namespace SonicHybridRsdk.Generator
 
             var renamed = stageFolders.ToDictionary(x => x.From + ".bin", x => x.To + ".bin");
             int copied = 0, renamedCount = 0, missing = 0;
+            var skippedGlobal = false;
 
             foreach (var source in Directory.GetFiles(srcByteCode, "*.bin"))
             {
-                var stem = Path.GetFileNameWithoutExtension(source);
+                // GlobalCode.bin is handled by the merger, not copied: the two
+                // games each ship one and RSDKv4 loads exactly one for the whole
+                // process.
+                if (string.Equals(Path.GetFileName(source), "GlobalCode.bin",
+                                  StringComparison.OrdinalIgnoreCase))
+                {
+                    skippedGlobal = true;
+                    continue;
+                }
+
                 if (renamed.TryGetValue(Path.GetFileName(source), out var mapped))
                 {
                     File.Copy(source, Path.Combine(dstByteCode, mapped), true);
@@ -440,6 +467,9 @@ namespace SonicHybridRsdk.Generator
                     ++missing;
                 }
             }
+
+            if (skippedGlobal)
+                Console.WriteLine("  bytecode: GlobalCode.bin left to the merger");
 
             Console.WriteLine($"  bytecode: {renamedCount + copied} files " +
                               $"({renamedCount} zone files renamed)" +

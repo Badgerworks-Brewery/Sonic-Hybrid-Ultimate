@@ -145,10 +145,10 @@ index a450c82..d6a75ab 100644
          case STAGEMODE_LOAD: // Startup
              SetActivePalette(0, 0, 256);
 diff --git a/RSDKv4/Script.cpp b/RSDKv4/Script.cpp
-index 71e569f..cec207f 100644
+index 71e569f..876fc40 100644
 --- a/RSDKv4/Script.cpp
 +++ b/RSDKv4/Script.cpp
-@@ -3349,7 +3349,25 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
+@@ -3349,8 +3349,33 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
      functionStackPos  = 0;
      foreachStackPos   = 0;
  
@@ -161,6 +161,7 @@ index 71e569f..cec207f 100644
 +    const int kInstructionBudget = 500000;
 +
      while (running) {
+-        int opcode           = scriptCode[scriptCodePtr++];
 +        if (++instructions > kInstructionBudget) {
 +            int type = -1;
 +            if (objectEntityPos >= 0 && objectEntityPos < ENTITY_COUNT)
@@ -171,9 +172,17 @@ index 71e569f..cec207f 100644
 +            break;
 +        }
 +
-         int opcode           = scriptCode[scriptCodePtr++];
++        int opcode = scriptCode[scriptCodePtr++];
++        if (opcode < 0 || opcode >= 153) {
++            PrintLog("WARNING: script read opcode %d at word %d, which is outside "
++                     "the 0..152 opcode table; bailing out of this script",
++                     opcode, scriptCodePtr - 1);
++            running = false;
++            break;
++        }
          int opcodeSize       = functions[opcode].opcodeSize;
          int scriptCodeOffset = scriptCodePtr;
+ 
 diff --git a/RSDKv4/main.cpp b/RSDKv4/main.cpp
 index 9a16d9b..26369b0 100644
 --- a/RSDKv4/main.cpp

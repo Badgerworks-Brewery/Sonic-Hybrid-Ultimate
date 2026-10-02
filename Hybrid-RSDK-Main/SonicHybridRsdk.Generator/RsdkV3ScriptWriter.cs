@@ -220,7 +220,11 @@ public static class RsdkV3ScriptWriter
             {
                 // ---- terminators -----------------------------------------
                 case "End":
-                    Emit(sb, indent, "end");
+                    // RSDKv4 event scripts have no terminator opcode: the engine
+                    // reads a fixed number of opcodes per event and stops. Emitting
+                    // a bare `end` would produce a script it rejects, so the
+                    // RSDKv3 opcode is recorded as a comment.
+                    Emit(sb, indent, "// end  (RSDKv3 terminator; RSDKv4 events end implicitly)");
                     finished = true;
                     break;
 

@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 
@@ -102,6 +103,47 @@ try
     // therefore needs its own "bytecode/" mount, or the engine logs
     // "Couldn't load file" and silently falls back to the text scripts - which
     // have no entry points, so objects spawn with no behaviour at all.
+    // Merge the two games' global bytecode and lay down both games' per-stage
+    // files. This has to happen after the C# generator has written Data/ (it
+    // creates Data/Bytecode) and before packing.
+    // Walk up from the output folder (bin/<config>/<tfm>) to the repo root, which
+    // is the first directory containing scripts/. Hardcoding a depth broke
+    // whenever the target framework folder changed.
+    var repoRoot = (string?)null;
+    for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir != null; dir = dir.Parent)
+        if (Directory.Exists(Path.Combine(dir.FullName, "scripts")))
+        {
+            repoRoot = dir.FullName;
+            break;
+        }
+    repoRoot ??= Directory.GetCurrentDirectory();
+    var mergeScript = Path.Combine(repoRoot, "scripts", "emit_merged_bytecode.py");
+    if (File.Exists(mergeScript))
+    {
+        Console.WriteLine("Merging Sonic 1 + Sonic 2 bytecode...");
+        var psi = new ProcessStartInfo("python", $"\"{mergeScript}\"")
+        {
+            WorkingDirectory = repoRoot,
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+        };
+        using var merge = Process.Start(psi)!;
+        var mergeOut = merge.StandardOutput.ReadToEnd();
+        merge.WaitForExit();
+        foreach (var line in mergeOut.Split('\n'))
+            if (line.Trim().Length > 0)
+                Console.WriteLine("  " + line.TrimEnd());
+        if (merge.ExitCode != 0)
+            throw new InvalidOperationException(
+                "Merging the global bytecode failed:\n" + merge.StandardError.ReadToEnd());
+    }
+    else
+    {
+        Console.WriteLine("  WARNING: emit_merged_bytecode.py not found; " +
+                          "no global bytecode will be shipped");
+    }
+
     Console.WriteLine("Packing data archive...");
     SonicHybridRsdk.Generator.RsdkPacker.Pack(
         DestinationData + "Data.rsdk",
