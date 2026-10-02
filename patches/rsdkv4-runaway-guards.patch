@@ -1,8 +1,8 @@
 diff --git a/RSDKv4/Audio.cpp b/RSDKv4/Audio.cpp
-index 8cfa77c..27bfa11 100644
+index 8cfa77c..cc6c7e5 100644
 --- a/RSDKv4/Audio.cpp
 +++ b/RSDKv4/Audio.cpp
-@@ -209,6 +209,13 @@ void ProcessMusicStream(Sint32 *stream, size_t bytes_wanted)
+@@ -209,7 +209,25 @@ void ProcessMusicStream(Sint32 *stream, size_t bytes_wanted)
          case MUSIC_READY:
          case MUSIC_PLAYING: {
  #if RETRO_USING_SDL2
@@ -13,10 +13,22 @@ index 8cfa77c..27bfa11 100644
 +            // completes. Count consecutive empty reads and give up instead, so
 +            // the failure is reported rather than silent.
 +            int emptyReads = 0;
++            int fills = 0;
              while (musicStatus == MUSIC_PLAYING && streamInfoPtr->stream && SDL_AudioStreamAvailable(streamInfoPtr->stream) < bytes_wanted) {
++                // This loop tops the stream up to `bytes_wanted`. It terminates
++                // when the audio device drains the stream so enough space exists.
++                // If nothing ever drains it - a suspended or dummy audio device -
++                // SDL_AudioStreamAvailable never grows, reads keep succeeding, and
++                // this spins forever at 100% CPU with no output. Bound the work:
++                // a real callback only ever needs a handful of reads.
++                if (++fills > 512) {
++                    PrintLog("WARNING: music stream would not drain after %d reads; giving up on filling it", fills);
++                    break;
++                }
                  // We need more samples: get some
                  long bytes_read = ov_read(&streamInfoPtr->vorbisFile, (char *)streamInfoPtr->buffer, sizeof(streamInfoPtr->buffer), 0, 2, 1,
-@@ -218,6 +225,11 @@ void ProcessMusicStream(Sint32 *stream, size_t bytes_wanted)
+                                           &streamInfoPtr->vorbBitstream);
+@@ -218,6 +236,11 @@ void ProcessMusicStream(Sint32 *stream, size_t bytes_wanted)
                      // We've reached the end of the file
                      if (streamInfoPtr->trackLoop) {
                          ov_pcm_seek(&streamInfoPtr->vorbisFile, streamInfoPtr->loopPoint);
@@ -48,6 +60,90 @@ index 7ddf148..e61c675 100644
      for (int i = 0; i < DRAWLAYER_COUNT; ++i) drawListEntries[i].listSize = 0;
  
      for (objectEntityPos = 0; objectEntityPos < ENTITY_COUNT; ++objectEntityPos) {
+diff --git a/RSDKv4/RetroEngine.cpp b/RSDKv4/RetroEngine.cpp
+index 29f393f..024a450 100644
+--- a/RSDKv4/RetroEngine.cpp
++++ b/RSDKv4/RetroEngine.cpp
+@@ -339,9 +339,13 @@ void RetroEngine::Init()
+     SaveGame *saveGame = (SaveGame *)saveRAM;
+ 
+     if (LoadGameConfig("Data/Game/GameConfig.bin")) {
++        PrintLog("HEARTBEAT: config loaded; calling InitRenderDevice()");
+         if (InitRenderDevice()) {
++            PrintLog("HEARTBEAT: render up; calling InitAudioPlayback()");
+             if (InitAudioPlayback()) {
++                PrintLog("HEARTBEAT: audio up; calling InitFirstStage()");
+                 InitFirstStage();
++                PrintLog("HEARTBEAT: InitFirstStage returned");
+                 ClearScriptData();
+                 initialised = true;
+                 running     = true;
+@@ -524,6 +528,7 @@ void RetroEngine::Init()
+ 
+ void RetroEngine::Run()
+ {
++    PrintLog("HEARTBEAT: RetroEngine::Run entered");
+     Engine.deltaTime = 0.0f;
+ 
+     unsigned long long targetFreq = SDL_GetPerformanceFrequency() / Engine.refreshRate;
+@@ -531,6 +536,17 @@ void RetroEngine::Run()
+     unsigned long long prevTicks  = 0;
+ 
+     while (running) {
++        // Diagnostic: this is the outermost frame loop. Logging a bounded number
++        // of spins distinguishes "never entered the loop" from "entered it and
++        // stalled inside", and bounds the cost when it is the latter.
++        {
++            static long long spins = 0;
++            if (spins < 5)
++                PrintLog("HEARTBEAT: engine loop spin %lld", spins);
++            else if (spins == 1000000)
++                PrintLog("HEARTBEAT: engine loop still spinning after 1,000,000 iterations - stalled before the frame did any work");
++            ++spins;
++        }
+ #if !RETRO_USE_ORIGINAL_CODE
+         if (!vsync) {
+             curTicks = SDL_GetPerformanceCounter();
+@@ -543,6 +559,18 @@ void RetroEngine::Run()
+ #endif
+         running = ProcessEvents();
+ 
++        // Diagnostic: the loop spins freely, so a stall further down leaves no
++        // trace. Report which stage of the frame the first real iteration
++        // reaches, and report the focus state that gates the rest of it.
++        {
++            static long long stage = 0;
++            if (stage == 0) {
++                PrintLog("HEARTBEAT: past ProcessEvents; hasFocus=%d focusState=%d disableFocusPause=%d vsPlaying=%d",
++                         Engine.hasFocus, Engine.focusState, disableFocusPause, vsPlaying);
++                stage = 1;
++            }
++        }
++
+         // Focus Checks
+         if (!(disableFocusPause & 2)) {
+             if (!Engine.hasFocus) {
+diff --git a/RSDKv4/Scene.cpp b/RSDKv4/Scene.cpp
+index a450c82..d6a75ab 100644
+--- a/RSDKv4/Scene.cpp
++++ b/RSDKv4/Scene.cpp
+@@ -129,6 +129,16 @@ void ProcessStage(void)
+     debugHitboxCount = 0;
+ #endif
+ 
++    // Diagnostic: ProcessStage is the per-frame stage update. If it never runs,
++    // the engine is stuck before the game loop reaches the stage, and nothing
++    // downstream (ProcessObjects, object scripts) can be at fault.
++    {
++        static long long stageFrames = 0;
++        ++stageFrames;
++        if (stageFrames <= 5 || stageFrames % 300 == 0)
++            PrintLog("HEARTBEAT: ProcessStage call %lld, stageMode %d", stageFrames, stageMode);
++    }
++
+     switch (stageMode) {
+         case STAGEMODE_LOAD: // Startup
+             SetActivePalette(0, 0, 256);
 diff --git a/RSDKv4/Script.cpp b/RSDKv4/Script.cpp
 index 71e569f..cec207f 100644
 --- a/RSDKv4/Script.cpp
@@ -78,3 +174,19 @@ index 71e569f..cec207f 100644
          int opcode           = scriptCode[scriptCodePtr++];
          int opcodeSize       = functions[opcode].opcodeSize;
          int scriptCodeOffset = scriptCodePtr;
+diff --git a/RSDKv4/main.cpp b/RSDKv4/main.cpp
+index 9a16d9b..26369b0 100644
+--- a/RSDKv4/main.cpp
++++ b/RSDKv4/main.cpp
+@@ -55,8 +55,11 @@ int main(int argc, char *argv[])
+ #endif
+ 
+     SDL_SetHint(SDL_HINT_WINRT_HANDLE_BACK_BUTTON, "1");
++    PrintLog("HEARTBEAT: calling Engine.Init()");
+     Engine.Init();
++    PrintLog("HEARTBEAT: Engine.Init() returned; calling Engine.Run()");
+     Engine.Run();
++    PrintLog("HEARTBEAT: Engine.Run() returned");
+ 
+ #if !RETRO_USE_ORIGINAL_CODE
+     if (Engine.consoleEnabled) {
