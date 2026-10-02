@@ -55,7 +55,12 @@ Hybrid-RSDK-Main/sonic-hybrid/Data.rsdk
 log.txt
 stdout.txt
 stderr.txt
-settings.ini
+
+# settings.ini is deliberately NOT ignored, despite being runtime-written.
+# The engine reads it during Init(), and without [Window] RefreshRate the frame
+# loop in RetroEngine::Run() spins without doing any work - which presents as an
+# infinite loop with no log output rather than as a missing file. Tracking a
+# default means a fresh clone boots; local edits still override it.
 
 # ---------------------------------------------------------------------------
 # C# project files
