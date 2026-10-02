@@ -30,30 +30,27 @@ SRC = os.path.join(ROOT, "Hybrid-RSDK-Main", "rsdk-source-data")
 
 
 def check_pointers(label, c):
-    """Every absolute pointer must land inside the merged arrays."""
+    """scriptCode pointers must be absolute and in range; jump entries are
+    relative offsets, so they are bounded by the size of the jump table instead."""
     problems = []
 
     limit_code = len(c.code)
     limit_jump = len(c.jumps)
 
-    def ok(value, limit, kind, where):
-        if value == NONE or (kind == "jumpTable" and jump_none(value)):
-            return
-        if not 0 <= value < limit:
-            problems.append("%s: %s pointer %d out of range 0..%d" % (label, kind, value, limit - 1))
-            return
-        return
-
     for i, s in enumerate(c.scripts):
         for k, v in enumerate(s):
-            ok(v, limit_code, "scriptCode", "script %d event %d" % (i, k))
+            if v != NONE and not 0 <= v < limit_code:
+                problems.append("%s: script %d event %d scriptCode pointer %d out of range 0..%d"
+                                % (label, i, k, v, limit_code - 1))
     for i, s in enumerate(c.script_jumps):
         for k, v in enumerate(s):
-            ok(v, limit_jump, "jumpTable", "script %d event %d" % (i, k))
+            # A relative offset, so the bound is the jump table size.
+            if v != 0x3FFF and not 0 <= v < limit_jump:
+                problems.append("%s: script %d event %d jump offset %d out of range 0..%d"
+                                % (label, i, k, v, limit_jump - 1))
     for i, v in enumerate(c.functions):
-        ok(v, limit_code, "scriptCode", "function %d" % i)
-    for i, v in enumerate(c.function_jumps):
-        ok(v, limit_jump, "jumpTable", "function %d" % i)
+        if v != NONE and not 0 <= v < limit_code:
+            problems.append("%s: function %d scriptCode pointer %d out of range" % (label, i, v))
 
     return problems
 
@@ -116,15 +113,33 @@ def main():
                                 % (i, k, want, target[k]))
                 break
 
-    # ...and its jumpTable pointers, which use the other sentinel.
+    # ...and its jumpTable *indices*, which must shift by the jump-table base because
+    # the arrays are concatenated. The values those indices point at are relative
+    # offsets and are never touched - see rsdkv4_bytecode_merger.merge().
     jbase = len(s2.jumps)
     for i, s in enumerate(s1.script_jumps):
         target = merged.script_jumps[s2.script_count + i]
         for k, v in enumerate(s):
             want = v if jump_none(v) else v + jbase
             if target[k] != want:
-                problems.append("sonic1 script %d event %d jump: expected %d, got %d"
+                problems.append("sonic1 script %d event %d jump index: expected %d, got %d"
                                 % (i, k, want, target[k]))
+                break
+
+    # And every jump target must stay inside its own script, which is the check
+    # that catches a branch escaping into a neighbour.
+    starts = sorted((min((v for v in s if v != NONE), default=1 << 30), i)
+                    for i, s in enumerate(merged.scripts))
+    for n, (start, si) in enumerate(starts):
+        after = starts[n + 1][0] if n + 1 < len(starts) else len(merged.code)
+        for k, jb in enumerate(merged.script_jumps[si]):
+            if jb == 0x3FFF:
+                continue
+            target = start + merged.jumps[jb]
+            if not start <= target < after:
+                problems.append(
+                    "merged script %d event %d: branch at word %d leaves the script "
+                    "[%d,%d)" % (si, k, target, start, after))
                 break
 
     print()

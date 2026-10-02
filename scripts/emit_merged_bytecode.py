@@ -121,10 +121,16 @@ def copy_stage_bytecode(game, zones, global_base_shift, jump_base_shift):
         def shift(value, delta, sentinel):
             return value if value == sentinel else value + delta
 
-        if code_delta or jump_delta:
+        if code_delta:
+            # Only the scriptCode pointers are absolute. jumpTable entries are
+            # *relative* offsets from the script's own start - the engine computes
+            # `scriptCodeStart + jumpTable[jumpTableStart + slot]`
+            # (Script.cpp:4324) - and every shipped value is small (0..935),
+            # consistent with a distance within one script. Adding a base to them
+            # sends every branch into whichever script happens to sit at the
+            # offset, which is exactly the infinite loop this merge produced:
+            # Sonic 1's Stage Setup branched into Sonic 2's Player 2 Object.
             c.scripts = [[shift(v, code_delta, NONE) for v in s] for s in c.scripts]
-            c.script_jumps = [[shift(v, jump_delta, JUMP_NONE) for v in s]
-                              for s in c.script_jumps]
         # Functions are indexed globally from 0 and are not merged, so per-stage
         # function pointers are left alone for the same reason as GlobalCode's.
 
@@ -144,15 +150,15 @@ def main():
     blob = serialize(merged)
     io.open(os.path.join(OUT, "GlobalCode.bin"), "wb").write(blob)
 
-    # Each game ships per-stage files whose pointers assume its own GlobalCode.
-    # Shift them by however much the merged global changed.
+    # Each game ships per-stage files whose scriptCode pointers assume its own
+    # GlobalCode. Shift them by however much the merged global changed. Jump
+    # tables need no shift: their entries are relative to each script's start.
     for game, zones, own in (("sonic2", SONIC2_ZONES, s2), ("sonic1", SONIC1_ZONES, s1)):
         code_shift = len(merged.code) - len(own.code)
-        jump_shift = len(merged.jumps) - len(own.jumps)
-        print("%s per-stage shift: code %+d, jump %+d"
-              % (game, code_shift, jump_shift))
+        print("%s per-stage scriptCode shift: %+d (jump tables unchanged)"
+              % (game, code_shift))
         globals()["_copied_" + game] = copy_stage_bytecode(
-            game, zones, code_shift, jump_shift)
+            game, zones, code_shift, 0)
 
     c1, m1 = globals()["_copied_sonic1"]
     c2, m2 = globals()["_copied_sonic2"]

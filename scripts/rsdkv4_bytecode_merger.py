@@ -172,18 +172,29 @@ def merge(primary, secondary, secondary_object_offset):
     out.scripts = [list(s) for s in primary.scripts]
     out.script_jumps = [list(s) for s in primary.script_jumps]
 
-    # A sentinel means "this object has no such script". It must pass through
-    # unchanged: turning it into an index would make the engine execute whatever
-    # happens to live there.
+    # Two different things are being renumbered, and conflating them is what broke
+    # this before:
+    #
+    #   script_jumps[i][k]  an index INTO the global jumpTable array. The arrays
+    #                        are concatenated, so the secondary's indices need
+    #                        +jump_base.
+    #   jumps[index]        the value at that index: a RELATIVE offset from the
+    #                        script's own start, since the engine evaluates
+    #                        `scriptCodeStart + jumpTable[jumpTableStart + slot]`
+    #                        (Script.cpp:4324). Every shipped value is small
+    #                        (0..935), a distance within one script. These are
+    #                        never shifted.
+    #
+    # A sentinel means "no such script" and passes through unchanged.
     def shift_code(value, base):
         return value if value == NONE else value + base
 
-    def shift_jump(value, base):
+    def shift_jump_index(value, base):
         return value if jump_none(value) else value + base
 
     for s, sj in zip(secondary.scripts, secondary.script_jumps):
         out.scripts.append([shift_code(v, code_base) for v in s])
-        out.script_jumps.append([shift_jump(v, jump_base) for v in sj])
+        out.script_jumps.append([shift_jump_index(v, jump_base) for v in sj])
 
     # Functions cannot be merged: RSDKv4 indexes scriptFunctionList from 0
     # globally, so two games' tables would overlap. Carried over only when the
