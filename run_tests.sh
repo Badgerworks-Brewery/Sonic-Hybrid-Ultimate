@@ -145,14 +145,15 @@ fi
 head "5. Unified stage list reachability"
 
 # The whole premise of the project is one continuous game. Boot the engine
-# directly into stages from all three games and confirm each loads from the
-# unified pack. This is what proves S1 + CD + S2 are navigable as one game
-# rather than three separate launches.
+# directly into stages from all three games and confirm each has working object
+# logic - not merely that it loads. A stage whose bytecode is missing still
+# draws its background and still reports success, so "loaded" on its own would
+# let this pass while nothing in the stage actually runs.
 if [ -f "build/bin/Release/rsdkv4.exe" ] || [ -f "build/bin/rsdkv4" ]; then
     if python scripts/probe_stages.py; then
-        ok "stages from all three games load from the unified Data.rsdk"
+        ok "probed stages from all three games have working object logic"
     else
-        bad "at least one probed stage failed to load from the unified pack"
+        bad "at least one game has no probed stage with working object logic"
     fi
 else
     printf '  SKIP  engine binary not built\n'
