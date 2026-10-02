@@ -109,6 +109,50 @@ regular-stage file has to shift by the same delta. Before this, Sonic 2's stages
 ran whatever script happened to sit at the old offset, which is why adding the
 merge broke a game that had been working.
 
+### Where the Sonic 1 stage stalls, precisely
+
+Located by counting how many times each word was executed over one runaway
+(`RSDK_TRACE_SPEND=1`), which reports the loop directly instead of inferring it
+from a trace window:
+
+```
+RUNAWAY AT: type 4 event 0 word 23151, temp 2,97,1 checkResult 0   <- Green Hill
+RUNAWAY AT: type 4 event 0 word 23151, temp 4,2,1  checkResult 1   <- Marble Zone
+RUNAWAY HOTTEST: word 22949 executed 714283 times (endif)
+                 word 23152 executed 714282 times (Equal)
+```
+
+So it is a real infinite loop, not a slow stage: 5,000,000 instructions in one
+call, and the engine gives up on the stage. The budget was raised from 500,000 to
+5,000,000 to test that, and it still overruns, which rules out "the limit is too
+low for legitimate work".
+
+Both Green Hill and Marble stall at the *same* words with the same opcodes, and
+differ only in register state - `temp1` is 97 in Green Hill and 2 in Marble.
+Green Hill nonetheless reaches 600 frames while Marble stops at 1, so this loop is
+something both stages do and it is not, by itself, the difference between them.
+That earlier conclusion of mine - that this loop was the cause - was wrong, and
+the corrected reading is in the commit message.
+
+### Confirmed correct
+
+The merge itself is right, verified from the engine log rather than by
+inspection:
+
+```
+Set Object (1)  name to: Player Object      <- Sonic 2's globals, types 1..39
+...
+Set Object (39) name to: Springboard        <- Sonic 1's globals, types 40..77
+Set Object (78) name to: MZ Setup           <- Marble's own stage objects
+Set Object (79) name to: Large Platform
+Set Object (80) name to: Grass Fireball
+```
+
+Globals occupy 1..77 in merged order, and each stage's own objects start at 78
+and are named from that stage's `StageConfig.bin`. So the object table, the
+per-stage pointer renumbering and the object names all line up. Whatever is still
+wrong is not here.
+
 Apply with:
 
     git -C Hybrid-RSDK-Main/RSDKV4-Decompilation apply ../../patches/rsdkv4-runaway-guards.patch

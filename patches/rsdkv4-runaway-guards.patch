@@ -145,10 +145,10 @@ index a450c82..d6a75ab 100644
          case STAGEMODE_LOAD: // Startup
              SetActivePalette(0, 0, 256);
 diff --git a/RSDKv4/Script.cpp b/RSDKv4/Script.cpp
-index 71e569f..5cb90b6 100644
+index 71e569f..3d08a68 100644
 --- a/RSDKv4/Script.cpp
 +++ b/RSDKv4/Script.cpp
-@@ -3349,11 +3349,70 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
+@@ -3349,11 +3349,106 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
      functionStackPos  = 0;
      foreachStackPos   = 0;
  
@@ -158,7 +158,12 @@ index 71e569f..5cb90b6 100644
 +    // sitting at 100% CPU with no output at all, so name the object and bail
 +    // rather than hang - a runaway loop must never be a silent failure.
 +    int instructions = 0;
-+    const int kInstructionBudget = 500000;
++    const int kInstructionBudget = 5000000;
++    // Which word each instruction was at, bucketed, so a runaway can be located.
++    // Sizing this to cover the whole scriptCode array: a 256-byte table silently
++    // ignored every word past 255, which made the report useless.
++    static int runawaySpend[SCRIPTCODE_COUNT];
++    bool runawayTrack = getenv("RSDK_TRACE_SPEND") != nullptr;
 +
      while (running) {
 -        int opcode           = scriptCode[scriptCodePtr++];
@@ -168,11 +173,42 @@ index 71e569f..5cb90b6 100644
 +                type = objectEntityList[objectEntityPos].type;
 +            PrintLog("WARNING: runaway script: object type %d, event %d, over %d instructions in one call",
 +                     type, scriptEvent, kInstructionBudget);
++            // Report where it spent its time, so the loop can be located rather
++            // than guessed at. Without this a runaway is just "it hung".
++            {
++                int topWord = -1, topCount = 0;
++                for (int w = 0; w < SCRIPTCODE_COUNT; ++w) {
++                    if (runawaySpend[w] > topCount) {
++                        topCount = runawaySpend[w];
++                        topWord  = w;
++                    }
++                }
++                PrintLog("RUNAWAY HOTTEST: word %d executed %d times", topWord, topCount);
++                for (int w = 0; w < SCRIPTCODE_COUNT; ++w) {
++                    if (runawaySpend[w] > topCount / 5 && runawaySpend[w] > 0) {
++                        int op = scriptCode[w];
++                        PrintLog("  word %d: %d times, opcode %s", w, runawaySpend[w],
++                                 (op >= 0 && op < 151) ? functions[op].name : "BAD");
++                    }
++                }
++            }
 +            running = false;
 +            break;
 +        }
++        if (instructions % 1000000 == 0 && instructions > 0) {
++            // Sample the program counter: whichever word dominates is inside the
++            // loop that never exits.
++            PrintLog("RUNAWAY AT: type %d event %d word %d (%s), temp %d,%d,%d checkResult %d",
++                     objectEntityPos >= 0 && objectEntityPos < ENTITY_COUNT
++                         ? objectEntityList[objectEntityPos].type : -1,
++                     scriptEvent, scriptCodePtr - 1,
++                     (scriptCodePtr - 1 >= 0 && scriptCodePtr - 1 < 153) ? functions[scriptCode[scriptCodePtr - 1]].name : "?",
++                     scriptEng.temp[0], scriptEng.temp[1], scriptEng.temp[2], scriptEng.checkResult);
++        }
 +
 +        int opcode = scriptCode[scriptCodePtr++];
++        if (runawayTrack && scriptCodePtr - 1 < (int)sizeof(runawaySpend))
++            ++runawaySpend[scriptCodePtr - 1];
 +        // functions[] holds 151 entries: the source declares 153, but two sit
 +        // inside #if !RETRO_REV00 and are not compiled in. Reading one of those
 +        // slots would return a default-constructed FunctionInfo with no name,
