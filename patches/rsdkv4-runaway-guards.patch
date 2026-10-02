@@ -145,10 +145,10 @@ index a450c82..d6a75ab 100644
          case STAGEMODE_LOAD: // Startup
              SetActivePalette(0, 0, 256);
 diff --git a/RSDKv4/Script.cpp b/RSDKv4/Script.cpp
-index 71e569f..759c094 100644
+index 71e569f..5cb90b6 100644
 --- a/RSDKv4/Script.cpp
 +++ b/RSDKv4/Script.cpp
-@@ -3349,11 +3349,54 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
+@@ -3349,11 +3349,70 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
      functionStackPos  = 0;
      foreachStackPos   = 0;
  
@@ -191,13 +191,29 @@ index 71e569f..759c094 100644
 +        // stalls can be traced from outside the process. Without this a stall is
 +        // indistinguishable from a slow load.
 +        {
-+            static int traceBudget = 80;
-+            if (traceBudget > 0) {
-+                --traceBudget;
-+                PrintLog("TRACE: object type %d event %d: %s at word %d",
++            // Trace only a bounded window, and only once per script, so a normal
++            // long loop does not consume the whole budget before the interesting
++            // script runs.
++            static int traceWindow = 0;
++            static int traceBudget = 400;
++            static int lastTraced = -1;
++            const int key = objectEntityPos * 8 + scriptEvent;
++            if (key != lastTraced) {
++                lastTraced = key;
++                traceWindow = 40;
++                if (traceBudget > 0)
++                    traceBudget -= traceWindow;
++            }
++            if (traceWindow > 0 && traceBudget > 0) {
++                --traceWindow;
++                PrintLog("TRACE: type %d ev %d: %s @%d (%d,%d,%d,%d)",
 +                         objectEntityPos >= 0 && objectEntityPos < ENTITY_COUNT
 +                             ? objectEntityList[objectEntityPos].type : -1,
-+                         scriptEvent, functions[opcode].name, scriptCodePtr - 1);
++                         scriptEvent, functions[opcode].name, scriptCodePtr - 1,
++                         opcodeSize > 0 ? scriptEng.operands[0] : 0,
++                         opcodeSize > 1 ? scriptEng.operands[1] : 0,
++                         opcodeSize > 2 ? scriptEng.operands[2] : 0,
++                         opcodeSize > 3 ? scriptEng.operands[3] : 0);
 +            }
 +        }
 +
