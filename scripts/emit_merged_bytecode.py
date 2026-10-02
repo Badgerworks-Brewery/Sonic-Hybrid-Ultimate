@@ -18,7 +18,8 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from rsdkv4_bytecode_merger import merge, parse, serialize  # noqa: E402
+from rsdkv4_bytecode_merger import (JUMP_NONE, NONE, merge, parse,  # noqa: E402
+                                    serialize)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(ROOT, "Hybrid-RSDK-Main", "rsdk-source-data")
@@ -79,8 +80,28 @@ def object_names(game):
     raise ValueError("%s: object table did not parse" % game)
 
 
-def copy_stage_bytecode(game, zones):
+def copy_stage_bytecode(game, zones, global_base_shift, jump_base_shift):
+    """Copy a game's per-stage containers, renumbering their absolute pointers.
+
+    Per-stage pointers are absolute indices into the engine's *global*
+    scriptCode/jumpTable arrays, built by appending each file as it loads. Which
+    base a file uses depends on its stage list, measured across all 33 shipped
+    containers rather than assumed:
+
+      regular / bonus / ending / continue        base = GlobalCode word count
+      presentation (Title, LSelect, Credits, Special)  base = 0
+
+    Presentation files load before the globals, so their words sit at the start of
+    the global array; everything else follows the globals. Both games agree on
+    this split, which is the only reason a single rule works for both.
+
+    Merging changes the global word count, so every regular-stage file must shift
+    by the same delta. Presentation files keep base 0 and need no shift. Skipping
+    this makes a stage's objects run whichever script happens to sit at the old
+    offset - silent, and indistinguishable from "the game is broken".
+    """
     src = os.path.join(SRC, game, "Bytecode")
+    presentation = {"Title", "LSelect", "Credits", "Special"}
     copied = 0
     missing = []
     for stem, folder in zones:
@@ -90,7 +111,24 @@ def copy_stage_bytecode(game, zones):
         if not os.path.exists(source):
             missing.append(folder)
             continue
-        io.open(target, "wb").write(io.open(source, "rb").read())
+        c = parse(source)
+
+        if stem in presentation:
+            code_delta = jump_delta = 0
+        else:
+            code_delta, jump_delta = global_base_shift, jump_base_shift
+
+        def shift(value, delta, sentinel):
+            return value if value == sentinel else value + delta
+
+        if code_delta or jump_delta:
+            c.scripts = [[shift(v, code_delta, NONE) for v in s] for s in c.scripts]
+            c.script_jumps = [[shift(v, jump_delta, JUMP_NONE) for v in s]
+                              for s in c.script_jumps]
+        # Functions are indexed globally from 0 and are not merged, so per-stage
+        # function pointers are left alone for the same reason as GlobalCode's.
+
+        io.open(target, "wb").write(serialize(c))
         copied += 1
     return copied, missing
 
@@ -106,8 +144,18 @@ def main():
     blob = serialize(merged)
     io.open(os.path.join(OUT, "GlobalCode.bin"), "wb").write(blob)
 
-    c1, m1 = copy_stage_bytecode("sonic1", SONIC1_ZONES)
-    c2, m2 = copy_stage_bytecode("sonic2", SONIC2_ZONES)
+    # Each game ships per-stage files whose pointers assume its own GlobalCode.
+    # Shift them by however much the merged global changed.
+    for game, zones, own in (("sonic2", SONIC2_ZONES, s2), ("sonic1", SONIC1_ZONES, s1)):
+        code_shift = len(merged.code) - len(own.code)
+        jump_shift = len(merged.jumps) - len(own.jumps)
+        print("%s per-stage shift: code %+d, jump %+d"
+              % (game, code_shift, jump_shift))
+        globals()["_copied_" + game] = copy_stage_bytecode(
+            game, zones, code_shift, jump_shift)
+
+    c1, m1 = globals()["_copied_sonic1"]
+    c2, m2 = globals()["_copied_sonic2"]
 
     # The alignment that makes this work: config entry i must be the object whose
     # script is merged slot i+1.
@@ -118,6 +166,30 @@ def main():
         problems.append(
             "object table has %d entries but the merged container has %d scripts"
             % (len(expected_objects), merged.script_count))
+
+    # Every per-stage pointer must land inside the merged global + that stage's
+    # own words. This is the check that catches a missed shift: a stage whose
+    # pointers were not renumbered lands in the middle of the *global* code and
+    # runs the wrong script, silently.
+    total_code = len(merged.code)
+    presentation = {"TitleS1", "LSelectS1", "CreditsS1", "Special1",
+                    "TitleS2", "LSelectS2", "CreditsS2", "Special2"}
+    for folder in [f for _s, f in SONIC1_ZONES] + [f for _s, f in SONIC2_ZONES]:
+        path = os.path.join(OUT, folder + ".bin")
+        if not os.path.exists(path):
+            continue
+        c = parse(path)
+        # Presentation files sit at base 0; everything else follows the globals.
+        base = 0 if folder in presentation else total_code
+        for i, s in enumerate(c.scripts):
+            for k, v in enumerate(s):
+                if v == NONE:
+                    continue
+                if not base <= v < base + len(c.code):
+                    problems.append(
+                        "%s script %d event %d: word %d is outside its own range "
+                        "[%d,%d)" % (folder, i, k, v, base, base + len(c.code)))
+                    break
 
     print("merged GlobalCode.bin: %d bytes, %d scripts (%d Sonic 2 + %d Sonic 1)"
           % (len(blob), merged.script_count, s2.script_count, s1.script_count))

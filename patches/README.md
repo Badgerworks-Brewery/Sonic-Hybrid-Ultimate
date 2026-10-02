@@ -57,6 +57,58 @@ So: a missing config file presents as an infinite loop with no output. That is
 worth keeping in mind for any future "the engine hangs" report, and it is why the
 first instinct - an object script looping - was a dead end.
 
+### Two things found by tracing, one still open
+
+**`functions[]` has 151 entries, not 153.** The source declares 153
+`FunctionInfo` entries but two sit inside `#if !RETRO_REV00` and are not compiled
+in. Anything indexing the table by position must skip the guarded ones or every
+opcode after the first guard is off by one or two. `scripts/rsdkv4_opcodes.py`
+walks the guards properly and is the single place the table is derived; a
+disassembly that disagrees with the engine's own opcode trace is the symptom.
+
+**Sonic 1 Green Hill runs; other Sonic 1 zones hang in the Stage Setup object.**
+
+With the per-stage pointers renumbered (see below) Green Hill reaches 600 frames.
+Marble Zone and Final Zone run 0 frames, and the engine's instruction budget
+reports:
+
+```
+WARNING: runaway script: object type 4, event 0, over 500000 instructions in one call
+```
+
+Object type 4 is `Stage Setup`. Its trace is a tight cycle:
+
+```
+WLower at word 25932
+GetTableValue at word 25940
+SetTableValue at word 25949
+Inc at word 25958
+loop at word 25962
+```
+
+So the loop's condition is never satisfied. Not yet diagnosed: a static walk of
+script 3 desynchronises at word 25072, which means the operand encoding has more
+structure than "opcode followed by `opcodeSize` words" - operands are tagged and
+variable operands carry an extra index word, so a naive fixed-width walk drifts.
+The engine's own trace is trustworthy; a static disassembler built on the naive
+model is not, and building one correctly is the next step rather than guessing at
+the loop's cause from a bad disassembly.
+
+### Why the per-stage pointers had to be renumbered
+
+Per-stage containers hold absolute indices into the engine's global
+`scriptCode`/`jumpTable` arrays, built by appending each file as it loads. Which
+base a file uses depends on its stage list, measured across all 33 shipped
+containers rather than assumed:
+
+    regular / bonus / ending / continue              base = GlobalCode word count
+    presentation (Title, LSelect, Credits, Special)  base = 0
+
+Merging the two `GlobalCode.bin` files changes the global word count, so every
+regular-stage file has to shift by the same delta. Before this, Sonic 2's stages
+ran whatever script happened to sit at the old offset, which is why adding the
+merge broke a game that had been working.
+
 Apply with:
 
     git -C Hybrid-RSDK-Main/RSDKV4-Decompilation apply ../../patches/rsdkv4-runaway-guards.patch
