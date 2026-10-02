@@ -1,0 +1,80 @@
+diff --git a/RSDKv4/Audio.cpp b/RSDKv4/Audio.cpp
+index 8cfa77c..27bfa11 100644
+--- a/RSDKv4/Audio.cpp
++++ b/RSDKv4/Audio.cpp
+@@ -209,6 +209,13 @@ void ProcessMusicStream(Sint32 *stream, size_t bytes_wanted)
+         case MUSIC_READY:
+         case MUSIC_PLAYING: {
+ #if RETRO_USING_SDL2
++            // A seek back to the loop point is supposed to restart the stream.
++            // If it does not actually produce samples, ov_read keeps returning 0
++            // and this loop spins forever - which shows up only as the engine
++            // pegging a core with no further log output, and no frame ever
++            // completes. Count consecutive empty reads and give up instead, so
++            // the failure is reported rather than silent.
++            int emptyReads = 0;
+             while (musicStatus == MUSIC_PLAYING && streamInfoPtr->stream && SDL_AudioStreamAvailable(streamInfoPtr->stream) < bytes_wanted) {
+                 // We need more samples: get some
+                 long bytes_read = ov_read(&streamInfoPtr->vorbisFile, (char *)streamInfoPtr->buffer, sizeof(streamInfoPtr->buffer), 0, 2, 1,
+@@ -218,6 +225,11 @@ void ProcessMusicStream(Sint32 *stream, size_t bytes_wanted)
+                     // We've reached the end of the file
+                     if (streamInfoPtr->trackLoop) {
+                         ov_pcm_seek(&streamInfoPtr->vorbisFile, streamInfoPtr->loopPoint);
++                        if (++emptyReads > 4) {
++                            PrintLog("WARNING: music stream produced no samples after seeking to its loop point; stopping playback");
++                            musicStatus = MUSIC_STOPPED;
++                            break;
++                        }
+                         continue;
+                     }
+                     else {
+diff --git a/RSDKv4/Object.cpp b/RSDKv4/Object.cpp
+index 7ddf148..e61c675 100644
+--- a/RSDKv4/Object.cpp
++++ b/RSDKv4/Object.cpp
+@@ -71,6 +71,15 @@ void ProcessStartupObjects()
+ 
+ void ProcessObjects()
+ {
++    // Heartbeat: confirm the frame loop is actually turning. A run that stalls
++    // before the first frame otherwise looks identical to one that is merely
++    // slow, and there is no other way to tell from outside the process.
++    {
++        static long long frames = 0;
++        ++frames;
++        if (frames <= 20 || frames % 300 == 0)
++            PrintLog("HEARTBEAT: ProcessObjects frame %lld, gameMode %d", frames, Engine.gameMode);
++    }
+     for (int i = 0; i < DRAWLAYER_COUNT; ++i) drawListEntries[i].listSize = 0;
+ 
+     for (objectEntityPos = 0; objectEntityPos < ENTITY_COUNT; ++objectEntityPos) {
+diff --git a/RSDKv4/Script.cpp b/RSDKv4/Script.cpp
+index 71e569f..cec207f 100644
+--- a/RSDKv4/Script.cpp
++++ b/RSDKv4/Script.cpp
+@@ -3349,7 +3349,25 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
+     functionStackPos  = 0;
+     foreachStackPos   = 0;
+ 
++    // A single script call must terminate. No legitimate object needs anything
++    // like this many instructions for one call, so exceeding it means a loop
++    // whose condition never changes. That otherwise shows up only as the engine
++    // sitting at 100% CPU with no output at all, so name the object and bail
++    // rather than hang - a runaway loop must never be a silent failure.
++    int instructions = 0;
++    const int kInstructionBudget = 500000;
++
+     while (running) {
++        if (++instructions > kInstructionBudget) {
++            int type = -1;
++            if (objectEntityPos >= 0 && objectEntityPos < ENTITY_COUNT)
++                type = objectEntityList[objectEntityPos].type;
++            PrintLog("WARNING: runaway script: object type %d, event %d, over %d instructions in one call",
++                     type, scriptEvent, kInstructionBudget);
++            running = false;
++            break;
++        }
++
+         int opcode           = scriptCode[scriptCodePtr++];
+         int opcodeSize       = functions[opcode].opcodeSize;
+         int scriptCodeOffset = scriptCodePtr;
