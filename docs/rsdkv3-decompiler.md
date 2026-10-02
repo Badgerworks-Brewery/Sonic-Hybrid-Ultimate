@@ -296,6 +296,59 @@ containers and rewrites every pointer in the later one. That is the same kind of
 job as the compiler above: it needs the container format and the object-type
 table understood well enough to renumber them.
 
+## Sonic 2 boots its scripts, then hangs in an infinite loop
+
+With Sonic 2's bytecode shipped, the stage load is correct - verified from the
+engine's own log:
+
+```
+Loading Scene Regular Stages - EMERALD HILL ZONE 1
+Loaded Data File 'Data/Stages/ZoneEHZ/StageConfig.bin'
+Set Object (4) name to: Stage Setup
+Set Object (45) name to: EHZ Setup
+Loaded Data File 'Bytecode/ZoneEHZ.bin'
+Loaded Data File 'Data/Music/EmeraldHill.ogg'
+```
+
+That is the right stage, the right setup object, the right bytecode and the right
+music. The merged stage list, the renamed bytecode lookup and the per-stage object
+table are all working.
+
+**But the log then stops, and the process sits at 99% of one core.** Measured:
+
+```
+CPU used in 8s wall: 7.95s  (99% of one core)
+```
+
+The log is byte-identical at 301 lines whether the engine is given 22 seconds or
+45, which is the signature of a spin rather than slow progress. So the stage never
+reaches gameplay: an object script is looping without terminating, so the frame
+never completes.
+
+This is also what made the earlier spritesheet symptom look worse than it was.
+`Data/Sprites/MBZ/Objects.gif` - Sonic 1's Marble Zone - is loaded in *both*
+Sonic 2 stages, which is a real oddity, but the music is correct
+(`EmeraldHill.ogg`) and the stage assets are correct. What looked like "wrong
+sprites" was a load sequence that stops dead before the zone's own sheet is
+reached. Fixing the hang is the prerequisite; the sprite question should be
+re-checked afterwards rather than chased now.
+
+Not yet isolated: which script loops. Candidates are the stage setup object's
+Startup and the player object, both of which run before the first frame
+completes. Isolating it needs either a breakpoint on `ProcessScript` or a run
+that dumps the script name when a single script executes more than N instructions
+in one frame - the latter is the better fix, because a runaway loop is exactly
+the failure mode that must never be silent.
+
+### Also unresolved
+
+`Failed to load string... (en, StageName13..16)` and `SaveStageName26`. These were
+previously dismissed as harmless because `strStageList`/`strSaveStageList` are
+written but never read by the engine. That reasoning still holds for the list
+itself, but now that stages actually load, the missing names are the kind of
+thing that shows up as blank stage titles, so they are worth merging rather than
+leaving.
+
 ## Verification standard
 
 A stage only counts as working when it has been **run** and objects are seen
