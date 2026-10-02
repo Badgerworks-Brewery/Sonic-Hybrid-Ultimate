@@ -78,6 +78,14 @@ check "every object script declares an RSDKv4 entry point" \
 check "no game's spritesheet is overwritten by another's" \
     bash -c 'python scripts/check_sprite_collisions.py'
 
+# RSDKv4 loads one GlobalCode.bin for the whole process, so only one game can
+# have working object logic unless the two containers are merged. This checks the
+# merge is sound: every shipped container round-trips, every merged pointer stays
+# in range, and both sentinels survive. It also fails if the two pointer tables
+# ever start sharing a sentinel, which would silently corrupt every merged file.
+check "bytecode merger round-trips and merges consistently" \
+    bash -c 'python scripts/test_bytecode_merger.py'
+
 
 # ---------------------------------------------------------------------------
 head "2. Toolchain targets"
