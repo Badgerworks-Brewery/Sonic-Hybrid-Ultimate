@@ -38,19 +38,22 @@ EXE = os.path.join(ROOT, "build", "bin", "Release", "rsdkv4.exe")
 #   0  GREEN HILL ZONE 1        (Sonic 1)
 #   18 FINAL ZONE               (Sonic 1, last)
 #   19 PALMTREE PANIC 1 PRESENT (Sonic CD, first)
+#   49 QUARTZ QUADRANT          (Sonic CD)
 #   88 METALLIC MADNESS 3 BAD   (Sonic CD, last)
-#   89 EMERALD HILL ZONE 1      (Sonic 2, first)
-#   109 DEATH EGG ZONE          (Sonic 2, last)
 # StartingCategory must be 1 (STAGELIST_REGULAR): 0 is the presentation list and
 # InitFirstStage treats 0 as "unset".
+#
+# Sonic 2 (Emerald Hill, Death Egg) is deliberately excluded. It is the one game
+# whose stages are known to work, so including it only dilutes the signal about
+# the two that are broken. Sonic 3 cannot be probed at all: it has no stages in
+# the merged config and no game data - see the note printed by this script.
 PROBES = [
     (0,   "Sonic 1  Green Hill Act 1"),
+    (5,   "Sonic 1  Marble Zone Act 1"),
     (18,  "Sonic 1  Final Zone"),
     (19,  "Sonic CD  Palmtree Panic A1 Present"),
-    (49,  "Sonic CD  Collision Chaos A2 Past"),
+    (49,  "Sonic CD  Quartz Quadrant A2 Past"),
     (88,  "Sonic CD  Metallic Madness A3 Bad Future"),
-    (89,  "Sonic 2  Emerald Hill Act 1"),
-    (109, "Sonic 2  Death Egg Zone"),
 ]
 
 SETTINGS = """[Window]
@@ -192,6 +195,14 @@ def main():
             print("  %-8s %d of %d probed stages have object logic" % (game, count, total))
         else:
             print("  %-8s NO probed stage has object logic" % game)
+
+    print()
+    print("Sonic 3: NOT PROBED - no game data and no stages in the merged config.")
+    print("  rsdk-source-data holds sonic1, sonic2 and soniccd only. The only S3")
+    print("  artefact is a 4 MB rsdk-source-data/sonic3.bin, which is untracked,")
+    print("  contains no AIR signatures or Data/ paths, and is not the ROM S3AIR")
+    print("  needs - SONIC3_AIR_SETUP.md requires a user-supplied Sonic 3 & Knuckles")
+    print("  ROM plus a sonic3air.exe. Neither is present, so there is nothing to boot.")
 
     incomplete = [g for g in probed_games if g not in games]
     if incomplete:

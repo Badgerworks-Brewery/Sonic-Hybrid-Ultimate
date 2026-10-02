@@ -72,6 +72,12 @@ check "v3 variable mapping names only variables RSDKv4 defines" \
 check "every object script declares an RSDKv4 entry point" \
     bash -c 'scripts/check_script_entrypoints.py'
 
+# Data/Sprites used to be copied S1, CD, S2 in order with last-writer-wins, so
+# Sonic 1 silently drew itself with Sonic 2's player sheets - identical paths,
+# different layouts. Every clashing sheet now gets a per-game copy.
+check "no game's spritesheet is overwritten by another's" \
+    bash -c 'python scripts/check_sprite_collisions.py'
+
 
 # ---------------------------------------------------------------------------
 head "2. Toolchain targets"

@@ -30,6 +30,73 @@ namespace SonicHybridRsdk.Generator
     {
         static void Main(string[] args) => Generate(args[0], args[1]);
 
+        /// <summary>
+        /// Copies the three games' spritesheets, giving each game its own copy of
+        /// any file the games share a path for.
+        /// </summary>
+        /// <remarks>
+        /// Copying the Sprites folder wholesale in S1, CD, S2 order silently lets
+        /// the last writer win. 18 paths exist in more than one game - every
+        /// player sheet, plus Global/Items*, LevelSelect/Icons, Ending/*, Title
+        /// and Special/Objects - so Sonic 1 ended up drawing itself with Sonic 2's
+        /// sprites, which are laid out differently and simply look wrong.
+        ///
+        /// Object scripts reference sheets by path, so the fix is to stop the
+        /// overwrite rather than to guess which sheet "should" win: the earliest
+        /// game keeps the original path and later games get an S1/S2-suffixed one.
+        /// Which game a stage belongs to is decided by the bytecode that runs it,
+        /// not here, so this function only guarantees nothing is lost.
+        ///
+        /// A path is treated as shared when the files actually differ, so
+        /// byte-identical sheets (Global/Items3.gif, LevelSelect/Text.gif,
+        /// Players/KTE2.gif) are not needlessly duplicated.
+        /// </remarks>
+        private static void CopySprites(
+            string sonic1Path, string sonicCdPath, string sonic2Path, string sonicHybridPath)
+        {
+            var games = new (string Path, string Tag)[]
+            {
+                (sonic1Path, "S1"),
+                (sonicCdPath, "CD"),
+                (sonic2Path, "S2"),
+            };
+
+            var written = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var (path, tag) in games)
+            {
+                var src = Path.Combine(path, "Sprites");
+                if (!Directory.Exists(src))
+                    continue;
+
+                foreach (var file in Directory.GetFiles(src, "*", SearchOption.AllDirectories))
+                {
+                    var relative = file.Substring(src.Length).TrimStart(
+                        Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+                    // Later games get their own copy when an earlier one already
+                    // provided a *different* file at this path.
+                    var destination = relative;
+                    if (written.TryGetValue(relative, out var previous))
+                    {
+                        var previousBytes = File.ReadAllBytes(previous);
+                        var currentBytes = File.ReadAllBytes(file);
+                        if (previousBytes.SequenceEqual(currentBytes))
+                            continue; // identical, so sharing is harmless
+
+                        var extension = Path.GetExtension(relative);
+                        var stem = relative.Substring(0, relative.Length - extension.Length);
+                        destination = $"{stem}_{tag}{extension}";
+                    }
+
+                    var destinationPath = Path.Combine(sonicHybridPath, "Sprites", destination);
+                    Directory.CreateDirectory(Path.GetDirectoryName(destinationPath)!);
+                    File.Copy(file, destinationPath, true);
+                    written[relative] = destinationPath;
+                }
+            }
+        }
+
         public static void CopyResources(string sourceDataRsdk, string destinationDataRsdk)
         {
             var sonic1Path = Path.Combine(sourceDataRsdk, "sonic1/Data");
@@ -45,7 +112,6 @@ namespace SonicHybridRsdk.Generator
                 "Music",
                 "Palettes",
                 "SoundFX",
-                "Sprites",
             })
             {
                 Copy(Path.Combine(sonic1Path, folder), Path.Combine(sonicHybridPath, folder));
@@ -53,19 +119,10 @@ namespace SonicHybridRsdk.Generator
                 Copy(Path.Combine(sonic2Path, folder), Path.Combine(sonicHybridPath, folder));
             }
 
-            foreach (var (SourcePath, DestinationPath) in new (string, string)[]
-            {
-                ("Sprites/Global/Items2.gif", "Sprites/Global/Items4.gif"),
-                ("Sprites/Global/Display.gif", "Sprites/Global/Display2.gif"),
-            })
-                File.Copy(
-                    Path.Combine(sonic1Path, SourcePath),
-                    Path.Combine(sonicHybridPath, DestinationPath),
-                    true);
+            CopySprites(sonic1Path, sonicCdPath, sonic2Path, sonicHybridPath);
 
             foreach (var (SourcePath, DestinationPath) in new (string, string)[]
             {
-                ("Sprites/Global/Items.gif", "Sprites/Global/ItemsCD.gif"),
                 ("Animations/MetalSonic.Ani", "Animations/MetalSonicBoss.Ani"),
             })
                 File.Copy(
