@@ -123,9 +123,18 @@ def probe(idx):
                         if p.startswith("Bytecode/")
                         and not p.endswith("GlobalCode.bin")]
 
+    # Whether the engine reported that its startup loop reached every object type. It
+    # logs this on the first frame, so its absence means the loop never got as far as
+    # turning a frame - which is expected for a stage with no bytecode, and is why this
+    # is per-stage rather than a single grep over whichever log was left behind.
+    startup = re.search(r"^STARTUP (.+?) after reaching type (\d+) of (\d+)$",
+                        text, re.M)
+
     return {
         "loaded": "Loading Scene" in text,
         "bytecode_ok": not stage_bc_missing,
+        "startup": startup.group(1) if startup else None,
+        "startup_reached": int(startup.group(2)) if startup else -1,
         "objects": len(re.findall(r"^Set Object", text, re.M)),
         "frames": frames,
         "scene": next((l.strip() for l in text.splitlines() if "Loading Scene" in l), ""),
@@ -162,17 +171,24 @@ def main():
             sys.stderr.write("unknown option %r\n" % flag)
             return 2
 
-    print("%4s  %-38s %-7s %-10s %-7s %s" %
-          ("idx", "stage", "loaded", "bytecode", "objects", "frames"))
-    print("-" * 92)
+    print("%4s  %-38s %-7s %-10s %-9s %-7s %s" %
+          ("idx", "stage", "loaded", "bytecode", "startup", "objects", "frames"))
+    print("-" * 102)
 
     rows = []
     for idx, label in probes:
         r = probe(idx)
-        print("%4d  %-38s %-7s %-10s %-7d %s" %
+        # "startup" is the engine's own report that its startup loop reached every object
+        # type. A dash means it never reported, which for a stage with no bytecode is
+        # expected rather than alarming.
+        startup = r["startup"] or "-"
+        if r["startup"] and r["startup"] != "completed":
+            startup = "FAILED"
+        print("%4d  %-38s %-7s %-10s %-9s %-7d %s" %
               (idx, label,
                "YES" if r["loaded"] else "NO",
                "YES" if r["bytecode_ok"] else "MISSING",
+               startup,
                r["objects"], r["frames"]))
         rows.append((idx, label, r))
 
@@ -188,8 +204,15 @@ def main():
             verdict = "loads, but its bytecode is MISSING -> objects are inert"
         elif r["frames"] < 30:
             verdict = "has bytecode, but only ran %d frames" % r["frames"]
+        elif r["startup"] != "completed":
+            # Objects are placed and frames advance, but the engine says its startup
+            # loop did not reach every object type - so some objects never started up.
+            # This is the case a probe cannot see on its own, and it looks identical to
+            # success from the outside.
+            verdict = ("STARTUP LOOP DID NOT COMPLETE (reached type %s) - some object "
+                       "types are silently inert" % r["startup_reached"])
         else:
-            verdict = "OK - loads, has bytecode, ran %d frames" % r["frames"]
+            verdict = "OK - loads, has bytecode, startup loop complete, ran %d frames" % r["frames"]
             worked.append(label)
         print("  %-40s %s" % (label, verdict))
         for miss in r["stage_bc_missing"][:2]:

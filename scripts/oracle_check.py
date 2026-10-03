@@ -55,6 +55,7 @@ SCENES = [
 
 RE_SPAN = re.compile(r"ORACLE-SPAN @(-?\d+) consumed=(\d+) tags=$")
 RE_OP = re.compile(r"ORACLE: (.+) @(-?\d+)(?: sc=(-?\d+))?$")
+RE_TAG = re.compile(r"^(\d+),$")
 
 
 def run_scene(category, scene, seconds=9):
@@ -94,10 +95,16 @@ def run_scene(category, scene, seconds=9):
                 pending["consumed"] = int(m.group(2))
                 pending["tags"] = []
             continue
-        if pending is not None and pending.get("word") is not None and line:
-            pending["tags"].append(int(line.rstrip(",")))
-            continue
+        # Only a "N," line is a tag. This used to accept any non-empty line, which
+        # crashed the whole sweep on the first engine message that happened to appear
+        # between a SPAN line and its tags - "Initializing gamepads..." - after thirteen
+        # stages had already passed. Anything not matching is left to fall through,
+        # which ends the entry and lets the next ORACLE start cleanly.
         if pending is not None and pending.get("word") is not None:
+            m = RE_TAG.match(line)
+            if m:
+                pending["tags"].append(int(m.group(1)))
+                continue
             entries.append((pending["name"], pending["word"],
                             pending["consumed"], tuple(pending["tags"])))
             pending = None

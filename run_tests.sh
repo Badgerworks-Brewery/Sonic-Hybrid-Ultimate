@@ -189,6 +189,33 @@ else
     printf '  SKIP  engine binary not built\n'
 fi
 
+# ProcessStartupObjects runs the eventStartup of all 256 object types. If it stops early,
+# every type after that point silently never starts up, while the stage still loads, still
+# places its objects and still turns frames - so a probe cannot see it. The engine now
+# reports the outcome itself, and this asserts on that rather than trusting the frames.
+#
+# Worth its own check: this exact failure survived two rounds of investigation here, and
+# the intermediate readings were confidently wrong twice before the real cause turned out
+# to be the measurement itself.
+if [ -f "$OUT/log.txt" ] && command -v python3 >/dev/null 2>&1; then
+    # Probe one stage that has bytecode and require its verdict to include the startup
+    # loop completing. Not a grep over "$OUT/log.txt": that file is whichever stage ran
+    # last, and a stage with no bytecode never reports a startup at all - which is why
+    # the first version of this check failed on a perfectly healthy build.
+    # `set -o pipefail` is on, so piping this would take probe_stages.py's exit status
+    # rather than grep's - and it exits non-zero whenever any game lacks a working stage,
+    # which is a separate test. Capture the output, then match it.
+    probe_out=$(python3 scripts/probe_stages.py --scene 0 2>&1 || true)
+    if printf '%s\n' "$probe_out" | grep -q "startup loop complete"; then
+        ok "the engine reports the startup loop reached every object type"
+    else
+        bad "startup loop did not complete; some object types are silently inert"
+        printf '%s\n' "$probe_out" | sed 's/^/    /' | head -8
+    fi
+else
+    printf '  SKIP  engine binary not built, or python3 unavailable\n'
+fi
+
 # ---------------------------------------------------------------------------
 head "6. Packer byte order"
 
