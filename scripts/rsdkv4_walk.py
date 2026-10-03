@@ -88,7 +88,12 @@ def operand_width(code, pc):
         length = code[pc + 1]
         if length < 0:
             raise Desync("string length %d at word %d" % (length, pc))
-        return 2 + (length + 3) // 4
+        # 3 + length // 4, not 2 + ceil(length / 4). The reader loops over the
+        # characters packing four to a word and *then* increments once more
+        # (Script.cpp:4280), so a 16-character string costs 7 words rather than
+        # the 6 the writer appears to emit. Getting this wrong desynchronises
+        # the very next opcode, which is what an earlier version of this file did.
+        return 3 + length // 4
     raise Desync("unknown operand tag %d at word %d" % (tag, pc))
 
 

@@ -257,10 +257,28 @@ index a450c82..6946d6b 100644
                  FileRead(&fileBuffer2, 1);
                  FileRead(strBuffer, fileBuffer2);
 diff --git a/RSDKv4/Script.cpp b/RSDKv4/Script.cpp
-index 71e569f..d8d872f 100644
+index 71e569f..06744a5 100644
 --- a/RSDKv4/Script.cpp
 +++ b/RSDKv4/Script.cpp
-@@ -1065,6 +1065,38 @@ enum ScrFunc {
+@@ -525,7 +525,16 @@ const FunctionInfo functions[] = {
+ #endif
+     FunctionInfo("GetTextInfo", 5),
+ #if !RETRO_REV02
+-    FunctionInfo("DrawText", 7),
++    // Three operands, not seven. Its handler uses exactly three
++    // (`DrawTextMenu(&gameMenu[operands[0]], operands[1], operands[2])`, see
++    // the FUNC_DRAWTEXT case), and the shipped bytecode agrees: every DrawText
++    // instruction in Sonic 1's and Sonic 2's GlobalCode.bin is followed three
++    // operand words later by a valid opcode, and seven puts the next opcode four
++    // words into the instruction after it. A wrong opcodeSize does not just
++    // mis-read DrawText - the operand fetch loop has already consumed four words
++    // belonging to the following instruction by the time the handler runs, so the
++    // whole script desynchronises from there on.
++    FunctionInfo("DrawText", 3),
+ #endif
+     FunctionInfo("GetVersionNumber", 2),
+ 
+@@ -1065,6 +1074,38 @@ enum ScrFunc {
  };
  
  ObjectScript objectScriptList[OBJECT_COUNT];
@@ -299,7 +317,7 @@ index 71e569f..d8d872f 100644
  ScriptFunction scriptFunctionList[FUNCTION_COUNT];
  #if RETRO_USE_COMPILER
  int scriptFunctionCount = 0;
-@@ -1796,13 +1828,10 @@ void ConvertFunctionText(char *text)
+@@ -1796,13 +1837,10 @@ void ConvertFunctionText(char *text)
                  funcName[0] = '0';
                  funcName[1] = 0;
  
@@ -317,7 +335,7 @@ index 71e569f..d8d872f 100644
                  }
  
                  if (o == OBJECT_COUNT)
-@@ -2106,13 +2135,10 @@ void CheckCaseNumber(char *text)
+@@ -2106,13 +2144,10 @@ void CheckCaseNumber(char *text)
              caseValue[0] = '0';
              caseValue[1] = 0;
  
@@ -335,7 +353,7 @@ index 71e569f..d8d872f 100644
              }
  
              if (o == OBJECT_COUNT)
-@@ -2312,13 +2338,10 @@ bool ReadSwitchCase(char *text)
+@@ -2312,13 +2347,10 @@ bool ReadSwitchCase(char *text)
                  caseValue[0] = '0';
                  caseValue[1] = 0;
  
@@ -353,7 +371,7 @@ index 71e569f..d8d872f 100644
                  }
  
                  if (o == OBJECT_COUNT)
-@@ -3349,11 +3372,106 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
+@@ -3349,11 +3381,106 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
      functionStackPos  = 0;
      foreachStackPos   = 0;
  
