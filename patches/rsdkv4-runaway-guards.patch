@@ -289,7 +289,7 @@ index a450c82..7dced45 100644
              if (loadGlobalScripts && offsetCount && object->type > globalObjCount)
                  object->type += offsetCount; // offset it by our mod count
 diff --git a/RSDKv4/Script.cpp b/RSDKv4/Script.cpp
-index 71e569f..a56cab6 100644
+index 71e569f..0eea677 100644
 --- a/RSDKv4/Script.cpp
 +++ b/RSDKv4/Script.cpp
 @@ -525,6 +525,16 @@ const FunctionInfo functions[] = {
@@ -407,7 +407,21 @@ index 71e569f..a56cab6 100644
                  }
  
                  if (o == OBJECT_COUNT)
-@@ -3251,8 +3289,22 @@ void LoadBytecode(int stageListID, int scriptID)
+@@ -3094,6 +3132,13 @@ void LoadBytecode(int stageListID, int scriptID)
+         int *scriptCodePtr = &scriptCode[scriptCodePos];
+         int *jumpTablePtr  = &jumpTable[jumpTablePos];
+ 
++        // Where this container's words will actually land in the global scriptCode
++        // array. Recorded because every tool that maps engine-reported word indices back
++        // to a container has to know it, and it is not 0 in general: presentation
++        // containers load before the globals, so the globals start after them.
++        const int placementBase    = scriptCodePos;
++        const int jumpPlacementBase = jumpTablePos;
++
+         FileRead(&fileBuffer, 1);
+         int scriptCodeSize = fileBuffer;
+         FileRead(&fileBuffer, 1);
+@@ -3251,8 +3296,22 @@ void LoadBytecode(int stageListID, int scriptID)
          FileRead(&fileBuffer, 1);
          functionCount |= fileBuffer << 8;
  
@@ -431,7 +445,7 @@ index 71e569f..a56cab6 100644
  
              FileRead(&fileBuffer, 1);
              function->ptr.scriptCodePtr = fileBuffer;
-@@ -3265,7 +3317,7 @@ void LoadBytecode(int stageListID, int scriptID)
+@@ -3265,7 +3324,7 @@ void LoadBytecode(int stageListID, int scriptID)
          }
  
          for (int f = 0; f < functionCount; ++f) {
@@ -440,13 +454,17 @@ index 71e569f..a56cab6 100644
  
              FileRead(&fileBuffer, 1);
              function->ptr.jumpTablePtr = fileBuffer;
-@@ -3276,6 +3328,39 @@ void LoadBytecode(int stageListID, int scriptID)
+@@ -3276,6 +3335,64 @@ void LoadBytecode(int stageListID, int scriptID)
              FileRead(&fileBuffer, 1);
              function->ptr.jumpTablePtr |= fileBuffer << 24;
          }
 +        loadedFunctionCount = functionBase + functionCount;
 +        if (scriptID + scriptCount > loadedScriptTypeCount)
 +            loadedScriptTypeCount = scriptID + scriptCount;
++
++        PrintLog("PLACE %s: code starts at word %d, jump words at %d, types %d..%d, "
++                 "functions at %d", scriptPath, placementBase, jumpPlacementBase,
++                 scriptID, scriptID + scriptCount - 1, functionBase);
 +
 +        // Now that every slot is known, give each object the numbering its own game
 +        // was compiled against. Globals: game 0 keeps its numbers, game 1 shifts by
@@ -475,12 +493,33 @@ index 71e569f..a56cab6 100644
 +            else {
 +                script->typeBase     = stageTypeBase;
 +                script->functionBase = functionBase;
++
++                // First few stage scripts, with the absolute word index their code
++                // landed at. This is the number every tool mapping engine-reported
++                // indices back to a container needs, and it is the one that decides
++                // whether stage code can be found at all.
++                for (int s = 0; s < scriptCount && s < 3; ++s) {
++                    // Once per container load. This printed on every script before,
++                    // which buried the one line that matters - the placement base.
++                    static bool dumped = false;
++                    if (!dumped) {
++                        PrintLog("STAGESCRIPT type %d '%s': update @%d (container "
++                                 "word %d), draw @%d, startup @%d",
++                                 scriptID + s, typeNames[scriptID + s],
++                                 script->eventUpdate.scriptCodePtr,
++                                 script->eventUpdate.scriptCodePtr - placementBase,
++                                 script->eventDraw.scriptCodePtr,
++                                 script->eventStartup.scriptCodePtr);
++                        if (s == scriptCount - 1 || s == 2)
++                            dumped = true;
++                    }
++                }
 +            }
 +        }
  
          CloseFile();
      }
-@@ -3338,6 +3423,20 @@ void ClearScriptData()
+@@ -3338,6 +3455,20 @@ void ClearScriptData()
          scriptFunctionList[f].ptr.jumpTablePtr  = JUMPTABLE_COUNT - 1;
      }
  
@@ -501,7 +540,7 @@ index 71e569f..a56cab6 100644
      SetObjectTypeName("Blank Object", OBJ_TYPE_BLANKOBJECT);
  }
  
-@@ -3349,16 +3448,139 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
+@@ -3349,16 +3480,139 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
      functionStackPos  = 0;
      foreachStackPos   = 0;
  
@@ -642,7 +681,7 @@ index 71e569f..a56cab6 100644
  
              if (opcodeType == SCRIPTVAR_VAR) {
                  int arrayVal = 0;
-@@ -4186,6 +4408,17 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
+@@ -4186,6 +4440,17 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
              }
          }
  
@@ -660,7 +699,7 @@ index 71e569f..a56cab6 100644
          ObjectScript *scriptInfo = &objectScriptList[objectEntityList[objectEntityPos].type];
          Entity *entity           = &objectEntityList[objectEntityPos];
          SpriteFrame *spriteFrame = nullptr;
-@@ -4943,7 +5176,15 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
+@@ -4943,7 +5208,15 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
                  opcodeSize     = 0;
                  Entity *newEnt = &objectEntityList[scriptEng.operands[0]];
                  memset(newEnt, 0, sizeof(Entity));
@@ -677,7 +716,7 @@ index 71e569f..a56cab6 100644
                  newEnt->propertyValue      = scriptEng.operands[2];
                  newEnt->xpos               = scriptEng.operands[3];
                  newEnt->ypos               = scriptEng.operands[4];
-@@ -4989,7 +5230,14 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
+@@ -4989,7 +5262,14 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
                      scriptEng.arrayPosition[8] = TEMPENTITY_START;
                  Entity *temp = &objectEntityList[scriptEng.arrayPosition[8]];
                  memset(temp, 0, sizeof(Entity));
@@ -693,7 +732,7 @@ index 71e569f..a56cab6 100644
                  temp->propertyValue      = scriptEng.operands[1];
                  temp->xpos               = scriptEng.operands[2];
                  temp->ypos               = scriptEng.operands[3];
-@@ -5209,8 +5457,20 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
+@@ -5209,8 +5489,20 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
                  functionStack[functionStackPos++] = scriptCodePtr;
                  functionStack[functionStackPos++] = jumpTableStart;
                  functionStack[functionStackPos++] = scriptCodeStart;

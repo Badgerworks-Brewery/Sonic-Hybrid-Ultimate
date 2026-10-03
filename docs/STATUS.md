@@ -170,7 +170,64 @@ of those, confirmed: 950 (100%)
 
 Two things follow, and the first is the serious one.
 
-**Stage-object code is not being placed at all.** Every distinct site resolves inside
+**Stage-object scripts never execute at all. Every stage is running on global code
+alone.** This is the most consequential thing in this document, and it was hidden behind
+a bookkeeping problem in the oracle until the engine was made to report where it actually
+puts things.
+
+Measured, with `RSDK_TRACE_ALL=1` on a 12-second run of Sonic 1 Green Hill Act 1:
+
+```
+PLACE Bytecode/GlobalCode.bin: code starts at word 0,    types 1..77,   functions at 0
+PLACE Bytecode/GHZS1.bin:      code starts at word 115998, types 78..113, functions at 190
+
+instructions the engine executed: 29789
+traced word index range: 18238 .. 97929
+```
+
+So the placement model the tools assume is *correct* - the globals occupy `[0, 115998)`,
+the stage container `[115998, 146379)` - and `container_for()` was never the problem. The
+problem is that **every single traced instruction falls inside the globals' range.** Not
+one lands in the stage container, including for the stage's own setup object:
+
+```
+STAGESCRIPT type 78 'GHZSetup': update @116818, startup @117221
+```
+
+`GHZSetup` is what spawns the player, runs the stage's logic and drives the level. Its
+update is at word 116818. That word is never executed.
+
+What this means for what the probes have been reporting as success:
+
+- Objects *are* placed correctly. Green Hill puts 305 objects on registered Sonic 1 types
+  - rings, monitors, spikes, Buzz Bombers, Crabmeats, Newtron Fly - because that happens
+  in `LoadActLayout`, which is engine code and needs no scripts.
+- Objects *do not animate*. Anything whose logic lives in a stage-local script is inert.
+  The player is placed but sits at the origin at speed 0; the frame counter advances and
+  the ring count stays exactly 165.
+- The 305-of-305 figure, and the earlier "Green Hill runs 600 frames", are both true and
+  both much weaker than they read. Objects spawning proves the Act layout is right. It
+  proves nothing about whether the stage runs.
+
+This also explains the whole shape of the oracle's output - identical 190 distinct sites
+for five different stages, all inside the globals, all of which agree 100%. Five different
+stages producing byte-identical coverage is not a coincidence; they are running the same
+code. The 950-of-950 agreement is real, but it is agreement about the globals only, which
+is a much smaller claim than "the bytecode walker decodes RSDKv4 correctly".
+
+**Still to determine:** why stage-local scripts never run, when their pointers are correct
+and their code is present. The candidates, none yet tested: `ProcessStartupObjects` and
+`ProcessObjectControl` not reaching stage types; the stage container being loaded twice
+(the log shows `Bytecode/GHZS1.bin` loaded twice) and the second load overwriting the
+first's script pointers with `NONE`; or the function-table append introduced for
+`CallFunction` changing which code a stage object starts at. That last one is the most
+suspicious because it is the only change here that is not a pre-existing condition, and
+distinct-site coverage fell from ~831 to 190 when it landed.
+
+`LoadBytecode` now logs its own `PLACE` line - placement base, jump-table base, type range
+and function base - so this does not have to be re-derived by hand next time.
+
+ Every distinct site resolves inside
 `GlobalCode.bin`, whose 115,998 words cover the globals; no traced instruction lands in
 the 30,381 words of `GHZS1.bin` or `CPZS2.bin`, even though those containers load and
 their objects demonstrably run - Green Hill spawns Buzz Bombers, Crabmeats and Newtron
