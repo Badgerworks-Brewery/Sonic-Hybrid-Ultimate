@@ -52,10 +52,21 @@ There is no runtime lookup to fix, which I checked rather than assumed. Filterin
 name lookup by game changes Green Hill's live types not one bit, because `TypeName` is
 resolved at compile time. Rewriting those constants needs a bytecode walker.
 
-**The bytecode walker is at 61%.** `scripts/rsdkv4_walk.py` agrees with the engine on
-346 of 569 script ranges. Three earlier walkers were deleted rather than shipped; this
-one is kept because its docstring records two real engine bugs it found (see below)
+**The bytecode walker is at 81%.** `scripts/rsdkv4_walk.py` agrees with the engine on
+647 of 794 script ranges. Three earlier walkers were deleted rather than shipped; this
+one is kept because its docstring records three real engine bugs it found (see below)
 and states plainly that it cannot be used to rewrite operands. Nothing depends on it.
+
+Getting that number to mean something took two corrections, and both earlier versions
+were reporting a flattering figure for the wrong reason. The first filtered script
+pointers with `v < len(container.code)`, which is wrong for every per-stage container
+because their pointers are absolute indices into the engine's combined array. It
+reported 569 ranges, of which not one came from stage bytecode - it had been measuring
+the easy half and calling it 74%. The fix then shifted pointers against each
+container's own lowest pointer, which moves every index by the 262-word prologue the
+compiler emits first, so it read the wrong words throughout and reported 16%.
+`placement_base()` now derives the real base from the sibling `GlobalCode.bin`, and
+81% is measured over everything.
 
 **Sonic CD needs a compiler, not a decompiler.** The decompiler is finished —
 7481 of 7481 subroutines emitted — but its output is text, and text is inert here.
@@ -80,9 +91,31 @@ operand fetch loop runs *before* the handler, reading seven where the bytecode h
 three consumed four words belonging to the next instruction, desynchronising every
 script that draws text.
 
-**The opcode table's `#if` walk ignored `!`.** `scripts/rsdkv4_opcodes.py` treated
-`#if RETRO_REV00` and `#if !RETRO_REV00` identically, so `SetPaletteFade` was recorded
-as 7 operands instead of 6.
+**The opcode and variable tables included entries that are never compiled.**
+`RSDK_REVISION` is 3 (`RetroEngine.hpp:225`), which makes `RETRO_REV00` false and
+`RETRO_REV01/02/03` true. The guard walk treated any guard it did not recognise as
+active, so `LoadFontFile` and `DrawText` - both of which sit inside `#if !RETRO_REV02`
+- stayed in the table and shifted every opcode after them by one: 151 entries claimed
+where the engine has 149, and `GetTableValue` landing at 129 instead of 127. The
+variable table had the same bug, 253 claimed against 251 compiled, and now imports the
+guard logic from the opcode table rather than keeping a second copy of it.
+
+**The commit before that one made a wrong "fix" and this reverts it.** It changed
+DrawText's operand count from 7 to 3 because the bytecode walk appeared to align better
+at 3. The walk only appeared to align better because its opcode table wrongly contained
+DrawText at all, shifting everything after it. Seven is correct for the handler that
+exists; the entry is inside `#if !RETRO_REV02` and is not compiled either way.
+
+`scripts/check_opcode_operands.py` now settles this whole class of question by reading
+every handler in ProcessScript's dispatch switch and comparing the operand indices it
+touches against the count `functions[]` declares. A handler reading a slot it never
+writes means the operand fetch has already run out and the words it consumed belong to
+the next instruction. 107 handlers checked, all consistent. Two details it needed to get
+right first: handlers reuse the high operand slots as scratch (`Get16x16TileInfo` declares
+four operands and computes `operands[4..6]` as locals), so only indices a handler reads
+*and never writes* count; and it has to honour the guards, because `SetPaletteFade`'s
+`operands[6]` sits inside `#if RETRO_REV00`. Without both, it reports correct code, which
+is worse than reporting nothing.
 
 There is also a trap worth naming, because it is easy to fall into: searching for an
 operand width that reduces the walker's desync count produces convincing
