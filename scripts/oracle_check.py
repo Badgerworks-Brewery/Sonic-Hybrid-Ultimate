@@ -109,7 +109,25 @@ def run_scene(category, scene, seconds=None):
     entries = []
     label = ""
     stage_file = None
-    for line in io.open(LOG, encoding="latin-1"):
+
+    # Windows does not release a killed process's file handles the instant wait()
+    # returns, and PrintLog holds the log open between calls. Reading straight after a
+    # kill therefore fails sometimes - which killed a 19-stage sweep at scene 2 with a
+    # PermissionError having nothing to do with what was being measured. Retry, the same
+    # way the removal above does, and say so if it never frees rather than dying.
+    text = None
+    for _attempt in range(20):
+        try:
+            text = io.open(LOG, encoding="latin-1").read()
+            break
+        except OSError:
+            time.sleep(0.5)
+    if text is None:
+        sys.stderr.write("could not read %s; the previous engine run may still "
+                         "hold it\n" % LOG)
+        return [], "log locked", None
+
+    for line in text.splitlines():
         line = line.strip()
 
         # Self-contained: opcode, word index, words consumed and tags, on one line.
