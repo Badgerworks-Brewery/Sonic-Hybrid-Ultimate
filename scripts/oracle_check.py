@@ -53,19 +53,48 @@ SCENES = [
     (1, 101, "WFZS2.bin"),
 ]
 
-RE_SPAN = re.compile(r"ORACLE-SPAN @(-?\d+) consumed=(\d+) tags=$")
-RE_OP = re.compile(r"ORACLE: (.+) @(-?\d+)(?: sc=(-?\d+))?$")
-RE_TAG = re.compile(r"^(\d+),$")
+# One self-contained record per executed instruction: opcode name, the word index it
+# started at, how many words it occupied, and the operand tags it read.
+#
+# This used to be three or more lines per instruction, correlated by position. That is
+# what let an unrelated engine message land between a word-count line and its tags and
+# crash the sweep outright, and what made a stray line indistinguishable from a tag.
+RE_RECORD = re.compile(
+    r"ORACLE (\S+) @(-?\d+) consumed=(\d+) tags=([\d,]*)$")
+
+# Seconds per stage.
+#
+# Long on purpose. RSDK_TRACE_ALL writes a line per executed instruction and PrintLog
+# reopens the log each time, so a traced run is several times slower than an untraced
+# one - slow enough that a short budget kills the engine before it gets past the
+# startup loop. That does not show up as a failure; it shows up as coverage quietly
+# frozen at 190 distinct sites for stage after stage, which is the engine having only
+# ever run the globals. A short budget here measures a run that never happened.
+SECONDS = 30
 
 
-def run_scene(category, scene, seconds=9):
+def run_scene(category, scene, seconds=None):
+    seconds = SECONDS if seconds is None else seconds
     # Merged, not rewritten. settings.ini is tracked and carries keys the engine
     # needs to find the pack at all (DataFile=Data.rsdk); writing a template
     # dropped them, and the run still worked because the engine falls back to
     # the pack beside it - so the damage only ever showed up as a confusing diff.
     rsdk_settings.write_settings(PACK, category, scene)
-    if os.path.exists(LOG):
-        os.remove(LOG)
+    # A previous run's engine can still be holding log.txt, and then the sweep dies on
+    # a PermissionError that has nothing to do with what it was measuring. Wait for the
+    # handle rather than failing, and say so if it never frees.
+    for attempt in range(20):
+        if not os.path.exists(LOG):
+            break
+        try:
+            os.remove(LOG)
+            break
+        except OSError:
+            time.sleep(0.5)
+    else:
+        sys.stderr.write("could not remove %s; a previous engine run is still "
+                         "holding it\n" % LOG)
+        return 1
     env = dict(os.environ)
     env["RSDK_TRACE_ALL"] = "1"
     proc = subprocess.Popen([EXE], cwd=PACK, env=env,
@@ -78,36 +107,18 @@ def run_scene(category, scene, seconds=9):
         return [], "no log", None
 
     entries = []
-    pending = None
     label = ""
     stage_file = None
     for line in io.open(LOG, encoding="latin-1"):
         line = line.strip()
-        m = RE_OP.match(line)
+
+        # Self-contained: opcode, word index, words consumed and tags, on one line.
+        m = RE_RECORD.match(line)
         if m:
-            label = label or ""
-            pending = {"name": m.group(1), "word": None}
+            tags = tuple(int(t) for t in m.group(4).split(",")) if m.group(4) else ()
+            entries.append((m.group(1), int(m.group(2)), int(m.group(3)), tags))
             continue
-        m = RE_SPAN.match(line)
-        if m:
-            if pending is not None:
-                pending["word"] = int(m.group(1))
-                pending["consumed"] = int(m.group(2))
-                pending["tags"] = []
-            continue
-        # Only a "N," line is a tag. This used to accept any non-empty line, which
-        # crashed the whole sweep on the first engine message that happened to appear
-        # between a SPAN line and its tags - "Initializing gamepads..." - after thirteen
-        # stages had already passed. Anything not matching is left to fall through,
-        # which ends the entry and lets the next ORACLE start cleanly.
-        if pending is not None and pending.get("word") is not None:
-            m = RE_TAG.match(line)
-            if m:
-                pending["tags"].append(int(m.group(1)))
-                continue
-            entries.append((pending["name"], pending["word"],
-                            pending["consumed"], tuple(pending["tags"])))
-            pending = None
+
         m = re.match(r"Loading Scene .* - (.*)$", line)
         if m:
             label = m.group(1)
