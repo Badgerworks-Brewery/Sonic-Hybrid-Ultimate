@@ -360,6 +360,56 @@ So the standing rules, and each one exists because its absence cost real time:
 - **Do not filter log text to decide whether a build succeeded.** Check the exit code.
   `scripts/build_engine.py` exists because of that.
 
+## First real finding from the honest checker
+
+With the drop-and-discard bug fixed and the trace fast enough to actually finish the
+startup loop, the oracle finally reports failures. It had been reporting 100% by
+construction for the whole project; this is the first disagreement it is able to state.
+
+Sonic 1, all 19 regular stages:
+
+```
+instructions the engine executed: 1258761
+instruction sites placed: 32595
+of those, confirmed: 32593 of 32595 (100.0%)
+not placed, so not compared: 257
+```
+
+**18 of 19 stages are perfectly clean.** One stage is not:
+
+```
+MARBLE ZONE 2 (scene 4)  traced 91218 | placed 1847 confirmed 1845 | WRONG 2
+                          opcode differs 227, undecodable 30
+```
+
+The two width disagreements, both on `Equal`:
+
+```
+MZS1.bin word 121077  Equal  2 operands: walker 5 words tags [1, 2], engine 7 words tags [1, 2]
+MZS1.bin word 126301  Equal  2 operands: walker 8 words tags [1, 1], engine 7 words tags [1, 2]
+```
+
+and a cascade around one region, which is the signature of a single mis-sized
+instruction rather than 227 independent bugs:
+
+```
+word 116644: engine read IfEqual,      walker read Equal
+word 116654: engine read SetMusicTrack, walker read Equal
+word 116665: engine read Equal,         walker read ShR
+word 116673: engine read Equal,         walker read End
+word 116681: engine read else,          walker read Inc
+```
+
+Once the walker mis-sizes one instruction it reads every later instruction in that stream
+at the wrong offset, so the *names* diverge too. The cascade therefore points at the first
+real disagreement at or before word 116644, and the two reported `Equal` width
+disagreements are the honest leads: `Equal`'s declared operand count is wrong in at least
+one operand-tag combination - 5 words where the engine consumes 7, and 8 where it
+consumes 7.
+
+That is the specific thing to check first, and it is only findable because the checker
+now counts what it cannot explain instead of discarding it.
+
 ## Next steps, in order of value
 
 1. **Widen the oracle, now that it is trustworthy.** 4,157 distinct sites, 100% confirmed,
