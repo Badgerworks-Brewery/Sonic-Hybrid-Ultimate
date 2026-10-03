@@ -432,6 +432,33 @@ That is the specific thing to check first, and it is only findable because the c
 now counts what it cannot explain instead of discarding it - it had reported 100% by
 construction for the entire project.
 
+## The full sweep: both games, every regular stage
+
+```
+Sonic 1  (19 stages)   1,258,761 instructions executed
+                      32,595 sites placed, 32,593 confirmed (100.0%)
+                         257 not placed  - all of them Marble Zone Act 2
+
+Sonic 2  (21 stages)   1,600,291 instructions executed
+                      40,461 sites placed, 40,461 confirmed (100.0%)
+                          0 not placed, 0 wrong, 0 opcode differences, 0 undecodable
+
+combined              2,859,052 instructions, 73,056 distinct sites, 73,054 confirmed
+```
+
+**Sonic 2 is clean across all 21 regular stages.** Not "100% of what it looked at" - zero
+sites dropped, zero disagreements, zero undecodable, on every stage.
+
+That asymmetry is itself informative. Sonic 2's types and functions are the ones listed
+first in the merged table, so they keep their own numbering: typeBase and functionBase are
+both 0 for them. Sonic 1 is the only game carrying a non-zero base, and Sonic 1 is the only
+game with a finding. The merged-numbering work is where the remaining uncertainty lives,
+which is what you would hope and not something the data was guaranteed to show.
+
+For scale: the first sweep of Sonic 1's same 19 stages managed 120,462 instructions and
+froze at 190 distinct sites per stage. The ceiling was never the bytecode - it was the
+cost of writing the trace, one line per operand tag instead of one per instruction.
+
 ## Next steps, in order of value
 
 1. **Widen the oracle, now that it is trustworthy.** 4,157 distinct sites, 100% confirmed,
