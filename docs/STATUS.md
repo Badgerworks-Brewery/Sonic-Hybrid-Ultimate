@@ -300,6 +300,66 @@ proved the code was present and non-zero, so "never reached" was not "pointed at
 the startup loop reaches, now on its own `RSDK_TRACE_STARTUP` switch so measuring it cannot
 change it).
 
+## Where this stands
+
+Suite: **20 passed, 2 failed**. Both failures are real and intended:
+
+- Sonic CD has no RSDKv4 bytecode, so its stages load their assets and object lists but
+  their objects never run.
+- The object-script entry point check.
+
+Sonic 1 and Sonic 2 stages: bytecode loads, objects are placed on the right game's types
+(305 of 305 on Green Hill), and the engine reports `STARTUP completed after reaching type
+255 of 255` for itself. What the bytecode walker is verified against:
+
+```
+GREEN HILL ZONE 1   traced 99140 | placed 1807 confirmed 1807 | 0 gaps
+GREEN HILL ZONE 2   traced 27422 | placed 2004 confirmed 2004 | 0 gaps
+```
+
+All 19 Sonic 1 regular stages in one sweep: **1,684,355 instructions executed, zero sites
+dropped.** The first sweep of the same stages managed 120,462, so the ceiling was never
+the bytecode - it was the cost of writing the trace. One line per instruction instead of
+one per operand tag took it from 190 distinct sites per stage to roughly 2,000.
+
+Sonic 3's ROM is on this machine (`C:\Users\charl\Documents\school\N\Sonic_Knuckles_wSonic3.bin`,
+byte-identical to `rsdk-source-data/sonic3.bin`). What is still missing is `sonic3air.exe`
+and anything that unpacks a ROM into AIR data.
+
+## The thing worth reading if you only read one thing
+
+Every confident wrong answer in this project's history has the same shape: **a measurement
+that was truncated, filtered, or too slow, reported as a result.**
+
+1. The trace's opcode line was capped at 300 instructions while the word-count line below
+   it logged all 7,000-odd. The checker read 300 and reported an identical "142 confirmed"
+   from five different stages. Identical totals from different stages were the tell.
+2. `check()` had three bare `continue`s dropping anything it could not place, so it could
+   only ever report success. 24,508 of 24,508, 100%.
+3. The trace's I/O cost meant a traced run never got past the globals, so coverage sat at
+   exactly 190 distinct sites for stage after stage. I read that twice as "stage scripts
+   never execute". They do.
+4. The build check filtered on `error C`, so two link failures passed and it printed "ok"
+   while the failed link had deleted the executable.
+5. Two oracle runs share one `log.txt`, so a background sweep and a test run overwrote
+   each other and produced "1 stage traced" plus a non-zero gap count - which read as a
+   checker regression.
+
+So the standing rules, and each one exists because its absence cost real time:
+
+- **Prefer a counter to a sample.** "Reached 110 types, highest 113" answers the question.
+  "Types 4 and 40 logged" answered a narrower one, which I then over-read as "the loop
+  stopped at 40" - it had only printed the five types I hard-coded into it.
+- **A measurement that changes what it measures is not evidence.** `RSDK_TRACE_ALL` made
+  the engine several times slower, so a fixed timeout measured a run that had not happened.
+- **Make tools refuse rather than guess.** The oracle now exits 3 on a held lock and
+  reports "log locked" rather than reading whatever it finds.
+- **Let the engine state facts about itself.** `STARTUP completed after reaching type 255
+  of 255` is unconditional, not behind a trace switch, because the case it guards against
+  is exactly the one where nobody thinks to turn tracing on.
+- **Do not filter log text to decide whether a build succeeded.** Check the exit code.
+  `scripts/build_engine.py` exists because of that.
+
 ## Next steps, in order of value
 
 1. **Widen the oracle, now that it is trustworthy.** 4,157 distinct sites, 100% confirmed,
