@@ -52,29 +52,41 @@ There is no runtime lookup to fix, which I checked rather than assumed. Filterin
 name lookup by game changes Green Hill's live types not one bit, because `TypeName` is
 resolved at compile time. Rewriting those constants needs a bytecode walker.
 
-**The bytecode walker's operand widths are now verified against the engine.** Widths
-were the thing that had been guessed at, and guessing had already produced two
-convincing wrong answers. The engine can now log every instruction it executes
-(`RSDK_TRACE_ALL=1`), which is the only authoritative answer to "how many words does
-this instruction occupy", and `scripts/oracle_check.py` drives that: it boots five
-stages with tracing on and compares the walker against the engine instruction by
-instruction.
+**The bytecode walker's operand decoding is now verified against the engine.** This
+was the thing being guessed at, and guessing had already produced three confident
+wrong answers - `GetVersionNumber` and `Abs` "needing" three operands, and `DrawText`
+"needing" three. All three were artefacts of measuring the wrong thing.
 
-Result: **1073 of 1074 distinct instruction sites confirmed, 99.9%.** One site
-remains, `WLower` at word 89667, which the engine never agreed with in Chemical
-Plant Zone Act 2 and which did not appear in the other four stages. It needs a
-targeted look and is recorded rather than rounded away.
+The engine can now report, for every instruction it executes, exactly how many words
+it consumed and which operand tags it read (`RSDK_TRACE_ALL=1`).
+`scripts/oracle_check.py` boots five stages with that on and compares those numbers
+against the walker.
 
-Two flaws in the comparison itself had to be fixed first, and both had produced
-convincing nonsense. The engine appends GlobalCode.bin and then the *one* stage the
-scene needs, and every word in the trace is an absolute index into that combined
-array; checking a log against all 31 shipped stage files at once reported 238 sites
-where "the engine read a different opcode than we did", when it had simply read the
-words out of the wrong container. And a site has to be judged by whether *any* of its
-executions agrees, because scripts loop - a version that recorded the first mismatch
-and never cleared it reported `WLower` at word 25932 as wrong 33 times over, when
-the trace plainly shows `WLower @25932` followed by `GetTableValue @25940`, a gap of
-8, exactly what the walker computes.
+Result: **710 of 710 distinct instruction sites confirmed, 100%** - operand widths
+*and* operand tags.
+
+Getting to a comparison that could be trusted took three corrections, each of which
+had produced a confident wrong answer first:
+
+- Measuring the gap between consecutive log lines is not the same as measuring the
+  instruction. Control flow jumps, `CallFunction` transfers into another script, and a
+  truncated trace resumes somewhere else entirely, so gaps need filtering and capped
+  instructions need marking. The engine now states its own consumed count, which
+  removes the problem instead of filtering around it.
+- The engine appends `GlobalCode.bin` and then the *one* stage the scene needs, and
+  every word in the trace is an absolute index into that combined array. Comparing a
+  log against all 31 shipped stage files at once reported 238 sites where "the engine
+  read a different opcode than we did" - it had read the words out of the wrong
+  container.
+- A site has to be judged by whether *any* of its executions agrees, because scripts
+  loop. Recording the first mismatch and never clearing it reported `WLower` at word
+  25932 as wrong 33 times, when the trace plainly shows `WLower @25932` followed by
+  `GetTableValue @25940` - a gap of 8, exactly what the walker computes.
+
+What is still *not* established: the check covers the instructions the engine actually
+executed while playing those five stages. Code that never runs headlessly remains
+unverified, and the static linear walk over every range in every container still
+agrees on only 81%. That gap is the honest limit of the claim.
 
 `scripts/rsdkv4_walk.py` still walks only 81% of script *ranges* cleanly. Those two
 numbers are not in conflict: the 81% is a static linear walk over every range in

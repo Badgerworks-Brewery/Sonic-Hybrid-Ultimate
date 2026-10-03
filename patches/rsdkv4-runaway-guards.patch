@@ -257,7 +257,7 @@ index a450c82..6946d6b 100644
                  FileRead(&fileBuffer2, 1);
                  FileRead(strBuffer, fileBuffer2);
 diff --git a/RSDKv4/Script.cpp b/RSDKv4/Script.cpp
-index 71e569f..d676a17 100644
+index 71e569f..8bfdb5c 100644
 --- a/RSDKv4/Script.cpp
 +++ b/RSDKv4/Script.cpp
 @@ -525,6 +525,16 @@ const FunctionInfo functions[] = {
@@ -370,7 +370,7 @@ index 71e569f..d676a17 100644
                  }
  
                  if (o == OBJECT_COUNT)
-@@ -3338,6 +3371,14 @@ void ClearScriptData()
+@@ -3338,6 +3371,20 @@ void ClearScriptData()
          scriptFunctionList[f].ptr.jumpTablePtr  = JUMPTABLE_COUNT - 1;
      }
  
@@ -382,10 +382,16 @@ index 71e569f..d676a17 100644
 +    // Python reimplementation to be trusted.
 +    for (int t = 0; t < 151; ++t)
 +        PrintLog("OPTABLE %d %s %d", t, functions[t].name, functions[t].opcodeSize);
++    // And the operand tag encoding, for the same reason. What a tag means is not
++    // written down anywhere a tool can check, and a one-off error there silently
++    // shifts every operand in every file.
++    PrintLog("TAGINFO VAR=%d INTCONST=%d STRCONST=%d NONE=%d ARRAY=%d ENTNOPLUS1=%d ENTNOMINUS1=%d",
++             SCRIPTVAR_VAR, SCRIPTVAR_INTCONST, SCRIPTVAR_STRCONST, VARARR_NONE,
++             VARARR_ARRAY, VARARR_ENTNOPLUS1, VARARR_ENTNOMINUS1);
      SetObjectTypeName("Blank Object", OBJ_TYPE_BLANKOBJECT);
  }
  
-@@ -3349,11 +3390,138 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
+@@ -3349,16 +3396,161 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
      functionStackPos  = 0;
      foreachStackPos   = 0;
  
@@ -396,6 +402,14 @@ index 71e569f..d676a17 100644
 +    // rather than hang - a runaway loop must never be a silent failure.
 +    int instructions = 0;
 +    const int kInstructionBudget = 5000000;
++    // Tracing controls for the oracle scripts/oracle_check.py compares a bytecode
++    // walker against. Function scope, not block scope, because the operand tags
++    // are read after the diagnostic block that turns tracing on.
++    static const bool traceAll = getenv("RSDK_TRACE_ALL") != nullptr;
++    // Tags exactly as the engine reads them, so a tool can be checked against the
++    // real encoding rather than an inferred one.
++    static int oracleRawTags[0x10] = {0};
++
 +    // Which word each instruction was at, bucketed, so a runaway can be located.
 +    // Sizing this to cover the whole scriptCode array: a 256-byte table silently
 +    // ignored every word past 255, which made the report useless.
@@ -476,7 +490,6 @@ index 71e569f..d676a17 100644
 +            // construction, so comparing the two word by word localises a wrong
 +            // operand width instead of guessing at one from a desync count,
 +            // which has already produced two convincing wrong answers.
-+            static const bool traceAll = getenv("RSDK_TRACE_ALL") != nullptr;
 +            if (traceAll) {
 +                // Per script, not global: a global budget is spent inside the first
 +                // loop it reaches, so a 4000-line cap only ever covered one script's
@@ -490,7 +503,16 @@ index 71e569f..d676a17 100644
 +                    oracleLastKey = oracleKey;
 +                    oracleForScript = 0;
 +                }
-+                if (oracleForScript < 300) {
++                if (oracleForScript == 300) {
++                    // Say where the trace stops. Without a marker the checker
++                    // compares the last logged instruction against the first
++                    // instruction of the *next* script and reads the difference as
++                    // a wrong operand width - which is how WLower at word 89667
++                    // came to need 22 words when it occupies 9.
++                    ++oracleForScript;
++                    PrintLog("ORACLE-END sc=%d", oracleKey);
++                }
++                else if (oracleForScript < 300) {
 +                    ++oracleForScript;
 +                    // scriptCodeStart identifies the script being run, so the
 +                    // checker can refuse to compare across a script boundary.
@@ -525,6 +547,31 @@ index 71e569f..d676a17 100644
          scriptText[0] = '\0';
  
          // Get Values
+         for (int i = 0; i < opcodeSize; ++i) {
+             int opcodeType = scriptCode[scriptCodePtr++];
++            if (traceAll && i < 0x10)
++                oracleRawTags[i] = opcodeType;
+ 
+             if (opcodeType == SCRIPTVAR_VAR) {
+                 int arrayVal = 0;
+@@ -4186,6 +4378,17 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
+             }
+         }
+ 
++        if (traceAll) {
++            // Words this instruction actually occupied, and the tags it read,
++            // straight from the engine. Everything else in this project has been
++            // inference dressed up as measurement; this is the measurement.
++            PrintLog("ORACLE-SPAN @%d consumed=%d tags=", scriptCodeOffset - 1,
++                     scriptCodePtr - scriptCodeOffset);
++            for (int t = 0; t < opcodeSize && t < 0x10; ++t)
++                PrintLog("%d,", oracleRawTags[t]);
++            PrintLog("");
++        }
++
+         ObjectScript *scriptInfo = &objectScriptList[objectEntityList[objectEntityPos].type];
+         Entity *entity           = &objectEntityList[objectEntityPos];
+         SpriteFrame *spriteFrame = nullptr;
 diff --git a/RSDKv4/Script.hpp b/RSDKv4/Script.hpp
 index b845880..6a9b845 100644
 --- a/RSDKv4/Script.hpp
