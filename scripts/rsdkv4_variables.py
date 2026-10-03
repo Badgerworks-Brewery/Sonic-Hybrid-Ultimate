@@ -9,12 +9,19 @@ source list shifts every variable past the first guard.
 import io
 import os
 import re
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCRIPT_CPP = os.path.join(ROOT, "Hybrid-RSDK-Main", "RSDKV4-Decompilation",
                            "RSDKv4", "Script.cpp")
 
-RETRO_REV00 = False
+# The guard logic is imported rather than reimplemented. RSDK_REVISION is 3, so
+# RETRO_REV00 is false and RETRO_REV01/02/03 are true, and the opcode table has to
+# evaluate that the same way - two copies of "which entries exist" is precisely how
+# the opcode table ended up one out and sent the bytecode walker chasing DrawText.
+from rsdkv4_opcodes import RSDK_REVISION, _guard_active  # noqa: E402,F401
 
 
 def _walk():
@@ -35,7 +42,7 @@ def _walk():
         if s.startswith("};"):
             break
         if s.startswith("#if"):
-            stack.append(not RETRO_REV00 if "REV00" in s else True)
+            stack.append(_guard_active(s))
             continue
         if s.startswith("#else"):
             if stack:

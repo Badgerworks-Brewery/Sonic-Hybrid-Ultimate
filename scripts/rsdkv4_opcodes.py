@@ -19,8 +19,32 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCRIPT_CPP = os.path.join(ROOT, "Hybrid-RSDK-Main", "RSDKV4-Decompilation",
                            "RSDKv4", "Script.cpp")
 
-# RSDKv4 defines neither RETRO_REV00 nor the original-revision code paths.
-RETRO_REV00 = False
+# RSDKv4 defines RSDK_REVISION as 3 in RetroEngine.hpp (line 225), and derives
+# every RETRO_REVxx from it:
+#
+#     RETRO_REV00 (RSDK_REVISION == 0)
+#     RETRO_REV01 (RSDK_REVISION >= 1)
+#     RETRO_REV02 (RSDK_REVISION >= 2)
+#     RETRO_REV03 (RSDK_REVISION >= 3)
+#
+# At 3 that makes REV00 false and REV01/02/03 true, so `#if RETRO_REV00` blocks are
+# excluded and `#if RETRO_REV01`, `#if !RETRO_REV02` and `#if RETRO_REV03` are all
+# included. An earlier version of this file treated every guard it did not recognise
+# as active, which kept `LoadFontFile` and `DrawText` in the table even though both
+# sit inside `#if !RETRO_REV02` and are never compiled. That shifted every opcode
+# after LoadFontFile by one.
+RSDK_REVISION = 3
+
+
+def _macro_value(name):
+    if name == "RSDK_REVISION":
+        return RSDK_REVISION
+    for rev in ("00", "01", "02", "03"):
+        if name == "RETRO_REV" + rev:
+            n = int(rev)
+            return (RSDK_REVISION == n) if n == 0 else (RSDK_REVISION >= n)
+    # Anything else is a feature flag this project configures in.
+    return True
 
 
 def _guard_active(directive):
@@ -28,18 +52,13 @@ def _guard_active(directive):
 
     The `!` matters and an earlier version of this file ignored it, so
     `#if RETRO_REV00` and `#if !RETRO_REV00` were treated identically. That put a
-    7-operand `SetPaletteFade` in the table instead of the 6-operand one, and
-    kept `MatrixInverse`, which shifted every opcode after index 63 and made the
-    table disagree with the engine by one - which in turn made a bytecode walk
-    desynchronise on almost every instruction.
+    7-operand `SetPaletteFade` in the table instead of the 6-operand one.
     """
     parts = directive.split()
     condition = parts[1] if len(parts) > 1 else ""
     negated = condition.lstrip().startswith("!")
-    name = condition.lstrip("!~ ")
-    if "REV00" not in name:
-        return True                       # every other guard is configured in
-    value = RETRO_REV00
+    name = condition.lstrip("!~ ").split("(")[0].strip()
+    value = _macro_value(name)
     return (not value) if negated else value
 
 
