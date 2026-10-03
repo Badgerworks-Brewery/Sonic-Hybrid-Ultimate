@@ -403,12 +403,34 @@ word 116681: engine read else,          walker read Inc
 Once the walker mis-sizes one instruction it reads every later instruction in that stream
 at the wrong offset, so the *names* diverge too. The cascade therefore points at the first
 real disagreement at or before word 116644, and the two reported `Equal` width
-disagreements are the honest leads: `Equal`'s declared operand count is wrong in at least
-one operand-tag combination - 5 words where the engine consumes 7, and 8 where it
-consumes 7.
+disagreements are the honest leads.
+
+**Correction to my own first guess, checked against the engine.** I wrote that `Equal`'s
+*declared operand count* was wrong. It is not:
+
+```
+Script.cpp:363   FunctionInfo("Equal", 2)
+case FUNC_EQUAL: operands[0] ... operands[1]
+```
+
+Two declared, two used. So the disagreement is narrower and stranger than a wrong count.
+Engine and walker agree on the *tags* - both say `[1, 2]` - and disagree only on the
+*width*:
+
+```
+tags [1,2]   walker 5 words   engine 7 words    (walker short by 2)
+tags [1,1]   walker 8 words   engine 7 words    (walker over by 1)
+```
+
+Two words short one way and one over the other, from the same opcode, is not a single
+missing or extra word. It points at the **per-tag width rules**: a `VAR` operand costs a
+selector word plus its value, a string constant costs `3 + len // 4`, and an array selector
+is always 3 words regardless of length. If the walker and the engine classify tag 1 or tag 2
+differently, both directions of error follow from one mistake.
 
 That is the specific thing to check first, and it is only findable because the checker
-now counts what it cannot explain instead of discarding it.
+now counts what it cannot explain instead of discarding it - it had reported 100% by
+construction for the entire project.
 
 ## Next steps, in order of value
 
