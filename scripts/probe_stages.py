@@ -35,6 +35,9 @@ import subprocess
 import sys
 import time
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import rsdk_settings  # noqa: E402
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WD = os.path.join(ROOT, "Hybrid-RSDK-Main", "sonic-hybrid")
 EXE = os.path.join(ROOT, "build", "bin", "Release", "rsdkv4.exe")
@@ -73,29 +76,6 @@ PROBES = [
 # name/folder/id). So rather than hard-code a guess, selection is a parameter.
 EXTRA_SCENES = []
 
-SETTINGS = """[Window]
-RefreshRate=60
-WindowScale=1
-ScreenWidth=640
-DimLimit=300
-DisableFocusPause=1
-
-[Audio]
-BGMVolume=1.000
-SFXVolume=1.000
-
-[Dev]
-EngineDebugMode=true
-TxtScripts=false
-StartingCategory={cat}
-StartingScene={scene}
-StartingSaveFile=255
-DataFile=Data.rsdk
-
-[Game]
-Language=0
-SkipStartMenu=true
-"""
 
 RUN_SECONDS = 14
 
@@ -104,11 +84,15 @@ def probe(idx):
     """Boot one stage and return what the log shows."""
     settings = os.path.join(WD, "settings.ini")
     log = os.path.join(WD, "log.txt")
-    for path in (settings, log):
-        if os.path.exists(path):
-            os.remove(path)
+    # Only the log is cleared. settings.ini is *merged*, not rewritten: it is a tracked
+    # file, and the template this used to write from dropped every section it did not
+    # know about - including DataFile=Data.rsdk, which is how the engine finds the pack.
+    # The tests still passed afterwards, because the engine falls back to the pack
+    # beside it, and the damage only surfaced as a confusing diff in the next commit.
+    if os.path.exists(log):
+        os.remove(log)
 
-    io.open(settings, "w", encoding="ascii").write(SETTINGS.format(cat=1, scene=idx))
+    rsdk_settings.write_settings(WD, 1, idx)
 
     proc = subprocess.Popen([EXE], cwd=WD,
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)

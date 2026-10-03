@@ -33,25 +33,15 @@ from rsdkv4_bytecode_merger import parse
 from rsdkv4_opcodes import ORDER, size_of
 from rsdkv4_walk import operand_width
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import rsdk_settings  # noqa: E402
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PACK = os.path.join(ROOT, "Hybrid-RSDK-Main", "sonic-hybrid")
 EXE = os.path.join(ROOT, "build", "bin", "Release", "rsdkv4.exe")
 BYTECODE = os.path.join(PACK, "Data", "Bytecode")
 LOG = os.path.join(PACK, "log.txt")
 
-SETTINGS = """[Window]
-RefreshRate=60
-WindowScale=1
-DisableFocusPause=1
-ScreenWidth=640
-DimLimit=300
-[Dev]
-EngineDebugMode=true
-TxtScripts=false
-StartingCategory=%d
-StartingScene=%d
-StartingSaveFile=255
-"""
 
 # Sonic 1's first three stages, and two Sonic 2 stages that are not Emerald Hill.
 # Sonic CD is skipped: it has no bytecode yet, so there is nothing to compare.
@@ -68,8 +58,11 @@ RE_OP = re.compile(r"ORACLE: (.+) @(-?\d+)(?: sc=(-?\d+))?$")
 
 
 def run_scene(category, scene, seconds=9):
-    io.open(os.path.join(PACK, "settings.ini"), "w", encoding="ascii",
-            newline="").write(SETTINGS % (category, scene))
+    # Merged, not rewritten. settings.ini is tracked and carries keys the engine
+    # needs to find the pack at all (DataFile=Data.rsdk); writing a template
+    # dropped them, and the run still worked because the engine falls back to
+    # the pack beside it - so the damage only ever showed up as a confusing diff.
+    rsdk_settings.write_settings(PACK, category, scene)
     if os.path.exists(LOG):
         os.remove(LOG)
     env = dict(os.environ)
