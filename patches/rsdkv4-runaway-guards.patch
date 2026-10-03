@@ -41,7 +41,7 @@ index 8cfa77c..cc6c7e5 100644
                      }
                      else {
 diff --git a/RSDKv4/Object.cpp b/RSDKv4/Object.cpp
-index 7ddf148..74ecf31 100644
+index 7ddf148..45fa88c 100644
 --- a/RSDKv4/Object.cpp
 +++ b/RSDKv4/Object.cpp
 @@ -71,6 +71,54 @@ void ProcessStartupObjects()
@@ -99,6 +99,17 @@ index 7ddf148..74ecf31 100644
      for (int i = 0; i < DRAWLAYER_COUNT; ++i) drawListEntries[i].listSize = 0;
  
      for (objectEntityPos = 0; objectEntityPos < ENTITY_COUNT; ++objectEntityPos) {
+@@ -337,6 +385,10 @@ void Process2PObjects()
+ 
+ void SetObjectTypeName(const char *objectName, int objectID)
+ {
++    // Remember which game owns this type, so a script looking the name up later
++    // finds its own game's copy rather than whichever registered first.
++    objectTypeGame[objectID] = currentObjectGame;
++
+     int objPos  = 0;
+     int typePos = 0;
+     while (objectName[objPos]) {
 diff --git a/RSDKv4/RetroEngine.cpp b/RSDKv4/RetroEngine.cpp
 index 29f393f..024a450 100644
 --- a/RSDKv4/RetroEngine.cpp
@@ -163,7 +174,7 @@ index 29f393f..024a450 100644
          if (!(disableFocusPause & 2)) {
              if (!Engine.hasFocus) {
 diff --git a/RSDKv4/Scene.cpp b/RSDKv4/Scene.cpp
-index a450c82..d6a75ab 100644
+index a450c82..6946d6b 100644
 --- a/RSDKv4/Scene.cpp
 +++ b/RSDKv4/Scene.cpp
 @@ -129,6 +129,16 @@ void ProcessStage(void)
@@ -183,11 +194,166 @@ index a450c82..d6a75ab 100644
      switch (stageMode) {
          case STAGEMODE_LOAD: // Startup
              SetActivePalette(0, 0, 256);
+@@ -647,6 +657,7 @@ void LoadStageFiles(void)
+ 
+             byte globalObjectCount = 0;
+             FileRead(&globalObjectCount, 1);
++            objectTypeGlobalCount = globalObjectCount;
+             for (byte i = 0; i < globalObjectCount; ++i) {
+                 FileRead(&fileBuffer2, 1);
+                 FileRead(strBuffer, fileBuffer2);
+@@ -654,6 +665,32 @@ void LoadStageFiles(void)
+                 SetObjectTypeName(strBuffer, scriptID + i);
+             }
+ 
++            // Two games in one pack share 33 object names, so the global table has
++            // to say which game owns each type. The merged config lists Sonic 2's
++            // globals first, then Sonic 1's, and this file states where the split
++            // is. Absent or malformed means "one game", which restores the
++            // original behaviour rather than guessing.
++            objectTypeSplit = -1;
++            {
++                FileInfo splitInfo;
++                GetFileInfo(&splitInfo);
++                CloseFile();
++                if (LoadFile("Data/Game/ObjectGameSplit.bin", &splitInfo)) {
++                    byte split = 0;
++                    FileRead(&split, 1);
++                    if (split > 0 && split <= globalObjectCount) {
++                        objectTypeSplit = split;
++                        for (int i = 0; i < OBJECT_COUNT; ++i) {
++                            objectTypeGame[i] = i < split ? 0 : 1;
++                        }
++                        PrintLog("Object name lookup scoped to one game: types 0..%d "
++                                 "are game 0, %d..%d are game 1", split - 1, split,
++                                 globalObjectCount);
++                    }
++                }
++                SetFileInfo(&splitInfo);
++            }
++
+ #if RETRO_USE_MOD_LOADER && RETRO_USE_COMPILER
+             for (byte i = 0; i < modObjCount && loadGlobalScripts; ++i) {
+                 SetObjectTypeName(modTypeNames[i], globalObjectCount + i + 1);
+@@ -753,6 +790,20 @@ void LoadStageFiles(void)
+ 
+             byte stageObjectCount = 0;
+             FileRead(&stageObjectCount, 1);
++            // A stage's own objects belong to the game that stage came from, which
++            // the pack states by suffixing the stage folder: "...S1" is Sonic 1,
++            // "...S2" is Sonic 2. Folders with neither keep the current game,
++            // which is what a single-game pack wants.
++            {
++                const char *folder = stageList[activeStageList][stageListPosition].folder;
++                size_t flen        = strlen(folder);
++                if (flen >= 2 && folder[flen - 2] == 'S' && folder[flen - 1] == '1')
++                    currentObjectGame = 1;
++                else if (flen >= 2 && folder[flen - 2] == 'S' && folder[flen - 1] == '2')
++                    currentObjectGame = 0;
++                PrintLog("Stage folder '%s' selects game %d for object names",
++                         folder, currentObjectGame);
++            }
+             for (byte i = 0; i < stageObjectCount; ++i) {
+                 FileRead(&fileBuffer2, 1);
+                 FileRead(strBuffer, fileBuffer2);
 diff --git a/RSDKv4/Script.cpp b/RSDKv4/Script.cpp
-index 71e569f..3d08a68 100644
+index 71e569f..d8d872f 100644
 --- a/RSDKv4/Script.cpp
 +++ b/RSDKv4/Script.cpp
-@@ -3349,11 +3349,106 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
+@@ -1065,6 +1065,38 @@ enum ScrFunc {
+ };
+ 
+ ObjectScript objectScriptList[OBJECT_COUNT];
++int objectTypeGame[OBJECT_COUNT];
++int objectTypeSplit      = -1;
++int objectTypeGlobalCount = 0;
++int currentObjectGame    = 0;
++
++// Resolving an object name is a linear scan over every registered type. With one
++// game that is unambiguous; with two it is not, because Sonic 1 and Sonic 2 share
++// 33 names and a merged pack registers all of them. So the scan is limited to the
++// running game's types whenever a pack has told us where the split is.
++int FindObjectTypeByName(const char *name)
++{
++    if (objectTypeSplit < 0) {
++        for (int o = 0; o < OBJECT_COUNT; ++o) {
++            if (StrComp(name, typeNames[o]))
++                return o;
++        }
++        return OBJECT_COUNT;
++    }
++
++    // Every type is filtered, stage objects included. A stage's own objects are
++    // registered into the same slots as whichever stage loaded last and are
++    // tagged with that stage's game by SetObjectTypeName, so they need no
++    // special case - and exempting them is how Sonic 2's "Splats" and "Checkered
++    // Ball" ended up reachable from a Sonic 1 stage.
++    for (int o = 0; o < OBJECT_COUNT; ++o) {
++        if (objectTypeGame[o] != currentObjectGame)
++            continue;
++        if (StrComp(name, typeNames[o]))
++            return o;
++    }
++    return OBJECT_COUNT;
++}
+ ScriptFunction scriptFunctionList[FUNCTION_COUNT];
+ #if RETRO_USE_COMPILER
+ int scriptFunctionCount = 0;
+@@ -1796,13 +1828,10 @@ void ConvertFunctionText(char *text)
+                 funcName[0] = '0';
+                 funcName[1] = 0;
+ 
+-                int o = 0;
+-                for (; o < OBJECT_COUNT; ++o) {
+-                    if (StrComp(arrayStr, typeNames[o])) {
+-                        funcName[0] = 0;
+-                        AppendIntegerToString(funcName, o);
+-                        break;
+-                    }
++                int o = FindObjectTypeByName(arrayStr);
++                if (o != OBJECT_COUNT) {
++                    funcName[0] = 0;
++                    AppendIntegerToString(funcName, o);
+                 }
+ 
+                 if (o == OBJECT_COUNT)
+@@ -2106,13 +2135,10 @@ void CheckCaseNumber(char *text)
+             caseValue[0] = '0';
+             caseValue[1] = 0;
+ 
+-            int o = 0;
+-            for (; o < OBJECT_COUNT; ++o) {
+-                if (StrComp(arrayStr, typeNames[o])) {
+-                    caseValue[0] = 0;
+-                    AppendIntegerToString(caseValue, o);
+-                    break;
+-                }
++            int o = FindObjectTypeByName(arrayStr);
++            if (o != OBJECT_COUNT) {
++                caseValue[0] = 0;
++                AppendIntegerToString(caseValue, o);
+             }
+ 
+             if (o == OBJECT_COUNT)
+@@ -2312,13 +2338,10 @@ bool ReadSwitchCase(char *text)
+                 caseValue[0] = '0';
+                 caseValue[1] = 0;
+ 
+-                int o = 0;
+-                for (; o < OBJECT_COUNT; ++o) {
+-                    if (StrComp(arrayStr, typeNames[o])) {
+-                        caseValue[0] = 0;
+-                        AppendIntegerToString(caseValue, o);
+-                        break;
+-                    }
++                int o = FindObjectTypeByName(arrayStr);
++                if (o != OBJECT_COUNT) {
++                    caseValue[0] = 0;
++                    AppendIntegerToString(caseValue, o);
+                 }
+ 
+                 if (o == OBJECT_COUNT)
+@@ -3349,11 +3372,106 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
      functionStackPos  = 0;
      foreachStackPos   = 0;
  
@@ -295,6 +461,41 @@ index 71e569f..3d08a68 100644
          scriptText[0] = '\0';
  
          // Get Values
+diff --git a/RSDKv4/Script.hpp b/RSDKv4/Script.hpp
+index b845880..6a9b845 100644
+--- a/RSDKv4/Script.hpp
++++ b/RSDKv4/Script.hpp
+@@ -45,6 +45,30 @@ struct ScriptEngine {
+ enum ScriptSubs { EVENT_MAIN = 0, EVENT_DRAW = 1, EVENT_SETUP = 2 };
+ 
+ extern ObjectScript objectScriptList[OBJECT_COUNT];
++
++// Object-name lookup is a linear scan over the whole table, which is fine for one
++// game and wrong for two. Sonic 1 and Sonic 2 share 33 object names - "Player
++// Object", "Stage Setup", "Ring", "Monitor", "Star Post" and so on - so in a merged
++// pack a script asking for "Stage Setup" gets whichever game registered that name
++// first, and a Sonic 1 stage silently ends up running Sonic 2's Stage Setup.
++//
++// Scoping the scan needs to know which game each object type belongs to and which
++// game is running. `objectTypeSplit` is the number of *global* object types
++// belonging to game 0; game 0 owns types [0, split) and game 1 the rest, which is
++// how the merged config lists them. Stage objects take their game from the stage
++// folder's S1/S2 suffix instead, because only one stage's objects are registered
++// at a time and their names never collide across games.
++//
++// A negative split disables the scoping entirely and restores the original
++// single-game behaviour, so a pack that does not opt in behaves exactly as before.
++extern int objectTypeGame[OBJECT_COUNT];
++extern int objectTypeSplit;         // < 0 disables scoping
++extern int objectTypeGlobalCount;   // globals occupy types [1, this]; stage objects follow
++extern int currentObjectGame;       // 0 or 1
++
++// Returns the object type whose registered name matches, preferring the running
++// game's, or OBJECT_COUNT if there is none.
++int FindObjectTypeByName(const char *name);
+ extern ScriptFunction scriptFunctionList[FUNCTION_COUNT];
+ 
+ extern int scriptCode[SCRIPTCODE_COUNT];
 diff --git a/RSDKv4/main.cpp b/RSDKv4/main.cpp
 index 9a16d9b..26369b0 100644
 --- a/RSDKv4/main.cpp

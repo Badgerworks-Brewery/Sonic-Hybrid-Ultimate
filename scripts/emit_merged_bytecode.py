@@ -29,21 +29,21 @@ OUT = os.path.join(ROOT, "Hybrid-RSDK-Main", "sonic-hybrid", "Data", "Bytecode")
 # files need no merging: a stage's scripts are addressed by object index only that
 # stage defines, so they simply coexist under their own names.
 SONIC2_ZONES = [
-    ("Zone01", "ZoneEHZ"), ("Zone02", "ZoneCPZ"), ("Zone03", "ZoneARZ"),
-    ("Zone04", "ZoneCNZ"), ("Zone05", "ZoneHTZ"), ("Zone06", "ZoneMCZ"),
-    ("Zone07", "ZoneOOZ"), ("Zone08", "ZoneHPZ"), ("Zone09", "ZoneMPZ"),
-    ("Zone10", "ZoneSCZ"), ("Zone11", "ZoneWFZ"), ("Zone12", "ZoneDEZ"),
+    ("Zone01", "EHZS2"), ("Zone02", "CPZS2"), ("Zone03", "ARZS2"),
+    ("Zone04", "CNZS2"), ("Zone05", "HTZS2"), ("Zone06", "MCZS2"),
+    ("Zone07", "OOZS2"), ("Zone08", "HPZS2"), ("Zone09", "MPZS2"),
+    ("Zone10", "SCZS2"), ("Zone11", "WFZS2"), ("Zone12", "DEZS2"),
     ("Title", "TitleS2"), ("LSelect", "LSelectS2"),
     ("Credits", "CreditsS2"), ("Ending", "EndingS2"),
-    ("Continue", "ContinueS2"), ("Special", "Special2"),
+    ("Continue", "ContinueS2"), ("Special", "SpecialS2"),
 ]
 
 SONIC1_ZONES = [
-    ("Zone01", "ZoneGHZ"), ("Zone02", "ZoneMZ"), ("Zone03", "ZoneSYZ"),
-    ("Zone04", "ZoneLZ"), ("Zone05", "ZoneSZ"), ("Zone06", "ZoneSBZ"),
+    ("Zone01", "GHZS1"), ("Zone02", "MZS1"), ("Zone03", "SYZS1"),
+    ("Zone04", "LZS1"), ("Zone05", "SZS1"), ("Zone06", "SBZS1"),
     ("Title", "TitleS1"), ("LSelect", "LSelectS1"),
     ("Credits", "CreditsS1"), ("Ending", "EndingS1"),
-    ("Continue", "ContinueS1"), ("Special", "Special1"),
+    ("Continue", "ContinueS1"), ("Special", "SpecialS1"),
 ]
 
 
@@ -174,7 +174,107 @@ def copy_stage_bytecode(game, zones, deltas, global_count):
     return copied, missing
 
 
+def shift_act_object_types(folders, offset):
+    """Add `offset` to every object type index in a game's Act layout files.
+
+    An Act file stores object placements as a raw type *index*, not a name:
+    Scene.cpp:995 reads one byte straight into `object->type`. Those indices are
+    game-relative - in stock Sonic 1 "Stage Setup" is type 4 - so once both games'
+    globals share one table, every Sonic 1 index names a Sonic 2 object instead.
+    Green Hill was creating Sonic 2's Stage Setup and Sonic 2's Star Post, because
+    that is what lives at those indices now.
+
+    Name-based creation is not affected: that goes through TypeName, which the
+    engine resolves per game. Only the layout files need renumbering.
+
+    The file layout, from Scene.cpp:930-1073:
+
+        u8   title card length, then that many bytes
+        u8x4 active tile layers, then the mid-point
+        u8   xsize, u8 unused, u8 ysize, u8 unused
+        u16  xsize * ysize tile indices
+        u16  object count
+        then per object:
+            u16 attribs, u8 type, u8 propertyValue, s32 xpos, s32 ypos
+            then one field per set attrib bit, in the order below
+
+    Every step is asserted against the file length, because a layout file that
+    parses to the wrong offset silently produces a stage where a third of the
+    objects are in the wrong place - which looks like a level design problem
+    rather than a data problem.
+    """
+    STAGE_DIR = os.path.join(os.path.dirname(os.path.dirname(OUT)), "Data", "Stages")
+
+    # attrib bit -> width in bytes, in the order Scene.cpp reads them
+    ATTRIB_FIELDS = [
+        (0x0001, 4), (0x0002, 1), (0x0004, 4), (0x0008, 4), (0x0010, 1),
+        (0x0020, 1), (0x0040, 1), (0x0080, 1), (0x0100, 4), (0x0200, 1),
+        (0x0400, 1), (0x0800, 4), (0x1000, 4), (0x2000, 4), (0x4000, 4),
+    ]
+
+    rewritten = 0
+    objects = 0
+    problems = []
+
+    for folder in folders:
+        stage_dir = os.path.join(STAGE_DIR, folder)
+        if not os.path.isdir(stage_dir):
+            continue
+        for name in sorted(os.listdir(stage_dir)):
+            if not (name.startswith("Act") and name.endswith(".bin")):
+                continue
+            path = os.path.join(stage_dir, name)
+            data = bytearray(io.open(path, "rb").read())
+            pos = 0
+
+            title_len = data[pos]; pos += 1
+            pos += title_len
+            pos += 5                                   # 4 layers + mid-point
+            xsize = data[pos]; pos += 1
+            pos += 1
+            ysize = data[pos]; pos += 1
+            pos += 1
+            pos += 2 * xsize * ysize                   # tile indices
+
+            count = data[pos] | (data[pos + 1] << 8); pos += 2
+            for i in range(count):
+                start = pos
+                attribs = data[pos] | (data[pos + 1] << 8); pos += 2
+                pos += 1                               # the type byte
+                pos += 1                               # propertyValue
+                pos += 8                               # xpos, ypos
+                for bit, width in ATTRIB_FIELDS:
+                    if attribs & bit:
+                        pos += width
+                if pos > len(data):
+                    problems.append("%s/%s: object %d runs past the end"
+                                    % (folder, name, i))
+                    break
+                if offset:
+                    data[start + 2] = (data[start + 2] + offset) & 0xFF
+                objects += 1
+            else:
+                if pos != len(data):
+                    problems.append(
+                        "%s/%s: parsed %d of %d bytes - the layout changed shape"
+                        % (folder, name, pos, len(data)))
+                    continue
+                io.open(path, "wb").write(bytes(data))
+                rewritten += 1
+
+    return rewritten, objects, problems
+
+
 def main():
+    # This script owns the pack's bytecode folder: it is the only thing that
+    # writes it, and stale files from an earlier naming scheme would otherwise
+    # linger and be packed. They are inert - the engine only ever opens
+    # Bytecode/<stage folder>.bin - but they inflate the pack and make "which
+    # files does a stage need" unanswerable by looking at the directory.
+    if os.path.isdir(OUT):
+        for stale in os.listdir(OUT):
+            if stale.lower().endswith(".bin"):
+                os.remove(os.path.join(OUT, stale))
     if not os.path.isdir(OUT):
         os.makedirs(OUT)
 
@@ -184,6 +284,27 @@ def main():
     merged, dropped_functions = merge(s2, s1, secondary_object_offset=s2.script_count)
     blob = serialize(merged)
     io.open(os.path.join(OUT, "GlobalCode.bin"), "wb").write(blob)
+
+    # Object-name lookup is a linear scan over the whole table. Sonic 1 and Sonic 2
+    # share 33 object names, so without help the first game to register a name wins
+    # and a Sonic 1 stage asking for "Stage Setup" gets Sonic 2's. The engine
+    # limits the scan to one game when it knows where the split is, and this file
+    # is that number: how many global object types belong to Sonic 2, which is the
+    # game listed first. Absent, the engine falls back to single-game behaviour
+    # rather than guessing.
+    # OUT is <pack>/Data/Bytecode, so the game's own folder is two levels up, not one.
+    split_path = os.path.join(
+        os.path.dirname(os.path.dirname(OUT)), "Data", "Game",
+        "ObjectGameSplit.bin")
+    if not os.path.isdir(os.path.dirname(split_path)):
+        os.makedirs(os.path.dirname(split_path))
+    io.open(split_path, "wb").write(bytes([s2.script_count]))
+    print("object name split: types 0..%d are Sonic 2, %d..%d are Sonic 1"
+          % (s2.script_count - 1, s2.script_count,
+             merged.script_count - 1))
+    shared = len(set(object_names("sonic1")) & set(object_names("sonic2")))
+    print("  %d names exist in both games; the split is what keeps them apart"
+          % shared)
 
     # Each game ships per-stage files whose pointers assume its own GlobalCode. Two
     # different deltas are involved, because a per-stage file contains pointers
@@ -235,6 +356,19 @@ def main():
     n1, n2 = object_names("sonic1"), object_names("sonic2")
     expected_objects = n2 + n1
     problems = []
+
+    # Act layout files hold raw type indices, which are game-relative, so each
+    # game's placements have to be renumbered into the merged table. Sonic 2 is
+    # listed first and keeps its indices; Sonic 1 shifts by however many globals
+    # Sonic 2 contributed.
+    s1_folders = [f for _s, f in SONIC1_ZONES]
+    s2_folders = [f for _s, f in SONIC2_ZONES]
+    a1, o1, p1 = shift_act_object_types(s1_folders, len(n2))
+    a2, o2, p2 = shift_act_object_types(s2_folders, 0)
+    problems += p1 + p2
+    print("Act layouts: Sonic 1 %d files / %d objects renumbered by +%d, "
+          "Sonic 2 %d files / %d objects unchanged"
+          % (a1, o1, len(n2), a2, o2))
     if len(expected_objects) != merged.script_count:
         problems.append(
             "object table has %d entries but the merged container has %d scripts"
@@ -247,8 +381,8 @@ def main():
     total_code = len(merged.code)
     total_jump = len(merged.jumps)
     s2_code, s2_jump = len(s2.code), len(s2.jumps)
-    presentation = {"TitleS1", "LSelectS1", "CreditsS1", "Special1",
-                    "TitleS2", "LSelectS2", "CreditsS2", "Special2"}
+    presentation = {"TitleS1", "LSelectS1", "CreditsS1", "SpecialS1",
+                    "TitleS2", "LSelectS2", "CreditsS2", "SpecialS2"}
 
     # Each game's globals occupy a known half of the merged container, so a stage
     # file's copies of its own global functions can be checked against that

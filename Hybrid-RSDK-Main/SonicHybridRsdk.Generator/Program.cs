@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -272,25 +272,25 @@ namespace SonicHybridRsdk.Generator
             UseStageV4(context1, StageType.StagesPresentation, "CONTINUE SCREEN SONIC 1", 1, "Continue", "ContinueS1");
             UseStageV4(context1, StageType.StagesPresentation, "LEVEL SELECT SONIC 1", 1, "LSelect", "LSelectS1");
 
-            UseStageV4(context1, StageType.StagesRegular, "GREEN HILL ZONE", 1, "Zone01", "ZoneGHZ");
-            UseStageV4(context1, StageType.StagesRegular, "GREEN HILL ZONE", 2, "Zone01", "ZoneGHZ");
-            UseStageV4(context1, StageType.StagesRegular, "GREEN HILL ZONE", 3, "Zone01", "ZoneGHZ");
-            UseStageV4(context1, StageType.StagesRegular, "MARBLE ZONE", 1, "Zone02", "ZoneMZ");
-            UseStageV4(context1, StageType.StagesRegular, "MARBLE ZONE", 2, "Zone02", "ZoneMZ");
-            UseStageV4(context1, StageType.StagesRegular, "MARBLE ZONE", 3, "Zone02", "ZoneMZ");
-            UseStageV4(context1, StageType.StagesRegular, "SPRING YARD ZONE", 1, "Zone03", "ZoneSYZ");
-            UseStageV4(context1, StageType.StagesRegular, "SPRING YARD ZONE", 2, "Zone03", "ZoneSYZ");
-            UseStageV4(context1, StageType.StagesRegular, "SPRING YARD ZONE", 3, "Zone03", "ZoneSYZ");
-            UseStageV4(context1, StageType.StagesRegular, "LABYRINTH ZONE", 1, "Zone04", "ZoneLZ");
-            UseStageV4(context1, StageType.StagesRegular, "LABYRINTH ZONE", 2, "Zone04", "ZoneLZ");
-            UseStageV4(context1, StageType.StagesRegular, "LABYRINTH ZONE", 3, "Zone04", "ZoneLZ");
-            UseStageV4(context1, StageType.StagesRegular, "STARLIGHT ZONE", 1, "Zone05", "ZoneSZ");
-            UseStageV4(context1, StageType.StagesRegular, "STARLIGHT ZONE", 2, "Zone05", "ZoneSZ");
-            UseStageV4(context1, StageType.StagesRegular, "STARLIGHT ZONE", 3, "Zone05", "ZoneSZ");
-            UseStageV4(context1, StageType.StagesRegular, "SCRAP BRAIN ZONE", 1, "Zone06", "ZoneSBZ");
-            UseStageV4(context1, StageType.StagesRegular, "SCRAP BRAIN ZONE", 2, "Zone06", "ZoneSBZ");
-            UseStageV4(context1, StageType.StagesRegular, "SCRAP BRAIN ZONE", 4, "Zone04", "ZoneLZ", visualActNumber: 3);
-            UseStageV4(context1, StageType.StagesRegular, "FINAL ZONE", 5, "Zone06", "ZoneSBZ", visualActNumber: 0);
+            UseStageV4(context1, StageType.StagesRegular, "GREEN HILL ZONE", 1, "Zone01", "GHZS1");
+            UseStageV4(context1, StageType.StagesRegular, "GREEN HILL ZONE", 2, "Zone01", "GHZS1");
+            UseStageV4(context1, StageType.StagesRegular, "GREEN HILL ZONE", 3, "Zone01", "GHZS1");
+            UseStageV4(context1, StageType.StagesRegular, "MARBLE ZONE", 1, "Zone02", "MZS1");
+            UseStageV4(context1, StageType.StagesRegular, "MARBLE ZONE", 2, "Zone02", "MZS1");
+            UseStageV4(context1, StageType.StagesRegular, "MARBLE ZONE", 3, "Zone02", "MZS1");
+            UseStageV4(context1, StageType.StagesRegular, "SPRING YARD ZONE", 1, "Zone03", "SYZS1");
+            UseStageV4(context1, StageType.StagesRegular, "SPRING YARD ZONE", 2, "Zone03", "SYZS1");
+            UseStageV4(context1, StageType.StagesRegular, "SPRING YARD ZONE", 3, "Zone03", "SYZS1");
+            UseStageV4(context1, StageType.StagesRegular, "LABYRINTH ZONE", 1, "Zone04", "LZS1");
+            UseStageV4(context1, StageType.StagesRegular, "LABYRINTH ZONE", 2, "Zone04", "LZS1");
+            UseStageV4(context1, StageType.StagesRegular, "LABYRINTH ZONE", 3, "Zone04", "LZS1");
+            UseStageV4(context1, StageType.StagesRegular, "STARLIGHT ZONE", 1, "Zone05", "SZS1");
+            UseStageV4(context1, StageType.StagesRegular, "STARLIGHT ZONE", 2, "Zone05", "SZS1");
+            UseStageV4(context1, StageType.StagesRegular, "STARLIGHT ZONE", 3, "Zone05", "SZS1");
+            UseStageV4(context1, StageType.StagesRegular, "SCRAP BRAIN ZONE", 1, "Zone06", "SBZS1");
+            UseStageV4(context1, StageType.StagesRegular, "SCRAP BRAIN ZONE", 2, "Zone06", "SBZS1");
+            UseStageV4(context1, StageType.StagesRegular, "SCRAP BRAIN ZONE", 4, "Zone04", "LZS1", visualActNumber: 3);
+            UseStageV4(context1, StageType.StagesRegular, "FINAL ZONE", 5, "Zone06", "SBZS1", visualActNumber: 0);
 
             var SonicCDStageNames = new[]
             {
@@ -332,32 +332,32 @@ namespace SonicHybridRsdk.Generator
                 }
             }
 
-            UseStageV4(context2, StageType.StagesRegular, "EMERALD HILL ZONE", 1, "Zone01", "ZoneEHZ");
-            UseStageV4(context2, StageType.StagesRegular, "EMERALD HILL ZONE", 2, "Zone01", "ZoneEHZ");
-            UseStageV4(context2, StageType.StagesRegular, "CHEMICAL PLANT ZONE", 1, "Zone02", "ZoneCPZ");
-            UseStageV4(context2, StageType.StagesRegular, "CHEMICAL PLANT ZONE", 2, "Zone02", "ZoneCPZ");
-            UseStageV4(context2, StageType.StagesRegular, "AQUATIC RUIN ZONE", 1, "Zone03", "ZoneARZ");
-            UseStageV4(context2, StageType.StagesRegular, "AQUATIC RUIN ZONE", 2, "Zone03", "ZoneARZ");
-            UseStageV4(context2, StageType.StagesRegular, "CASINO NIGHT ZONE", 1, "Zone04", "ZoneCNZ");
-            UseStageV4(context2, StageType.StagesRegular, "CASINO NIGHT ZONE", 2, "Zone04", "ZoneCNZ");
-            UseStageV4(context2, StageType.StagesRegular, "HILL TOP ZONE", 1, "Zone05", "ZoneHTZ");
-            UseStageV4(context2, StageType.StagesRegular, "HILL TOP ZONE", 2, "Zone05", "ZoneHTZ");
-            UseStageV4(context2, StageType.StagesRegular, "MYSTIC CAVE ZONE", 1, "Zone06", "ZoneMCZ");
-            UseStageV4(context2, StageType.StagesRegular, "MYSTIC CAVE ZONE", 2, "Zone06", "ZoneMCZ");
-            UseStageV4(context2, StageType.StagesRegular, "OIL OCEAN ZONE", 1, "Zone07", "ZoneOOZ");
-            UseStageV4(context2, StageType.StagesRegular, "OIL OCEAN ZONE", 2, "Zone07", "ZoneOOZ");
-            UseStageV4(context2, StageType.StagesRegular, "HIDDEN PALACE ZONE", 1, "Zone08", "ZoneHPZ");
-            UseStageV4(context2, StageType.StagesRegular, "METROPOLIS ZONE", 1, "Zone09", "ZoneMPZ");
-            UseStageV4(context2, StageType.StagesRegular, "METROPOLIS ZONE", 2, "Zone09", "ZoneMPZ");
-            UseStageV4(context2, StageType.StagesRegular, "METROPOLIS ZONE", 3, "Zone09", "ZoneMPZ");
-            UseStageV4(context2, StageType.StagesRegular, "SKY CHASE ZONE", 1, "Zone10", "ZoneSCZ", visualActNumber: 0);
-            UseStageV4(context2, StageType.StagesRegular, "WING FORTRESS ZONE", 1, "Zone11", "ZoneWFZ", visualActNumber: 0);
-            UseStageV4(context2, StageType.StagesRegular, "DEATH EGG ZONE", 1, "Zone12", "ZoneDEZ", visualActNumber: 0);
+            UseStageV4(context2, StageType.StagesRegular, "EMERALD HILL ZONE", 1, "Zone01", "EHZS2");
+            UseStageV4(context2, StageType.StagesRegular, "EMERALD HILL ZONE", 2, "Zone01", "EHZS2");
+            UseStageV4(context2, StageType.StagesRegular, "CHEMICAL PLANT ZONE", 1, "Zone02", "CPZS2");
+            UseStageV4(context2, StageType.StagesRegular, "CHEMICAL PLANT ZONE", 2, "Zone02", "CPZS2");
+            UseStageV4(context2, StageType.StagesRegular, "AQUATIC RUIN ZONE", 1, "Zone03", "ARZS2");
+            UseStageV4(context2, StageType.StagesRegular, "AQUATIC RUIN ZONE", 2, "Zone03", "ARZS2");
+            UseStageV4(context2, StageType.StagesRegular, "CASINO NIGHT ZONE", 1, "Zone04", "CNZS2");
+            UseStageV4(context2, StageType.StagesRegular, "CASINO NIGHT ZONE", 2, "Zone04", "CNZS2");
+            UseStageV4(context2, StageType.StagesRegular, "HILL TOP ZONE", 1, "Zone05", "HTZS2");
+            UseStageV4(context2, StageType.StagesRegular, "HILL TOP ZONE", 2, "Zone05", "HTZS2");
+            UseStageV4(context2, StageType.StagesRegular, "MYSTIC CAVE ZONE", 1, "Zone06", "MCZS2");
+            UseStageV4(context2, StageType.StagesRegular, "MYSTIC CAVE ZONE", 2, "Zone06", "MCZS2");
+            UseStageV4(context2, StageType.StagesRegular, "OIL OCEAN ZONE", 1, "Zone07", "OOZS2");
+            UseStageV4(context2, StageType.StagesRegular, "OIL OCEAN ZONE", 2, "Zone07", "OOZS2");
+            UseStageV4(context2, StageType.StagesRegular, "HIDDEN PALACE ZONE", 1, "Zone08", "HPZS2");
+            UseStageV4(context2, StageType.StagesRegular, "METROPOLIS ZONE", 1, "Zone09", "MPZS2");
+            UseStageV4(context2, StageType.StagesRegular, "METROPOLIS ZONE", 2, "Zone09", "MPZS2");
+            UseStageV4(context2, StageType.StagesRegular, "METROPOLIS ZONE", 3, "Zone09", "MPZS2");
+            UseStageV4(context2, StageType.StagesRegular, "SKY CHASE ZONE", 1, "Zone10", "SCZS2", visualActNumber: 0);
+            UseStageV4(context2, StageType.StagesRegular, "WING FORTRESS ZONE", 1, "Zone11", "WFZS2", visualActNumber: 0);
+            UseStageV4(context2, StageType.StagesRegular, "DEATH EGG ZONE", 1, "Zone12", "DEZS2", visualActNumber: 0);
 
             for (var i = 1; i <= 8; i++)
-                UseStageV4(context2, StageType.StagesSpecial, "SPECIAL STAGE", i, "Special", "Special2");
+                UseStageV4(context2, StageType.StagesSpecial, "SPECIAL STAGE", i, "Special", "SpecialS2");
             for (var i = 1; i <= 6; i++)
-                UseStageV4(context1, StageType.StagesSpecial, "SPECIAL STAGE", i, "Special", "Special1");
+                UseStageV4(context1, StageType.StagesSpecial, "SPECIAL STAGE", i, "Special", "SpecialS1");
 
             Create(Path.Combine(destinationDataRsdk, "Data/Game/GameConfig.bin"), sonicHybridConfig.Write);
 
@@ -386,13 +386,13 @@ namespace SonicHybridRsdk.Generator
         /// </remarks>
         private static readonly (string From, string To)[] Sonic2BytecodeFolders =
         {
-            ("Zone01", "ZoneEHZ"),  ("Zone02", "ZoneCPZ"), ("Zone03", "ZoneARZ"),
-            ("Zone04", "ZoneCNZ"),  ("Zone05", "ZoneHTZ"), ("Zone06", "ZoneMCZ"),
-            ("Zone07", "ZoneOOZ"),  ("Zone08", "ZoneHPZ"), ("Zone09", "ZoneMPZ"),
-            ("Zone10", "ZoneSCZ"),  ("Zone11", "ZoneWFZ"), ("Zone12", "ZoneDEZ"),
+            ("Zone01", "EHZS2"),  ("Zone02", "CPZS2"), ("Zone03", "ARZS2"),
+            ("Zone04", "CNZS2"),  ("Zone05", "HTZS2"), ("Zone06", "MCZS2"),
+            ("Zone07", "OOZS2"),  ("Zone08", "HPZS2"), ("Zone09", "MPZS2"),
+            ("Zone10", "SCZS2"),  ("Zone11", "WFZS2"), ("Zone12", "DEZS2"),
             ("Title", "TitleS2"),   ("LSelect", "LSelectS2"),
             ("Credits", "CreditsS2"), ("Ending", "EndingS2"),
-            ("Continue", "ContinueS2"), ("Special", "Special2"),
+            ("Continue", "ContinueS2"), ("Special", "SpecialS2"),
         };
 
         /// <summary>
