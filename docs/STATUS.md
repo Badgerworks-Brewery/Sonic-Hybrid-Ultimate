@@ -32,11 +32,48 @@ lists, and their object names parse correctly from each stage's `StageConfig.bin
 (verified: `PataBata`, `TagaTaga`, `Flip Door`). Every one lacks
 `Bytecode/Zone<CC><A><T>.bin`, so its objects never run. See "Sonic CD" below.
 
-**Sonic 3 — no data.** `rsdk-source-data` holds only sonic1, sonic2 and soniccd. The
-lone artefact `rsdk-source-data/sonic3.bin` is 4 MB, untracked, has no AIR signatures
-and no `Data/` paths, and is not the ROM. `SONIC3_AIR_SETUP.md` needs a
-user-supplied Sonic 3 & Knuckles ROM plus `sonic3air.exe`; neither is present.
-`OxygenWrapper.cpp` correctly reports stub mode rather than pretending otherwise.
+**Sonic 3 — the ROM is on this machine; I wrongly wrote it off.** `rsdk-source-data`
+holds only sonic1, sonic2 and soniccd, so for a long time the conclusion was "no Sonic 3
+data". That was half right and wrong about the one artefact that mattered.
+
+`rsdk-source-data/sonic3.bin` is 4,194,304 bytes and untracked. I previously dismissed it
+on the grounds that it "has no AIR signatures and no `Data/` paths, and is not the ROM".
+That reasoning was bad: a raw Mega Drive ROM would not contain AIR data paths, so their
+absence was evidence of nothing. Searching the machine turned up
+`C:\Users\charl\Documents\school\N\Sonic_Knuckles_wSonic3.bin`, and the two files are
+byte-identical:
+
+```
+FA52AC946DFD576538D00AA858B790B9D81A1217E25AA5193693A4E57F4F89D9  school\N\Sonic_Knuckles_wSonic3.bin
+FA52AC946DFD576538D00AA858B790B9D81A1217E25AA5193693A4E57F4F89D9  rsdk-source-data\sonic3.bin
+```
+
+The header agrees with the filename (`scripts/identify_md_rom.py` reads it rather than
+trusting the name):
+
+```
+console      'SEGA GENESIS    '
+rom title    'SONIC & KNUCKLES'
+product code 'GM MK-1563 -00'    <- 0x180, Sega's own code for Sonic & Knuckles
+region       20                  <- world
+```
+
+The data has the shape of a real cartridge rather than a blank or padded file: all eight
+512 KiB blocks are between 353,773 and 496,982 non-zero bytes, it is not a doubled or
+mirrored dump (the two halves differ in 1,830,210 of 2,097,152 bytes), and 0x080000
+begins `64 02 44 42 31 42 00 40 4E 75 11 7C`, which decodes as plausible 68k.
+
+**What I could not verify.** My header checksum does not match the stored one — and it
+also fails on a known-good Sonic 3 dump in `Retropie\roms\megadrive`, so the fault is in
+`checksum_16bit()`, not in these files. The reset vector at 0x8A reads `0x000002`, which
+is also wrong for a real cartridge. Both checks are therefore reported as *unverified*
+rather than as evidence either way, and the tool says so. I am not going to call a ROM
+fake on the strength of a check that fails on good input.
+
+So Sonic 3 is blocked on two things rather than three: `sonic3air.exe` is still missing,
+and the ROM still needs unpacking into AIR data by something that understands the format.
+`OxygenWrapper.cpp` continues to report stub mode, which is correct. The ROM is not
+committed - it is game data, and it stays on this machine.
 
 ## Not working, and why
 

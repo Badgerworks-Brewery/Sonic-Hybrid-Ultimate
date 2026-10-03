@@ -91,6 +91,30 @@ Sonic-Hybrid-Ultimate/
 └── sonic3.bin (or your ROM file)
 ```
 
+## Where the ROM already is
+
+A Sonic 3 & Knuckles ROM is present on this machine, so you do not need to supply one:
+
+```
+C:\Users\charl\Documents\school\N\Sonic_Knuckles_wSonic3.bin
+```
+
+4,194,304 bytes. Its header reads `SEGA GENESIS` / `SONIC & KNUCKLES`, with Sega's own
+product code for the game, `GM MK-1563 -00`, at 0x180. It is byte-identical to
+`rsdk-source-data/sonic3.bin` already sitting in the repository working tree — same
+SHA256, `FA52AC946DFD576538D00AA858B790B9D81A1217E25AA5193693A4E57F4F89D9` — so it was
+never missing, only unrecognised.
+
+`python scripts/identify_md_rom.py <file>` reads a header from raw bytes if you want to
+check any candidate yourself.
+
+It is deliberately **not** committed. It is game data; it stays on this machine.
+
+Still missing, and the only thing now blocking Sonic 3: **`sonic3air.exe`**, plus
+whatever unpacks the ROM into AIR data files. No tool in this repository can do that
+part — `OxygenWrapper.cpp` correctly reports stub mode rather than pretending
+otherwise.
+
 ## Advanced Configuration
 
 ### Environment Variables
