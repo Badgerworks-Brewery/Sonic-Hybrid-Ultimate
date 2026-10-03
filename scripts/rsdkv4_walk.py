@@ -5,9 +5,25 @@ This exists because the engine decodes operands with variable width, and a walke
 that assumes a fixed width desynchronises within a few instructions. Three earlier
 attempts in this repo failed for that reason and were deleted rather than shipped.
 
-STATE: this walker agrees with the engine on 346 of the 569 script ranges across
-every container Sonic 1 and Sonic 2 ship (61%). It is **not** accurate enough to
+STATE: this walker agrees with the engine on 647 of the 794 script ranges across
+every container Sonic 1 and Sonic 2 ship - 81%. It is **not** accurate enough to
 rewrite operands, and nothing depends on it. Do not treat it as authoritative.
+
+That 81% is only meaningful because of how the ranges are found. Two earlier
+versions of this file reported flattering numbers for the wrong reason:
+
+- One filtered script pointers with `v < len(container.code)`, which is wrong for
+  every per-stage container, because their pointers are absolute into the engine's
+  combined array. It reported 569 ranges and every one came from a GlobalCode or
+  presentation file - no stage bytecode was ever walked. Its 74% was a measurement
+  of the easy half.
+- The fix for that shifted pointers against each container's own lowest pointer,
+  which moves every index by the 262-word prologue the compiler emits first, so it
+  read the wrong words throughout and reported 16%.
+
+`script_ranges()` now takes the container's real placement base, which
+`placement_base()` derives from the sibling GlobalCode.bin. Measured that way, the
+walker covers 794 ranges and agrees on 647.
 
 Operand encoding, read from Script.cpp:
 
@@ -173,19 +189,47 @@ def walk(code, start, end, on_callfunction=None):
         pc = q
 
 
-def script_ranges(container):
-    """[(start, end, script_index)] for each script, by sorted start word.
+def script_ranges(container, base=0):
+    """[(start, end, index)] over this container's own code.
 
-    Scripts share code ranges in the shipped files - several events can point at
-    the same code - so ranges are computed from distinct start words, not from
-    script identity.
+    The pointers a container stores are *absolute* indices into the engine's
+    combined scriptCode array, which is built by appending each file as it loads.
+    So a per-stage container's pointers start well past its own word count: Sonic
+    1's Zone01.bin holds 30381 words yet its first script points at 53139, because
+    it is compiled to sit after GlobalCode.bin's 52319 words.
+
+    That makes "is this pointer inside my own code" the wrong test, and applying it
+    to `len(container.code)` silently discarded every per-stage container. An
+    earlier version of this file reported 569 script ranges, all of them from a
+    GlobalCode or presentation file, so no stage bytecode had ever been walked. It
+    then "fixed" the numbers by shifting pointers against the container's own
+    lowest pointer, which quietly moved every index by the 262-word prologue the
+    compiler emits first - reading the wrong words and reporting 16% agreement.
+
+    So `base` is the container's real placement in the combined array, and it has
+    to be supplied: 0 for GlobalCode.bin and for presentation files, which load
+    before the globals, and the game's own GlobalCode word count for everything
+    else. main() derives it from the sibling GlobalCode.bin.
+
+    Scripts share code (several events can point at the same block), so ranges come
+    from distinct start words, not script identity.
     """
-    starts = sorted({v for s in container.scripts for v in s
-                    if v != 0x3FFFF and v < len(container.code)})
+    absolute = sorted({v for s in container.scripts for v in s
+                       if v != 0x3FFFF})
+    if not absolute:
+        return []
+    local = [v - base for v in absolute]
+    if local[0] < 0 or local[0] >= len(container.code):
+        # Legitimate: some containers carry code none of their own scripts point
+        # at. Sonic 1's Continue.bin holds 1669 words but all three of its scripts
+        # live in GlobalCode.bin, so it has no local ranges to walk at all.
+        return []
     out = []
-    for i, start in enumerate(starts):
-        end = starts[i + 1] if i + 1 < len(starts) else len(container.code)
-        out.append((start, end, i))
+    for i, s in enumerate(local):
+        e = local[i + 1] if i + 1 < len(local) else len(container.code)
+        if e > len(container.code):
+            e = len(container.code)
+        out.append((s, e, i))
     return out
 
 
@@ -212,6 +256,34 @@ def validate(container, label):
             problems.append("%s: function %d at %d: %s" % (label, i, ptr, exc))
 
     return problems
+
+
+PRESENTATION = {"Title", "LSelect", "Credits", "Special"}
+
+
+def placement_base(root, name):
+    """Where a container's own code sits in the engine's combined scriptCode.
+
+    RSDKv4 appends each bytecode file to one shared scriptCode array as it loads,
+    so every pointer in the file is absolute. Two files load before the globals -
+    GlobalCode.bin itself, and the presentation stages, because those are read while
+    the config is being parsed - and everything else loads after them. That split
+    is measured from the shipped files rather than assumed: Sonic 1's Zone01 has
+    1514 jump words of its own yet its lowest jump index is 3388, which is 3366 plus
+    its own count, and Title.bin's lowest is 28, inside its own 423.
+
+    So the base is the sibling GlobalCode's word count for a regular stage, and zero
+    for everything that loads first.
+    """
+    stem = name[:-4] if name.lower().endswith(".bin") else name
+    if stem == "GlobalCode" or stem in PRESENTATION:
+        return 0
+
+    from rsdkv4_bytecode_merger import parse
+    global_path = os.path.join(root, "GlobalCode.bin")
+    if not os.path.exists(global_path):
+        return 0
+    return len(parse(global_path).code)
 
 
 def main():
@@ -244,7 +316,7 @@ def main():
             except Exception as exc:                # noqa: BLE001
                 print("  %-28s parse failed: %s" % (os.path.basename(path), exc))
                 continue
-            ranges = script_ranges(c)
+            ranges = script_ranges(c, placement_base(root, name))
             for start, end, _ in ranges:
                 total += 1
                 try:
