@@ -19,8 +19,8 @@ the case that actually matters: you asking something mid-wait.
 
 USAGE
 
-    python scripts/keepalive.py --seconds 900            # wake in 15 min
-    python scripts/keepalive.py --seconds 900 --watch ask # ...or when ask appears
+    python scripts/keepalive.py                          # wake in 60s
+    python scripts/keepalive.py --watch ask               # ...or when ask appears
 
 EXIT CODES
 
@@ -46,8 +46,8 @@ POLL_SECONDS = 2.0
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--seconds", type=float, default=900.0,
-                        help="maximum time to wait before waking (default 900)")
+    parser.add_argument("--seconds", type=float, default=60.0,
+                        help="maximum time to wait before waking (default 60)")
     parser.add_argument("--watch", default=None,
                         help="exit early, with code 10, when this path appears")
     args = parser.parse_args()
