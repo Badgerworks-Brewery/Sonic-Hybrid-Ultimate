@@ -41,10 +41,25 @@ index 8cfa77c..cc6c7e5 100644
                      }
                      else {
 diff --git a/RSDKv4/Object.cpp b/RSDKv4/Object.cpp
-index 7ddf148..45fa88c 100644
+index 7ddf148..9927bff 100644
 --- a/RSDKv4/Object.cpp
 +++ b/RSDKv4/Object.cpp
-@@ -71,6 +71,54 @@ void ProcessStartupObjects()
+@@ -61,8 +61,13 @@ void ProcessStartupObjects()
+         scriptInfo->spriteSheetID   = 0;
+         entity->type                = i;
+ 
+-        if (scriptCode[scriptInfo->eventStartup.scriptCodePtr] > 0)
++        if (scriptCode[scriptInfo->eventStartup.scriptCodePtr] > 0) {
++            static const bool startupTrace = getenv("RSDK_TRACE_ALL") != nullptr;
++            if (startupTrace)
++                PrintLog("STARTING type %d '%s' startup @%d", i, typeNames[i],
++                         scriptInfo->eventStartup.scriptCodePtr);
+             ProcessScript(scriptInfo->eventStartup.scriptCodePtr, scriptInfo->eventStartup.jumpTablePtr, EVENT_SETUP);
++        }
+         scriptInfo->frameCount = scriptFrameCount - scriptInfo->frameListOffset;
+     }
+     entity->type  = 0;
+@@ -71,6 +76,54 @@ void ProcessStartupObjects()
  
  void ProcessObjects()
  {
@@ -99,7 +114,7 @@ index 7ddf148..45fa88c 100644
      for (int i = 0; i < DRAWLAYER_COUNT; ++i) drawListEntries[i].listSize = 0;
  
      for (objectEntityPos = 0; objectEntityPos < ENTITY_COUNT; ++objectEntityPos) {
-@@ -337,6 +385,10 @@ void Process2PObjects()
+@@ -337,6 +390,10 @@ void Process2PObjects()
  
  void SetObjectTypeName(const char *objectName, int objectID)
  {
@@ -289,10 +304,15 @@ index a450c82..7dced45 100644
              if (loadGlobalScripts && offsetCount && object->type > globalObjCount)
                  object->type += offsetCount; // offset it by our mod count
 diff --git a/RSDKv4/Script.cpp b/RSDKv4/Script.cpp
-index 71e569f..0eea677 100644
+index 71e569f..fe81531 100644
 --- a/RSDKv4/Script.cpp
 +++ b/RSDKv4/Script.cpp
-@@ -525,6 +525,16 @@ const FunctionInfo functions[] = {
+@@ -1,3 +1,4 @@
++#include <set>
+ #include "RetroEngine.hpp"
+ #include <cmath>
+ 
+@@ -525,6 +526,16 @@ const FunctionInfo functions[] = {
  #endif
      FunctionInfo("GetTextInfo", 5),
  #if !RETRO_REV02
@@ -309,7 +329,7 @@ index 71e569f..0eea677 100644
      FunctionInfo("DrawText", 7),
  #endif
      FunctionInfo("GetVersionNumber", 2),
-@@ -1065,6 +1075,43 @@ enum ScrFunc {
+@@ -1065,6 +1076,43 @@ enum ScrFunc {
  };
  
  ObjectScript objectScriptList[OBJECT_COUNT];
@@ -353,7 +373,7 @@ index 71e569f..0eea677 100644
  ScriptFunction scriptFunctionList[FUNCTION_COUNT];
  #if RETRO_USE_COMPILER
  int scriptFunctionCount = 0;
-@@ -1796,13 +1843,10 @@ void ConvertFunctionText(char *text)
+@@ -1796,13 +1844,10 @@ void ConvertFunctionText(char *text)
                  funcName[0] = '0';
                  funcName[1] = 0;
  
@@ -371,7 +391,7 @@ index 71e569f..0eea677 100644
                  }
  
                  if (o == OBJECT_COUNT)
-@@ -2106,13 +2150,10 @@ void CheckCaseNumber(char *text)
+@@ -2106,13 +2151,10 @@ void CheckCaseNumber(char *text)
              caseValue[0] = '0';
              caseValue[1] = 0;
  
@@ -389,7 +409,7 @@ index 71e569f..0eea677 100644
              }
  
              if (o == OBJECT_COUNT)
-@@ -2312,13 +2353,10 @@ bool ReadSwitchCase(char *text)
+@@ -2312,13 +2354,10 @@ bool ReadSwitchCase(char *text)
                  caseValue[0] = '0';
                  caseValue[1] = 0;
  
@@ -407,7 +427,7 @@ index 71e569f..0eea677 100644
                  }
  
                  if (o == OBJECT_COUNT)
-@@ -3094,6 +3132,13 @@ void LoadBytecode(int stageListID, int scriptID)
+@@ -3094,6 +3133,13 @@ void LoadBytecode(int stageListID, int scriptID)
          int *scriptCodePtr = &scriptCode[scriptCodePos];
          int *jumpTablePtr  = &jumpTable[jumpTablePos];
  
@@ -421,7 +441,7 @@ index 71e569f..0eea677 100644
          FileRead(&fileBuffer, 1);
          int scriptCodeSize = fileBuffer;
          FileRead(&fileBuffer, 1);
-@@ -3251,8 +3296,22 @@ void LoadBytecode(int stageListID, int scriptID)
+@@ -3251,8 +3297,22 @@ void LoadBytecode(int stageListID, int scriptID)
          FileRead(&fileBuffer, 1);
          functionCount |= fileBuffer << 8;
  
@@ -445,7 +465,7 @@ index 71e569f..0eea677 100644
  
              FileRead(&fileBuffer, 1);
              function->ptr.scriptCodePtr = fileBuffer;
-@@ -3265,7 +3324,7 @@ void LoadBytecode(int stageListID, int scriptID)
+@@ -3265,7 +3325,7 @@ void LoadBytecode(int stageListID, int scriptID)
          }
  
          for (int f = 0; f < functionCount; ++f) {
@@ -454,7 +474,7 @@ index 71e569f..0eea677 100644
  
              FileRead(&fileBuffer, 1);
              function->ptr.jumpTablePtr = fileBuffer;
-@@ -3276,6 +3335,64 @@ void LoadBytecode(int stageListID, int scriptID)
+@@ -3276,6 +3336,72 @@ void LoadBytecode(int stageListID, int scriptID)
              FileRead(&fileBuffer, 1);
              function->ptr.jumpTablePtr |= fileBuffer << 24;
          }
@@ -504,12 +524,20 @@ index 71e569f..0eea677 100644
 +                    static bool dumped = false;
 +                    if (!dumped) {
 +                        PrintLog("STAGESCRIPT type %d '%s': update @%d (container "
-+                                 "word %d), draw @%d, startup @%d",
++                                 "word %d), draw @%d, startup @%d "
++                                 "[startup word reads %d, update word reads %d]",
 +                                 scriptID + s, typeNames[scriptID + s],
 +                                 script->eventUpdate.scriptCodePtr,
 +                                 script->eventUpdate.scriptCodePtr - placementBase,
 +                                 script->eventDraw.scriptCodePtr,
-+                                 script->eventStartup.scriptCodePtr);
++                                 script->eventStartup.scriptCodePtr,
++                                 script->eventStartup.scriptCodePtr
++                                     < SCRIPTCODE_COUNT
++                                     ? scriptCode[script->eventStartup.scriptCodePtr]
++                                     : -1,
++                                 script->eventUpdate.scriptCodePtr < SCRIPTCODE_COUNT
++                                     ? scriptCode[script->eventUpdate.scriptCodePtr]
++                                     : -1);
 +                        if (s == scriptCount - 1 || s == 2)
 +                            dumped = true;
 +                    }
@@ -519,7 +547,7 @@ index 71e569f..0eea677 100644
  
          CloseFile();
      }
-@@ -3338,6 +3455,20 @@ void ClearScriptData()
+@@ -3338,6 +3464,20 @@ void ClearScriptData()
          scriptFunctionList[f].ptr.jumpTablePtr  = JUMPTABLE_COUNT - 1;
      }
  
@@ -540,7 +568,7 @@ index 71e569f..0eea677 100644
      SetObjectTypeName("Blank Object", OBJ_TYPE_BLANKOBJECT);
  }
  
-@@ -3349,16 +3480,139 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
+@@ -3349,16 +3489,151 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
      functionStackPos  = 0;
      foreachStackPos   = 0;
  
@@ -555,6 +583,18 @@ index 71e569f..0eea677 100644
 +    // walker against. Function scope, not block scope, because the operand tags
 +    // are read after the diagnostic block that turns tracing on.
 +    static const bool traceAll = getenv("RSDK_TRACE_ALL") != nullptr;
++
++    // Which script entry points are actually entered. Every traced word has so far
++    // fallen inside GlobalCode's range, so either stage code is never reached or it is
++    // reached under a different pointer than the one LoadBytecode stored. Both look
++    // identical from outside the process, so record the entry points themselves.
++    if (traceAll) {
++        static std::set<int> seenEntry;
++        if (seenEntry.insert(scriptCodeStart).second && seenEntry.size() <= 64)
++            PrintLog("ENTER script entry @%d (event %d)", scriptCodeStart,
++                     scriptEvent);
++    }
++
 +    // Tags exactly as the engine reads them, so a tool can be checked against the
 +    // real encoding rather than an inferred one.
 +    static int oracleRawTags[0x10] = {0};
@@ -681,7 +721,7 @@ index 71e569f..0eea677 100644
  
              if (opcodeType == SCRIPTVAR_VAR) {
                  int arrayVal = 0;
-@@ -4186,6 +4440,17 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
+@@ -4186,6 +4461,17 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
              }
          }
  
@@ -699,7 +739,7 @@ index 71e569f..0eea677 100644
          ObjectScript *scriptInfo = &objectScriptList[objectEntityList[objectEntityPos].type];
          Entity *entity           = &objectEntityList[objectEntityPos];
          SpriteFrame *spriteFrame = nullptr;
-@@ -4943,7 +5208,15 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
+@@ -4943,7 +5229,15 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
                  opcodeSize     = 0;
                  Entity *newEnt = &objectEntityList[scriptEng.operands[0]];
                  memset(newEnt, 0, sizeof(Entity));
@@ -716,7 +756,7 @@ index 71e569f..0eea677 100644
                  newEnt->propertyValue      = scriptEng.operands[2];
                  newEnt->xpos               = scriptEng.operands[3];
                  newEnt->ypos               = scriptEng.operands[4];
-@@ -4989,7 +5262,14 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
+@@ -4989,7 +5283,14 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
                      scriptEng.arrayPosition[8] = TEMPENTITY_START;
                  Entity *temp = &objectEntityList[scriptEng.arrayPosition[8]];
                  memset(temp, 0, sizeof(Entity));
@@ -732,7 +772,7 @@ index 71e569f..0eea677 100644
                  temp->propertyValue      = scriptEng.operands[1];
                  temp->xpos               = scriptEng.operands[2];
                  temp->ypos               = scriptEng.operands[3];
-@@ -5209,8 +5489,20 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
+@@ -5209,8 +5510,20 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
                  functionStack[functionStackPos++] = scriptCodePtr;
                  functionStack[functionStackPos++] = jumpTableStart;
                  functionStack[functionStackPos++] = scriptCodeStart;

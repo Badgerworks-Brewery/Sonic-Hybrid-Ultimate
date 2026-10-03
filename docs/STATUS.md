@@ -215,7 +215,63 @@ stages producing byte-identical coverage is not a coincidence; they are running 
 code. The 950-of-950 agreement is real, but it is agreement about the globals only, which
 is a much smaller claim than "the bytecode walker decodes RSDKv4 correctly".
 
-**Still to determine:** why stage-local scripts never run, when their pointers are correct
+### Localised: `ProcessStartupObjects` dies partway through the global list
+
+`ProcessStartupObjects` (Object.cpp:40) loops `for (i = 0; i < OBJECT_COUNT; ++i)` -
+all 256 types - and runs each type's `eventStartup`. Logging every iteration on a traced
+Green Hill run:
+
+```
+STARTING logged 53 types; last few: 49, 50, 51, 52, 53, 54
+```
+
+It stops in Sonic 1's global range. The merged table has Sonic 2 in types 1..39 and Sonic
+1 in 40..77, so the loop is dying at roughly type 55 - a Sonic 1 global - and every type
+from there to 113, which is every stage object, never gets its startup run. That is the
+direct cause of stage-local scripts never executing.
+
+That this is Sonic 1's range is the whole clue, because Sonic 1 is the only game with a
+non-zero `functionBase`. The `CallFunction` work gave game 1's globals a base of 97 so
+their function *N* lands on 97+N instead of Sonic 2's N. Distinct-site coverage fell from
+~831 to exactly 190 when that landed, and 190 is the size of Sonic 2's globals' reachable
+code. A Sonic 1 global's `CallFunction` therefore resolving somewhere that unwinds the
+startup loop is the prime suspect, and it is my own regression, not a pre-existing
+condition.
+
+Not yet tested, and the obvious next run: set `functionBase` back to 0 for globals, which
+restores the stock behaviour of Sonic 1 globals calling Sonic 2's functions - wrong, but
+it would confirm whether the append is what stops the loop. If coverage returns to ~831
+the cause is confirmed and the fix belongs in how the base is applied; if it stays at 190
+the append is exonerated and the fault is elsewhere.
+
+Everything that made this findable stays in the engine:
+
+- `PLACE` - a container's own placement base, jump base, type range and function base.
+- `STAGESCRIPT` - the first few stage scripts' entry points, plus the *values* of those
+  words in memory, which is what proved the code is present and non-zero and the
+  `scriptCode[ptr] > 0` guard was passing.
+- `ENTER` - the distinct entry points `ProcessScript` is actually entered at. Nine, all
+  between 18238 and 34533. Everything else is unreachable.
+- `STARTING` - every type `ProcessStartupObjects` reaches, which is what located the cut.
+
+## Still to determine: how to fix it
+
+Two things, in order:
+
+1. Confirm the cause with the single revert above.
+2. Then either drop the per-object `functionBase` and find a way to renumber Sonic 1's
+   `CallFunction` operands in the bytecode after all - which is the thing I argued was
+   unverifiable, and this failure is the argument against me - or make the startup loop
+   survive a bad function index so one bad object cannot silently disable a third of the
+   object table.
+
+The second is worth doing regardless. A loop that iterates every object type and dies
+without a word of complaint is the deeper defect here: it turns a bad number in one
+script into "the rest of the game quietly does nothing", which is exactly the failure mode
+that produced every false positive in this project.
+
+
+, when their pointers are correct
 and their code is present. The candidates, none yet tested: `ProcessStartupObjects` and
 `ProcessObjectControl` not reaching stage types; the stage container being loaded twice
 (the log shows `Bytecode/GHZS1.bin` loaded twice) and the second load overwriting the
