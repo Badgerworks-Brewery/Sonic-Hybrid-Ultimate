@@ -110,139 +110,73 @@ and the live list is recognisably Sonic 1's own Green Hill - Player Object, HUD,
 (165), Monitor, Spikes, Buzz Bomber, Motobug, Chopper, Crabmeat, Newtron Shoot, Newtron
 Fly, Bridge, Rock - not a mixture of the two games' objects.
 
-**The bytecode walker's operand decoding is now verified against the engine.** This
-was the thing being guessed at, and guessing had already produced three confident
-wrong answers - `GetVersionNumber` and `Abs` "needing" three operands, and `DrawText`
-"needing" three. All three were artefacts of measuring the wrong thing.
+**The bytecode walker's operand decoding is verified against the engine, but the
+check that verifies it was wrong, and the figure it produced is withdrawn.**
 
-The engine can now report, for every instruction it executes, exactly how many words
-it consumed and which operand tags it read (`RSDK_TRACE_ALL=1`).
-`scripts/oracle_check.py` boots five stages with that on and compares those numbers
-against the walker.
+The engine can report, for every instruction it executes, how many words it consumed
+and which operand tags it read (`RSDK_TRACE_ALL=1`), and `scripts/oracle_check.py`
+compares those against the walker's decoding. It reported **24,508 of 24,508 distinct
+instruction sites confirmed, 100%**, across every regular stage of Sonic 1 and Sonic 2.
 
-Result: **24,508 of 24,508 distinct instruction sites confirmed, 100%** - operand
-widths *and* operand tags. That is every regular stage of both games: Sonic 1's 19
-stages (9,400 sites) and Sonic 2's 21 (15,108).
+That number is withdrawn. `check()` had three bare `continue`s that dropped any entry
+which did not line up - no container covers the word index, the two read different
+opcodes, the walker's decoder threw. A checker that discards what it cannot explain can
+only ever report success, so "every entry that survived the filter agreed" was a
+statement about the filter, not about the walker. Every one of those paths is now
+counted and printed, and the summary separates *placed* from *confirmed*:
 
-The trace had to be uncapped before that number meant anything. The opcode line was
-silently limited to 300 instructions while the word-count line below it logged all
-7,000-odd, so the checker read 300 of them and reported an identical 142 confirmed
-sites from five completely different stages. Identical totals from different stages
-were the tell. With the cap gone, each stage reports its own count - 190 sites for
-Green Hill Act 1, 821 for Spring Yard Act 1, 831 for Oil Ocean - which is what real
-coverage looks like.
+```
+instructions the engine executed: 29789
+instruction sites placed against the walker's containers: 950 (3.2%)
+of those, confirmed: 950 (100%)
+```
 
-Getting to a comparison that could be trusted took three corrections, each of which
-had produced a confident wrong answer first:
+Two things follow, and the first is the serious one.
 
-- Measuring the gap between consecutive log lines is not the same as measuring the
-  instruction. Control flow jumps, `CallFunction` transfers into another script, and a
-  truncated trace resumes somewhere else entirely, so gaps need filtering and capped
-  instructions need marking. The engine now states its own consumed count, which
-  removes the problem instead of filtering around it.
-- The engine appends `GlobalCode.bin` and then the *one* stage the scene needs, and
-  every word in the trace is an absolute index into that combined array. Comparing a
-  log against all 31 shipped stage files at once reported 238 sites where "the engine
-  read a different opcode than we did" - it had read the words out of the wrong
-  container.
-- A site has to be judged by whether *any* of its executions agrees, because scripts
-  loop. Recording the first mismatch and never clearing it reported `WLower` at word
-  25932 as wrong 33 times, when the trace plainly shows `WLower @25932` followed by
-  `GetTableValue @25940` - a gap of 8, exactly what the walker computes.
+**Stage-object code is not being placed at all.** Every distinct site resolves inside
+`GlobalCode.bin`, whose 115,998 words cover the globals; no traced instruction lands in
+the 30,381 words of `GHZS1.bin` or `CPZS2.bin`, even though those containers load and
+their objects demonstrably run - Green Hill spawns Buzz Bombers, Crabmeats and Newtron
+Fly, which are stage objects. Either the walker's placement base for a regular stage is
+wrong, or stage-object code is executing from somewhere other than where the container
+says it lives. Distinct coverage per stage fell from ~831 before the object-numbering
+work to exactly 190 now, the same figure for all five stages, which is the shape of
+something that stopped rather than something that varies. **This is unresolved and is the
+next thing to look at.**
 
-What is still *not* established: the check covers the instructions the engine
-*executed* in those runs. A stage reached in 9 seconds of headless play does not run
-every line of its bytecode, so branches that need player input, or a boss trigger, or
-several minutes of play, are still unverified. The static linear walk over every
-range in every container still agrees on only 81%, and that is the honest limit of
-the claim. Widening it means playing further into each stage, not reasoning harder.
+Until it is, the honest statement is narrow: *where the walker and the engine could be
+compared on a site the walker had placed, they agreed on 950 of 950.* That is worth
+something - widths and tags both, on real executed code - and it is a great deal less
+than 24,508.
 
-`scripts/oracle_check.py --from N --to M` sweeps a range of stages, and
-`scripts/probe_stages.py --scene N` boots any single one by index.
+What is still genuinely established, because each was checked against the engine rather
+than inferred:
 
-`scripts/rsdkv4_walk.py` still walks only 81% of script *ranges* cleanly. Those two
-numbers are not in conflict: the 81% is a static linear walk over every range in
-every container, and the 99.9% is the set of instructions the engine actually
-executed while playing five stages. The static walk disagrees about code the engine
-never reached, which is dead or headlessly-unreachable code. Rewriting operands is
-still not safe on that evidence alone, but the width rules - the thing that was
-genuinely unknown - are now confirmed rather than assumed.
+- The derived opcode table matches the engine's compiled table exactly, at 149 entries.
+  The stock table wrongly included `LoadFontFile` and `DrawText`, which sit inside
+  `#if !RETRO_REV02` and never compile, so every opcode after them was shifted by one.
+- All 107 handlers stay within their declared operand count.
+- `scripts/inspect_act.py` reads Act layouts with a parser independent of the packer's.
+- The Act layout type bounds hold, checked against a re-injected second shift.
 
-Also added `scripts/check_opcode_table.py`, which has the engine print its own
-compiled opcode table and diffs it against the Python derivation. It matches exactly,
-index for index, at 149 entries. The engine stating its own table is the point: the
-derivation has now been wrong twice, once over `!` and once over `RSDK_REVISION`, and
-both times the Python side was confidently disagreeing with the thing actually
-running.
+The measurement lesson is the same one this project keeps relearning, and it is now
+written down: **an aggregate that should have been checked from the start.** `max` of a
+type range was 150 where it should have been 111, and it took printing the high end to
+see it. Here, the aggregate that was missing was the count of instructions that could
+*not* be compared - reported as 0 because the code that would have counted them was a
+`continue`.
 
-Getting that number to mean something took two corrections, and both earlier versions
-were reporting a flattering figure for the wrong reason. The first filtered script
-pointers with `v < len(container.code)`, which is wrong for every per-stage container
-because their pointers are absolute indices into the engine's combined array. It
-reported 569 ranges, of which not one came from stage bytecode - it had been measuring
-the easy half and calling it 74%. The fix then shifted pointers against each
-container's own lowest pointer, which moves every index by the 262-word prologue the
-compiler emits first, so it read the wrong words throughout and reported 16%.
-`placement_base()` now derives the real base from the sibling `GlobalCode.bin`, and
-81% is measured over everything.
+The trace itself had to be uncapped before any of this meant anything. The opcode line
+was silently limited to 300 instructions while the word-count line below it logged all
+7,000-odd, so the checker read 300 of them and reported an identical "142 confirmed"
+from five completely different stages. Identical totals from different stages were the
+tell, and I read past them twice.
 
-**Sonic CD needs a compiler, not a decompiler.** The decompiler is finished —
-7481 of 7481 subroutines emitted — but its output is text, and text is inert here.
-CD ships RSDKv3 bytecode and the engine runs RSDKv4 bytecode. RSDKv4 chooses per
-stage on whether `Bytecode/GlobalCode.bin` resolves (`Scene.cpp:675`), so CD needs
-RSDKv3 bytecode compiled to RSDKv4 bytecode: a mapping between the two opcode tables
-plus operand re-encoding. This is the largest single piece of work left.
-
-**Sonic 1's 93 functions are merged, and `CallFunction` now resolves them.** Both games'
-function tables are present and shifted (190 entries), and a stage's own table is
-*appended* rather than written over the globals' - the stock engine indexes
-`scriptFunctionList` flat, so whichever stage loaded last silently replaced the functions
-every global object calls. Each object type now carries a `functionBase` and
-`CallFunction` adds it, the same way the type constants are handled above, with a range
-check that logs and stops rather than reading past the table.
-
-## Two engine bugs found along the way
-
-Both were found by measuring against the bytecode rather than by reading code, and
-both are recorded with their evidence.
-
-**DrawText declared 7 operands; it has 3.** Its handler uses three
-(`DrawTextMenu(&gameMenu[operands[0]], operands[1], operands[2])`). Because the
-operand fetch loop runs *before* the handler, reading seven where the bytecode has
-three consumed four words belonging to the next instruction, desynchronising every
-script that draws text.
-
-**The opcode and variable tables included entries that are never compiled.**
-`RSDK_REVISION` is 3 (`RetroEngine.hpp:225`), which makes `RETRO_REV00` false and
-`RETRO_REV01/02/03` true. The guard walk treated any guard it did not recognise as
-active, so `LoadFontFile` and `DrawText` - both of which sit inside `#if !RETRO_REV02`
-- stayed in the table and shifted every opcode after them by one: 151 entries claimed
-where the engine has 149, and `GetTableValue` landing at 129 instead of 127. The
-variable table had the same bug, 253 claimed against 251 compiled, and now imports the
-guard logic from the opcode table rather than keeping a second copy of it.
-
-**The commit before that one made a wrong "fix" and this reverts it.** It changed
-DrawText's operand count from 7 to 3 because the bytecode walk appeared to align better
-at 3. The walk only appeared to align better because its opcode table wrongly contained
-DrawText at all, shifting everything after it. Seven is correct for the handler that
-exists; the entry is inside `#if !RETRO_REV02` and is not compiled either way.
-
-`scripts/check_opcode_operands.py` now settles this whole class of question by reading
-every handler in ProcessScript's dispatch switch and comparing the operand indices it
-touches against the count `functions[]` declares. A handler reading a slot it never
-writes means the operand fetch has already run out and the words it consumed belong to
-the next instruction. 107 handlers checked, all consistent. Two details it needed to get
-right first: handlers reuse the high operand slots as scratch (`Get16x16TileInfo` declares
-four operands and computes `operands[4..6]` as locals), so only indices a handler reads
-*and never writes* count; and it has to honour the guards, because `SetPaletteFade`'s
-`operands[6]` sits inside `#if RETRO_REV00`. Without both, it reports correct code, which
-is worse than reporting nothing.
-
-There is also a trap worth naming, because it is easy to fall into: searching for an
-operand width that reduces the walker's desync count produces convincing
-improvements that are wrong. `GetVersionNumber` "size 3" and `Abs` "size 3" both look
-like large wins; both handlers use exactly the declared number of operands. Read the
-handler. Never trust the count.
+`scripts/oracle_check.py --from N --to M` sweeps a range of stages;
+`scripts/probe_stages.py --scene N` boots any single one by index. Both now write
+`DisableFocusPause=1`, because with no window to take focus the engine sees
+`hasFocus=0` and pauses, which reports as a stage that stops after 20 frames - a failure
+that looks exactly like a broken stage and was not one.
 
 ## Where the object-name collision stands
 
@@ -269,14 +203,18 @@ It does matter for text scripts, which are currently inert.
 
 ## Next steps, in order of value
 
-1. Build the RSDKv3 → RSDKv4 bytecode compiler for Sonic CD. It is the only game whose
+1. **Find out why no stage-object instruction is placed.** `scripts/oracle_check.py`
+   maps every distinct site it can confirm into `GlobalCode.bin` and none into the stage
+   containers, though their objects run. Until that is explained the walker is verified
+   on 950 sites rather than on the game, and it is the cheapest open question here -
+   everything else about the bytecode is downstream of trusting it.
+2. Build the RSDKv3 → RSDKv4 bytecode compiler for Sonic CD. It is the only game whose
    stages are still inert, and the decompiler that reads the format is finished.
-2. Widen the oracle's reach. It confirms 24,508 of 24,508 instruction sites across every
-   regular stage of Sonic 1 and Sonic 2, but only what the engine *executes* in a
-   9-second headless run. Branches needing player input or a boss trigger are still
-   unverified, and the static walk over every range still agrees on only 81%.
-3. Sonic 3, once someone supplies the ROM and `sonic3air.exe`.
-4. *No longer on the list, deliberately:* rewriting Sonic 1's baked operands in the
+3. Widen the oracle once it is trustworthy. It covers only what the engine *executes* in
+   a 9-second headless run, so branches needing player input or a boss trigger stay
+   unverified regardless.
+4. Sonic 3, once someone supplies the ROM and `sonic3air.exe`.
+5. *No longer on the list, deliberately:* rewriting Sonic 1's baked operands in the
    bytecode. Doing it in the engine, from two numbers the pack already knows, is
    verifiable where a bytecode rewrite would mean trusting a decoder over compiled data
    across code that has never been seen run.

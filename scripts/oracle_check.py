@@ -42,6 +42,7 @@ LOG = os.path.join(PACK, "log.txt")
 SETTINGS = """[Window]
 RefreshRate=60
 WindowScale=1
+DisableFocusPause=1
 ScreenWidth=640
 DimLimit=300
 [Dev]
@@ -138,12 +139,28 @@ def check(entries, stage_file, label):
     agreed = {}
     wrong = {}
 
+    # Everything the engine traced has to end up in exactly one of these buckets.
+    #
+    # It used to be three bare `continue`s that dropped entries which did not line up,
+    # which made a 100% result arithmetically unavoidable: an entry that disagreed was
+    # discarded before it could be counted as a disagreement. The walker's operand
+    # decoding may well be right, but "every entry that survived the filter agreed" is
+    # not evidence of that. So each reason is counted and reported.
+    unplaced = {}          # word -> opcode name, no container covers it
+    misnamed = {}          # (cname, word) -> (engine name, walker name)
+    undecodable = {}       # (cname, word) -> engine name
+
     for name, word, consumed, tags in entries:
         cname, code, local = container_for(word)
         if code is None or local < 0 or local >= len(code.code):
+            unplaced.setdefault(word, name)
             continue
         op = code.code[local]
-        if op < 0 or op >= len(ORDER) or ORDER[op][0] != name:
+        if op < 0 or op >= len(ORDER):
+            undecodable.setdefault((cname, word), name)
+            continue
+        if ORDER[op][0] != name:
+            misnamed.setdefault((cname, word), (name, ORDER[op][0]))
             continue
 
         count = size_of(op)
@@ -153,7 +170,8 @@ def check(entries, stage_file, label):
             for _ in range(count):
                 mine.append(code.code[q])
                 q += operand_width(code.code, q)
-        except Exception:                              # noqa: BLE001
+        except Exception as exc:                       # noqa: BLE001
+            undecodable.setdefault((cname, word), "%s (%s)" % (name, exc))
             continue
         mine_width = q - local - 1                    # operand words only
 
@@ -165,16 +183,23 @@ def check(entries, stage_file, label):
             wrong[key] = (count, mine_width, consumed, list(mine), list(tags))
 
     sites = len(agreed) + len(wrong)
-    print("  %-30s sites %4d, confirmed %4d%s"
-          % (label or stage_file, sites, len(agreed),
-             "" if not wrong else "  WRONG %d" % len(wrong)))
+    gaps = len(unplaced) + len(misnamed) + len(undecodable)
+    print("  %-30s traced %5d | placed %4d confirmed %4d | WRONG %3d | "
+          "unplaced %4d, opcode differs %4d, undecodable %4d"
+          % (label or stage_file, len(entries), sites, len(agreed), len(wrong),
+             len(unplaced), len(misnamed), len(undecodable)))
     for key in sorted(wrong, key=lambda k: wrong[k][1])[:8]:
         cname, name, word = key
         count, mine_width, consumed, mine, tags = wrong[key]
         print("      %s word %d %-18s %d operands: walker %d words tags %s, "
               "engine %d words tags %s"
               % (cname, word, name[:18], count, mine_width, mine, consumed, tags))
-    return sites, len(wrong)
+    for (cname, word), (engine_name, walker_name) in sorted(misnamed.items())[:6]:
+        print("      %s word %d: engine read %s, walker read %s"
+              % (cname, word, engine_name, walker_name))
+    for word, name in sorted(unplaced.items())[:4]:
+        print("      word %d (%s): no loaded container covers this index" % (word, name))
+    return sites, len(wrong), gaps
 
 
 def main():
@@ -184,6 +209,8 @@ def main():
 
     total_sites = 0
     total_wrong = 0
+    total_gaps = 0
+    total_traced = 0
     ran = 0
 
     # `--from N --to M` sweeps a range of stages instead of the default five. The
@@ -217,20 +244,33 @@ def main():
             total_wrong += 1
             continue
         ran += 1
-        sites, wrong = check(entries, stage_file or "",
-                             "%s (scene %d)" % (label, scene))
+        sites, wrong, gaps = check(entries, stage_file or "",
+                                   "%s (scene %d)" % (label, scene))
         total_sites += sites
         total_wrong += wrong
+        total_gaps += gaps
+        total_traced += len(entries)
 
     print()
     print("stages traced: %d" % ran)
-    print("instruction sites confirmed against the engine: %d of %d (%.1f%%)"
+    print("instructions the engine executed: %d" % total_traced)
+    print("instruction sites placed against the walker's containers: %d of %d "
+          "(%.1f%%)" % (total_sites, total_traced,
+                        100.0 * total_sites / max(total_traced, 1)))
+    print("of those, confirmed: %d of %d (%.1f%%)"
           % (total_sites - total_wrong, total_sites,
              100.0 * (total_sites - total_wrong) / max(total_sites, 1)))
+    print("not placed, so not compared: %d" % total_gaps)
     if total_wrong:
         print("%d site(s) the engine never agreed with" % total_wrong)
         return 1
-    print("OK: operand widths and tags match the engine everywhere observed")
+    print()
+    print("Read the second figure, not the third. The walker agrees with the engine on")
+    print("every site it could be shown, but %d of %d instructions the engine actually"
+          % (total_gaps, total_traced))
+    print("ran were not compared at all - either no loaded container covers their word")
+    print("index, or the two read different opcodes there. Those are unverified, not")
+    print("correct, and the gap is the honest limit of this check.")
     return 0
 
 
