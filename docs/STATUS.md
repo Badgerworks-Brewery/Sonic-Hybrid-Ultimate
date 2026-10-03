@@ -251,6 +251,46 @@ execution rather than further reach.
   nothing between `ProcessStartupObjects` and the frame loop reports how far it got. The
   `STARTING` log now answers that, but only when asked.
 
+### The startup loop can no longer fail silently
+
+`ProcessStartupObjects` iterates all 256 object types and runs each one's `eventStartup`.
+If it stops early, every type after that point quietly never runs its startup while the
+stage still loads, still places its objects and still turns frames. Nothing between that
+function and the frame loop reported its progress, which is precisely why two rounds of
+investigation here produced confidently wrong answers about it.
+
+`startupObjectsCompleted` and `startupObjectsReached` now exist, and `ProcessObjects` logs
+the outcome on its first turn:
+
+```
+STARTUP completed after reaching type 255 of 255
+```
+
+Unconditional, not behind a trace switch, because the case it guards against is exactly
+the case where nobody thinks to turn tracing on. Reaching 255 rather than 113 is also the
+right answer and not a surprise: the loop covers every slot in `objectScriptList`, and
+unregistered slots hold the sentinel `SCRIPTCODE_COUNT - 1`, whose word is 0, so the
+existing `scriptCode[ptr] > 0` guard skips them without running anything.
+
+### A build check that was itself broken
+
+Adding those globals produced two unresolved externals, and the build reported success,
+because the check filtered on `error C` - compiler errors only. Link failures are `LNK`,
+and the filtered output was empty, so "build ok" printed while `rsdkv4.exe` had been
+deleted by the failed link. `scripts/probe_stages.py` then said "engine not built", which
+is how it was caught.
+
+Same shape as everything else in this document: the thing that was supposed to tell me
+whether a step worked was reporting success while measuring nothing.
+
+`scripts/build_engine.py` replaces it. It builds both targets - skipping `rsdk_core`
+reuses a stale `rsdk_core.lib`, which has silently tested old code here before - and
+judges by **exit code**, not by grepping the output. Widening the filter to `error` would
+have been the same idea with a bigger net and still wrong: MSBuild can fail without
+printing anything containing that word. It also treats the reverse case as a failure, an
+exit code of 0 with an error in the output, which is the direction the old check got
+backwards.
+
 ### Kept, because they made this findable
 
 `PLACE` (a container's own placement base, jump base, type range, function base),

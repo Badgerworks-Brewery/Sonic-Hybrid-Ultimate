@@ -41,10 +41,32 @@ index 8cfa77c..cc6c7e5 100644
                      }
                      else {
 diff --git a/RSDKv4/Object.cpp b/RSDKv4/Object.cpp
-index 7ddf148..4139086 100644
+index 7ddf148..5e2ec6a 100644
 --- a/RSDKv4/Object.cpp
 +++ b/RSDKv4/Object.cpp
-@@ -61,8 +61,19 @@ void ProcessStartupObjects()
+@@ -25,6 +25,12 @@ TypeGroupList objectTypeGroupList[TYPEGROUP_COUNT];
+ 
+ char typeNames[OBJECT_COUNT][0x40];
+ 
++// Startup loop progress. Defined here because ProcessStartupObjects and ProcessObjects
++// both live in this file but the frame loop must be able to tell, on its own, whether
++// the startup loop ever finished. See Object.hpp for why that is not optional.
++int startupObjectsCompleted = 0;
++int startupObjectsReached    = -1;
++
+ int OBJECT_BORDER_X1 = 0x80;
+ int OBJECT_BORDER_X2 = SCREEN_XSIZE + 0x80;
+ int OBJECT_BORDER_X3 = 0x20;
+@@ -40,6 +46,8 @@ int playerListPos = 0;
+ void ProcessStartupObjects()
+ {
+     scriptFrameCount = 0;
++    startupObjectsReached = 0;
++    startupObjectsCompleted = 0;
+     ClearAnimationData();
+     scriptEng.arrayPosition[8] = TEMPENTITY_START;
+     OBJECT_BORDER_X1           = 0x80;
+@@ -61,16 +69,89 @@ void ProcessStartupObjects()
          scriptInfo->spriteSheetID   = 0;
          entity->type                = i;
  
@@ -62,13 +84,28 @@ index 7ddf148..4139086 100644
 +                         scriptInfo->eventStartup.scriptCodePtr);
              ProcessScript(scriptInfo->eventStartup.scriptCodePtr, scriptInfo->eventStartup.jumpTablePtr, EVENT_SETUP);
 +        }
++        startupObjectsReached = i;
          scriptInfo->frameCount = scriptFrameCount - scriptInfo->frameListOffset;
      }
      entity->type  = 0;
-@@ -71,6 +82,54 @@ void ProcessStartupObjects()
+     curObjectType = 0;
++    startupObjectsCompleted = 1;
+ }
  
  void ProcessObjects()
  {
++    // A startup loop that stopped early is the failure mode that cost this project two
++    // rounds of confident wrong answers, because nothing reported it. Once the frame
++    // loop is turning, say so plainly, and say how far the startup loop got - it is
++    // expected to have finished long before the first frame.
++    static bool startupReported = false;
++    if (!startupReported && startupObjectsReached >= 0) {
++        startupReported = true;
++        PrintLog("STARTUP %s after reaching type %d of %d",
++                 startupObjectsCompleted ? "completed" : "DID NOT COMPLETE",
++                 startupObjectsReached, OBJECT_COUNT - 1);
++    }
++
 +    // Heartbeat: confirm the frame loop is actually turning. A run that stalls
 +    // before the first frame otherwise looks identical to one that is merely
 +    // slow, and there is no other way to tell from outside the process.
@@ -120,7 +157,7 @@ index 7ddf148..4139086 100644
      for (int i = 0; i < DRAWLAYER_COUNT; ++i) drawListEntries[i].listSize = 0;
  
      for (objectEntityPos = 0; objectEntityPos < ENTITY_COUNT; ++objectEntityPos) {
-@@ -337,6 +396,10 @@ void Process2PObjects()
+@@ -337,6 +418,10 @@ void Process2PObjects()
  
  void SetObjectTypeName(const char *objectName, int objectID)
  {
@@ -131,6 +168,32 @@ index 7ddf148..4139086 100644
      int objPos  = 0;
      int typePos = 0;
      while (objectName[objPos]) {
+diff --git a/RSDKv4/Object.hpp b/RSDKv4/Object.hpp
+index 3160c12..51a0d76 100644
+--- a/RSDKv4/Object.hpp
++++ b/RSDKv4/Object.hpp
+@@ -124,6 +124,21 @@ extern NativeEntity objectEntityBackupS[NATIVEENTITY_COUNT];
+ 
+ // Game Objects
+ extern int objectEntityPos;
++
++// Whether the startup loop reached the end, and how far it got.
++//
++// This exists because that loop failing is silent and catastrophic in a way nothing
++// else reported. It runs the eventStartup of every one of the 256 object types; if it
++// stops early - a bad function index unwinding the frame, say - then every type after
++// that point silently never runs its startup, while the stage still loads, still places
++// its objects and still turns frames. It looks healthy from outside the process.
++//
++// That is not hypothetical: it is how "stage-local scripts never execute" survived two
++// rounds of investigation here, and the intermediate readings were confidently wrong
++// twice before the real cause turned out to be the measurement itself. The frame loop
++// must not be able to look healthy without saying whether this completed.
++extern int startupObjectsCompleted;
++extern int startupObjectsReached;
+ extern int curObjectType;
+ extern Entity objectEntityList[ENTITY_COUNT * 2];
+ extern int processObjectFlag[ENTITY_COUNT];
 diff --git a/RSDKv4/RetroEngine.cpp b/RSDKv4/RetroEngine.cpp
 index 29f393f..024a450 100644
 --- a/RSDKv4/RetroEngine.cpp
