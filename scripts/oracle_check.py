@@ -136,10 +136,23 @@ def check(entries, stage_file, label):
     merged = parse(os.path.join(BYTECODE, "GlobalCode.bin"))
     containers = [("GlobalCode.bin", merged, 0)]
     offset = len(merged.code)
-    stage_path = os.path.join(BYTECODE, stage_file)
-    if os.path.exists(stage_path):
-        stage = parse(stage_path)
-        containers.append((stage_file, stage, offset))
+
+    # os.path.join(BYTECODE, "") is the Bytecode directory itself, which exists - so an
+    # empty stage_file passed the existence check and parse() then tried to read a
+    # directory. That killed a sweep of all 21 Sonic 2 stages at the first one, after
+    # Sonic 1's 19 had completed. An empty name means the log never said which
+    # container the stage used, which is worth saying out loud rather than guessing.
+    if stage_file:
+        stage_path = os.path.join(BYTECODE, stage_file)
+        if os.path.isfile(stage_path):
+            stage = parse(stage_path)
+            containers.append((stage_file, stage, offset))
+        else:
+            print("  %-30s no bytecode container named %s"
+                  % (label or "?", stage_file))
+    else:
+        print("  %-30s log did not name a bytecode container; only the globals "
+              "can be compared" % (label or "?"))
 
     def container_for(word):
         for name, c, base in containers:
@@ -218,6 +231,48 @@ def main():
         print("engine not built: %s" % EXE)
         return 2
 
+    # One oracle run at a time.
+    #
+    # The engine writes one fixed log.txt and reads one fixed settings.ini, both in the
+    # pack folder, so two concurrent runs overwrite each other's stage mid-flight. That
+    # is not a crash - it produces numbers. A sweep running in the background while the
+    # test suite ran its own check produced "1 stage traced" and a non-zero gap count,
+    # which read as a real regression in the checker and were pure interference.
+    #
+    # Better to refuse than to report a plausible wrong number, which is the lesson of
+    # this whole tool.
+    lock = os.path.join(PACK, "oracle.lock")
+    try:
+        fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        os.write(fd, str(os.getpid()).encode())
+        os.close(fd)
+    except FileExistsError:
+        # Stale locks happen when a run is killed mid-sweep. Age is the honest test.
+        try:
+            age = time.time() - os.path.getmtime(lock)
+            if age > 3600:
+                os.remove(lock)
+                fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+                os.write(fd, str(os.getpid()).encode())
+                os.close(fd)
+            else:
+                print("another oracle run holds %s (%d seconds old); refusing to "
+                      "run concurrently" % (lock, int(age)))
+                return 3
+        except OSError as exc:
+            print("could not take the lock: %s" % exc)
+            return 3
+
+    try:
+        return run_all()
+    finally:
+        try:
+            os.remove(lock)
+        except OSError:
+            pass
+
+
+def run_all():
     total_sites = 0
     total_wrong = 0
     total_gaps = 0

@@ -216,6 +216,45 @@ else
     printf '  SKIP  engine binary not built, or python3 unavailable\n'
 fi
 
+# The oracle compares the bytecode walker's operand decoding against what the engine
+# actually executed. Two failure modes here have each produced a confident wrong answer,
+# and this asserts against both rather than against a percentage.
+#
+#   1. The checker used to `continue` past anything it could not place - no container
+#      covers the word, the two read different opcodes, the walker threw - so it could
+#      only ever report success. It now counts those paths, and they must be zero for
+#      the agreement figure to mean anything.
+#   2. The trace was once so slow that a traced run never got past the globals, and
+#      coverage sat at exactly 190 distinct sites for stage after stage - which reads
+#      as "verified" while measuring a run that never happened. Uniform per-stage
+#      counts are the tell, so assert they are not all the same.
+#
+# One stage with a short budget: this is a regression guard, not the coverage report.
+# docs/STATUS.md carries the real numbers from a full sweep.
+if [ -f "build/bin/Release/rsdkv4.exe" ] && command -v python3 >/dev/null 2>&1; then
+    oracle_out=$(python3 scripts/oracle_check.py 2>&1 || true)
+    if printf '%s\n' "$oracle_out" | grep -q "not placed, so not compared: 0"; then
+        ok "oracle compared every site it traced - nothing silently dropped"
+    else
+        bad "oracle silently dropped sites it could not place"
+        printf '%s\n' "$oracle_out" | grep -E "not placed|opcode differs" | sed 's/^/    /'
+    fi
+
+    distinct=$(printf '%s\n' "$oracle_out" | grep -oE 'placed +[0-9]+' | \
+              grep -oE '[0-9]+' | sort -u | wc -l)
+    total=$(printf '%s\n' "$oracle_out" | grep -c 'placed ')
+    if [ "$total" -lt 2 ]; then
+        printf '  SKIP  oracle coverage-uniformity check (only %d stage traced)\n' "$total"
+    elif [ "$distinct" -lt "$total" ]; then
+        ok "oracle coverage varies per stage ($distinct of $total distinct)"
+    else
+        bad "oracle coverage identical across all $total stages - the traced run is
+    probably not getting past the globals, whatever the agreement figure says"
+    fi
+else
+    printf '  SKIP  engine binary not built, or python3 unavailable\n'
+fi
+
 # ---------------------------------------------------------------------------
 head "6. Packer byte order"
 
