@@ -123,6 +123,22 @@ else
     printf '  SKIP  Data.rsdk not generated yet (run build_all.sh first)\n'
 fi
 
+# The packer renumbers Act layout object types by name, so they must arrive at the
+# engine as destination indices exactly once. An earlier build shifted them a second
+# time and a third, which pushed Green Hill's types past the end of the object table:
+# 18 of its 305 objects became entities whose type matched no script. The layout still
+# parsed to its exact length and the stage still reached 600 frames, so only an
+# explicit bound catches it.
+if [ -f "$PACK" ] && command -v python3 >/dev/null 2>&1; then
+    if python3 scripts/test_act_layouts.py; then
+        ok "Act layouts carry destination object types exactly once"
+    else
+        bad "Act layouts have been renumbered more than once"
+    fi
+else
+    printf '  SKIP  Act layout check (no pack, or python3 unavailable)\n'
+fi
+
 # ---------------------------------------------------------------------------
 head "4. RSDKv3 bytecode reader"
 

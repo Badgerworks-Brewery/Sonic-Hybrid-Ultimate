@@ -174,8 +174,105 @@ def copy_stage_bytecode(game, zones, deltas, global_count):
     return copied, missing
 
 
+# attrib bit -> width in bytes, in the order Scene.cpp:1024 reads them. Shared by the
+# read-only check below and the deprecated rewriter, so the two cannot disagree about
+# where one object ends and the next begins.
+ATTRIB_FIELDS = [
+    (0x0001, 4), (0x0002, 1), (0x0004, 4), (0x0008, 4), (0x0010, 1),
+    (0x0020, 1), (0x0040, 1), (0x0080, 1), (0x0100, 4), (0x0200, 1),
+    (0x0400, 1), (0x0800, 4), (0x1000, 4), (0x2000, 4), (0x4000, 4),
+]
+
+
+def read_act_type_bytes(data):
+    """The type index of every object in an Act layout, read but never written.
+
+    Returns None if the layout does not parse to exactly its own length, because a
+    parser that has lost its place cannot be trusted to have found the types either -
+    and reporting "unknown" is the honest answer, not a pass.
+    """
+    pos = 0
+    length = data[pos]; pos += 1 + length
+    pos += 5                                          # 4 layers + mid-point
+    xsize = data[pos]; pos += 1
+    pos += 1
+    ysize = data[pos]; pos += 1
+    pos += 1
+    pos += 2 * xsize * ysize
+    if pos + 2 > len(data):
+        return None
+    count = data[pos] | (data[pos + 1] << 8); pos += 2
+
+    types = []
+    for _ in range(count):
+        if pos + 12 > len(data):
+            return None
+        attribs = data[pos] | (data[pos + 1] << 8); pos += 2
+        types.append(data[pos]); pos += 1               # the type byte
+        pos += 1                                       # propertyValue
+        pos += 8                                       # xpos, ypos
+        for bit, width in ATTRIB_FIELDS:
+            if attribs & bit:
+                pos += width
+    return types if pos == len(data) else None
+
+
+def loaded_type_highest(folders, global_count):
+    """The highest object type any packed Act layout names, and the highest it may.
+
+    The bound is not a guess: a stage's layout can name the merged globals and then
+    its own stage objects, and the stage's bytecode container records exactly how
+    many stage objects that is. A stage with k objects registers types
+    global_count+1 .. global_count+k, so that is the highest legal one.
+
+    Returns (highest, highest_allowed, problems). highest is None if a layout could
+    not be read, which is reported rather than treated as a pass.
+    """
+    stage_dir = os.path.join(os.path.dirname(os.path.dirname(OUT)), "Data", "Stages")
+    bytecode = OUT
+    highest = 0
+    highest_allowed = global_count
+    problems = []
+
+    for folder in folders:
+        path = os.path.join(stage_dir, folder)
+        if not os.path.isdir(path):
+            continue
+
+        # How many objects this stage registers past the globals.
+        container = os.path.join(bytecode, folder + ".bin")
+        stage_objects = 0
+        if os.path.exists(container):
+            try:
+                stage_objects = parse(container).script_count
+            except Exception as exc:
+                problems.append("could not read %s: %s" % (folder + ".bin", exc))
+        highest_allowed = max(highest_allowed, global_count + stage_objects)
+
+        for name in sorted(os.listdir(path)):
+            if not (name.startswith("Act") and name.endswith(".bin")):
+                continue
+            types = read_act_type_bytes(
+                io.open(os.path.join(path, name), "rb").read())
+            if types is None:
+                problems.append("%s/%s does not parse to its own length"
+                                % (folder, name))
+                continue
+            if types:
+                highest = max(highest, max(types))
+
+    return highest, highest_allowed, problems
+
+
 def shift_act_object_types(folders, offset):
-    """Add `offset` to every object type index in a game's Act layout files.
+    """DEPRECATED - do not call. Kept only as an independent Act-format reader.
+
+    It used to rewrite the files. See the call site in main() for why that was
+    removed. `python scripts/inspect_act.py` reads the same format independently,
+    which is what this is now useful for: comparing two readers is how the format
+    gets checked, but only one of them is allowed to write.
+
+    Add `offset` to every object type index in a game's Act layout files.
 
     An Act file stores object placements as a raw type *index*, not a name:
     Scene.cpp:995 reads one byte straight into `object->type`. Those indices are
@@ -285,23 +382,26 @@ def main():
     blob = serialize(merged)
     io.open(os.path.join(OUT, "GlobalCode.bin"), "wb").write(blob)
 
-    # Object-name lookup is a linear scan over the whole table. Sonic 1 and Sonic 2
-    # share 33 object names, so without help the first game to register a name wins
-    # and a Sonic 1 stage asking for "Stage Setup" gets Sonic 2's. The engine
-    # limits the scan to one game when it knows where the split is, and this file
-    # is that number: how many global object types belong to Sonic 2, which is the
-    # game listed first. Absent, the engine falls back to single-game behaviour
-    # rather than guessing.
-    # OUT is <pack>/Data/Bytecode, so the game's own folder is two levels up, not one.
+    # Two numbering schemes have to be told apart, and both come from the same merge:
+    #
+    #   byte 0  where Sonic 1's object types start in the merged table. Every type
+    #           constant baked into Sonic 1's bytecode was compiled against Sonic 1's
+    #           own numbering, so they all need shifting by this much.
+    #   byte 1  where Sonic 1's functions start. `CallFunction`'s operand indexes
+    #           the shared table and Sonic 2's are listed first, so a Sonic 1 script
+    #           calling its function N needs to land on this + N.
+    #
+    # Absent or malformed, the engine treats the pack as single-game and leaves every
+    # number alone rather than guessing.
     split_path = os.path.join(
         os.path.dirname(os.path.dirname(OUT)), "Data", "Game",
         "ObjectGameSplit.bin")
     if not os.path.isdir(os.path.dirname(split_path)):
         os.makedirs(os.path.dirname(split_path))
-    io.open(split_path, "wb").write(bytes([s2.script_count]))
-    print("object name split: types 0..%d are Sonic 2, %d..%d are Sonic 1"
-          % (s2.script_count - 1, s2.script_count,
-             merged.script_count - 1))
+    io.open(split_path, "wb").write(bytes([s2.script_count,
+                                           s2.function_count]))
+    print("numbering split: Sonic 1's types shift by %d, its functions by %d"
+          % (s2.script_count, s2.function_count))
     shared = len(set(object_names("sonic1")) & set(object_names("sonic2")))
     print("  %d names exist in both games; the split is what keeps them apart"
           % shared)
@@ -358,17 +458,52 @@ def main():
     problems = []
 
     # Act layout files hold raw type indices, which are game-relative, so each
-    # game's placements have to be renumbered into the merged table. Sonic 2 is
-    # listed first and keeps its indices; Sonic 1 shifts by however many globals
-    # Sonic 2 contributed.
+    # game's placements have to be renumbered into the merged table.
+    #
+    # Deliberately NOT done here. This function used to rewrite the .bin files, adding
+    # each game's offset to every type byte, and it looked fine: the parse was checked
+    # against the file length and reported exact on all 65 files. It was still wrong,
+    # because the rewrite was not idempotent. It edits the game's own data in place, so
+    # the next build shifted the already-shifted files again - and the third build
+    # would have done it a third time. Green Hill's stock type 72 turned into 150
+    # after two builds, and the stage quietly filled with entities of types that do
+    # not exist.
+    #
+    # The engine now applies the shift when it reads the layout (Scene.cpp's
+    # LoadActLayout, using stageTypeBase), which cannot repeat and needs no second
+    # implementation of the Act format here. shift_act_object_types is kept only so
+    # the stock and packed files can be compared by a second, independent reader:
+    #   python scripts/inspect_act.py
     s1_folders = [f for _s, f in SONIC1_ZONES]
     s2_folders = [f for _s, f in SONIC2_ZONES]
-    a1, o1, p1 = shift_act_object_types(s1_folders, len(n2))
-    a2, o2, p2 = shift_act_object_types(s2_folders, 0)
-    problems += p1 + p2
-    print("Act layouts: Sonic 1 %d files / %d objects renumbered by +%d, "
-          "Sonic 2 %d files / %d objects unchanged"
-          % (a1, o1, len(n2), a2, o2))
+    print("Act layouts: left as the games shipped them; the engine shifts each "
+          "stage's types by stageTypeBase on read (%d Sonic 1 folders, %d Sonic 2)"
+          % (len(s1_folders), len(s2_folders)))
+
+    # Act layouts must already carry destination-table type indices, because the
+    # packer resolves them by object name. Stock Sonic 1 Green Hill says 0..72; the
+    # packed file must say exactly the destination indices for those same names and
+    # nothing more. A second shift on top is invisible to every other check here -
+    # the file still parses to its exact length - and it produces stages that look
+    # merely sparse rather than broken.
+    if os.environ.get("SKIP_ACT_GUARD") != "1":
+        stage_dir = os.path.join(
+            os.path.dirname(os.path.dirname(OUT)), "Data", "Stages")
+        if os.path.isdir(stage_dir):
+            highest, allowed, act_problems = loaded_type_highest(
+                s1_folders + s2_folders, merged.script_count)
+            problems += act_problems
+            if highest is not None and highest > allowed:
+                problems.append(
+                    "Act layouts in %s name types up to %d, past the highest type "
+                    "any stage can have (%d); the packer has already renumbered "
+                    "them by object name, so something has shifted them a second "
+                    "time" % (stage_dir, highest, allowed))
+            elif highest is not None:
+                print("Act layout guard: highest packed type %d, within the %d "
+                      "types the stages actually register"
+                      % (highest, allowed))
+
     if len(expected_objects) != merged.script_count:
         problems.append(
             "object table has %d entries but the merged container has %d scripts"

@@ -40,17 +40,75 @@ user-supplied Sonic 3 & Knuckles ROM plus `sonic3air.exe`; neither is present.
 
 ## Not working, and why
 
-**Sonic 1 objects created by script still carry Sonic 1's own type numbers.** A
-stage's Act layout file stores object placements as a raw type index
-(`Scene.cpp:995`), and those are renumbered correctly now. But an object a *script*
-creates has its type baked in as an integer constant when the script was compiled,
-compiled against Sonic 1's single-game numbering. In the merged table that integer
-names whatever sits there — often a Sonic 2 object, sometimes nothing at all.
-Measured: Green Hill has live types up to 150 while the last registered type is 113.
+**Sonic 1 objects created by script now resolve to Sonic 1's own types.** This was
+wrong until the last commit, and the reason it was wrong is the most useful thing in
+this document.
 
-There is no runtime lookup to fix, which I checked rather than assumed. Filtering the
-name lookup by game changes Green Hill's live types not one bit, because `TypeName` is
-resolved at compile time. Rewriting those constants needs a bytecode walker.
+An object's type is baked in as an integer constant when its script is compiled, against
+that game's single-game numbering. In the merged table that integer names whatever sits
+there. `TypeName` is resolved at compile time, so there is no runtime lookup to scope -
+filtering the name lookup by game changes a stage's live types not one bit.
+
+Rewriting those constants in the bytecode is the obvious fix and was the wrong one. It
+cannot be verified: it means editing compiled data using a decoder, over the 81% of code
+the oracle has never seen execute. So each object type instead carries the offset its
+game's numbering needs, and the two opcodes that create an object - `ResetObjectEntity`
+operand 1 and `CreateTempObject` operand 0, which a search of every `->type` assignment
+in the engine confirms is all of them - add it. Two numbers the pack already knows,
+which cannot go stale against a decoder. `CallFunction` gets the same treatment for
+functions, and a stage's function table is now *appended* rather than written over the
+globals'.
+
+The stage shift is not simply the globals' offset. A stage's types begin at
+`globalCount + 1` in their own game and at `globalTotal + 1` in the merged table, so the
+offset is the difference between those starts: 39 for Sonic 1, 38 for Sonic 2, derived
+from the two counts at load time rather than hard-coded.
+
+### The bug this uncovered
+
+Act layout files store the same kind of raw type index, and they were being renumbered
+**three times over** - once correctly by the packer, then twice more by a build-time
+rewriter that edited the game's own files in place, once per build:
+
+| build | Green Hill Act 1 types | |
+|---|---|---|
+| stock | `0..72` | Sonic 1's own numbering |
+| first | `40..111` | correct - the packer alone |
+| second | `79..150` | past the 114 types that exist |
+| third | `118..189` | still past it |
+
+A type past the end of the object table names no script, so the entity exists and never
+runs: **18 of Green Hill's 305 objects were dead.** It survived because the layout still
+parsed to exactly its length, the stage still loaded, and the frame counter still
+reached 600 - all true, none of it evidence. 18 of 31 live types being *unnamed* read as
+exotic objects rather than a range error.
+
+Two fixes were tried before the right one. Renumbering on read in the engine was sound in
+principle and wrong in fact, because it was a third shift on top of the packer's; only
+reading `RsdkGenericImporter.cs` established that the packer had already done the job by
+name lookup. The lesson is the one worth keeping: the fix was to *stop transforming the
+data*, not to transform it more carefully.
+
+It was caught by printing the high end of the range rather than the count - `max` was
+150 where it should have been 111. One aggregate that should have been checked from the
+start.
+
+Now guarded three ways: the packer is the only renumberer; `scripts/test_act_layouts.py`
+fails the build when a layout names a type beyond what the stage registers, verified
+against a deliberately re-injected second shift (it fails at 150 against a bound of
+113); and `scripts/inspect_act.py` compares a stock and a packed layout with an
+independent parser.
+
+Result at frame 300, Green Hill Act 1:
+
+```
+before:  18 of 31 live types unnamed; 105 of 307 entities on no script
+after:   0 of 31 live types unnamed; 305 of 305 entities on a real script
+```
+
+and the live list is recognisably Sonic 1's own Green Hill - Player Object, HUD, Ring
+(165), Monitor, Spikes, Buzz Bomber, Motobug, Chopper, Crabmeat, Newtron Shoot, Newtron
+Fly, Bridge, Rock - not a mixture of the two games' objects.
 
 **The bytecode walker's operand decoding is now verified against the engine.** This
 was the thing being guessed at, and guessing had already produced three confident
@@ -135,10 +193,13 @@ stage on whether `Bytecode/GlobalCode.bin` resolves (`Scene.cpp:675`), so CD nee
 RSDKv3 bytecode compiled to RSDKv4 bytecode: a mapping between the two opcode tables
 plus operand re-encoding. This is the largest single piece of work left.
 
-**Sonic 1's 93 functions are merged but their callers are not renumbered.** Both games'
-function tables are now present and shifted (190 entries). `CallFunction`'s operand is
-an index into that shared table, so a Sonic 1 script calling function *N* still reaches
-Sonic 2's *N*. Same root cause as the type constants: baked operands.
+**Sonic 1's 93 functions are merged, and `CallFunction` now resolves them.** Both games'
+function tables are present and shifted (190 entries), and a stage's own table is
+*appended* rather than written over the globals' - the stock engine indexes
+`scriptFunctionList` flat, so whichever stage loaded last silently replaced the functions
+every global object calls. Each object type now carries a `functionBase` and
+`CallFunction` adds it, the same way the type constants are handled above, with a range
+check that logs and stops rather than reading past the table.
 
 ## Two engine bugs found along the way
 
@@ -208,10 +269,14 @@ It does matter for text scripts, which are currently inert.
 
 ## Next steps, in order of value
 
-1. Finish the bytecode walker. Every remaining Sonic 1 defect reduces to rewriting a
-   baked operand, and the same machinery is a prerequisite for compiling CD. The
-   residue is spread across ordinary opcodes rather than concentrated, which suggests
-   more `opcodeSize` archaeology of the DrawText kind — check handlers, not counts.
-2. Rewrite Sonic 1's baked object-type and `CallFunction` operands.
-3. Build the RSDKv3 → RSDKv4 bytecode compiler for Sonic CD.
-4. Sonic 3, once someone supplies the ROM and `sonic3air.exe`.
+1. Build the RSDKv3 → RSDKv4 bytecode compiler for Sonic CD. It is the only game whose
+   stages are still inert, and the decompiler that reads the format is finished.
+2. Widen the oracle's reach. It confirms 24,508 of 24,508 instruction sites across every
+   regular stage of Sonic 1 and Sonic 2, but only what the engine *executes* in a
+   9-second headless run. Branches needing player input or a boss trigger are still
+   unverified, and the static walk over every range still agrees on only 81%.
+3. Sonic 3, once someone supplies the ROM and `sonic3air.exe`.
+4. *No longer on the list, deliberately:* rewriting Sonic 1's baked operands in the
+   bytecode. Doing it in the engine, from two numbers the pack already knows, is
+   verifiable where a bytecode rewrite would mean trusting a decoder over compiled data
+   across code that has never been seen run.

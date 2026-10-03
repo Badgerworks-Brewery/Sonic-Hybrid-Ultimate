@@ -16,11 +16,16 @@ import sys
 
 SIGNATURE = b"RSDKvB"
 
-# Paths the engine asks for by name during a normal boot into Green Hill Zone.
+# Paths the engine asks for by name during a normal boot into Sonic 1's Green Hill
+# Zone Act 1. The stage folder carries its game in the name - GHZS1, not ZoneGHZ -
+# because both games' zones have to be told apart, and this list still pointed at the
+# old name. That went unnoticed while stale ZoneGHZ copies happened to be lying in the
+# output folder from before the rename; it surfaced only when the folder was rebuilt
+# from scratch, which is a fair argument for keeping the generated tree disposable.
 REQUIRED = [
     "data/game/gameconfig.bin",
-    "data/stages/zoneghz/backgrounds.bin",
-    "data/stages/zoneghz/stageconfig.bin",
+    "data/stages/ghzs1/backgrounds.bin",
+    "data/stages/ghzs1/stageconfig.bin",
     "data/scripts/ghz/ghzsetup.txt",
     "data/scripts/global/stagesetup.txt",
     "data/scripts/players/playerobject.txt",

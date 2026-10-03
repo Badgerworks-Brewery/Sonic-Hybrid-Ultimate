@@ -21,6 +21,11 @@ Note on settings.ini: it must carry [Window] RefreshRate. Without it the frame
 loop in RetroEngine::Run() spins without doing any work - no log output, a
 pinned core, and nothing that looks like a script bug. This script always writes
 a complete file rather than deleting it between runs.
+
+It must also carry DisableFocusPause=1. With no window to take focus on this
+machine, the engine sees hasFocus=0 and pauses the stage, and a run then stops dead
+a few frames in. That looks exactly like a broken stage - it reported 20 frames and
+308 live entities, with nothing wrong with the stage at all.
 """
 
 import io
@@ -73,6 +78,7 @@ RefreshRate=60
 WindowScale=1
 ScreenWidth=640
 DimLimit=300
+DisableFocusPause=1
 
 [Audio]
 BGMVolume=1.000

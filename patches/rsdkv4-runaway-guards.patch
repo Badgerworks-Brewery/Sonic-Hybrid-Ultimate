@@ -174,7 +174,7 @@ index 29f393f..024a450 100644
          if (!(disableFocusPause & 2)) {
              if (!Engine.hasFocus) {
 diff --git a/RSDKv4/Scene.cpp b/RSDKv4/Scene.cpp
-index a450c82..6946d6b 100644
+index a450c82..7dced45 100644
 --- a/RSDKv4/Scene.cpp
 +++ b/RSDKv4/Scene.cpp
 @@ -129,6 +129,16 @@ void ProcessStage(void)
@@ -202,7 +202,7 @@ index a450c82..6946d6b 100644
              for (byte i = 0; i < globalObjectCount; ++i) {
                  FileRead(&fileBuffer2, 1);
                  FileRead(strBuffer, fileBuffer2);
-@@ -654,6 +665,32 @@ void LoadStageFiles(void)
+@@ -654,6 +665,41 @@ void LoadStageFiles(void)
                  SetObjectTypeName(strBuffer, scriptID + i);
              }
  
@@ -219,14 +219,23 @@ index a450c82..6946d6b 100644
 +                if (LoadFile("Data/Game/ObjectGameSplit.bin", &splitInfo)) {
 +                    byte split = 0;
 +                    FileRead(&split, 1);
++                    // Second byte: where game 1's function table starts. Needed
++                    // because `CallFunction`'s operand indexes the shared table, and
++                    // Sonic 1's functions were compiled against its own numbering.
++                    byte functionBase = 0;
++                    FileRead(&functionBase, 1);
 +                    if (split > 0 && split <= globalObjectCount) {
-+                        objectTypeSplit = split;
++                        objectTypeSplit           = split;
++                        objectTypeBaseForGame1    = split;
++                        scriptFunctionBaseForGame1 = functionBase;
 +                        for (int i = 0; i < OBJECT_COUNT; ++i) {
 +                            objectTypeGame[i] = i < split ? 0 : 1;
 +                        }
-+                        PrintLog("Object name lookup scoped to one game: types 0..%d "
-+                                 "are game 0, %d..%d are game 1", split - 1, split,
-+                                 globalObjectCount);
++                        PrintLog("Object numbering scoped to one game: types 0..%d "
++                                 "are game 0, %d..%d are game 1; game 1's type "
++                                 "constants shift by %d and its functions by %d",
++                                 split - 1, split, globalObjectCount - 1, split,
++                                 functionBase);
 +                    }
 +                }
 +                SetFileInfo(&splitInfo);
@@ -235,7 +244,7 @@ index a450c82..6946d6b 100644
  #if RETRO_USE_MOD_LOADER && RETRO_USE_COMPILER
              for (byte i = 0; i < modObjCount && loadGlobalScripts; ++i) {
                  SetObjectTypeName(modTypeNames[i], globalObjectCount + i + 1);
-@@ -753,6 +790,20 @@ void LoadStageFiles(void)
+@@ -753,6 +799,20 @@ void LoadStageFiles(void)
  
              byte stageObjectCount = 0;
              FileRead(&stageObjectCount, 1);
@@ -256,8 +265,31 @@ index a450c82..6946d6b 100644
              for (byte i = 0; i < stageObjectCount; ++i) {
                  FileRead(&fileBuffer2, 1);
                  FileRead(strBuffer, fileBuffer2);
+@@ -943,6 +1003,22 @@ void LoadActLayout()
+             FileRead(fileBuffer, 1);
+             object->type = fileBuffer[0];
+ 
++            // No renumbering here, deliberately. An Act layout's type indices are
++            // already destination-table indices by the time they reach this file: the
++            // packer resolves each one against the source game's object names and
++            // writes the destination index, so a Sonic 1 layout that said 1 comes out
++            // as 40 and one that said 72 comes out as 111.
++            //
++            // This file was previously shifted a second time, and again a third time,
++            // by two separate attempts to "fix" it. Both were the bug. Sonic 1's
++            // layout types ended up at 150, past the 114 types that exist, so a third
++            // of Green Hill's 305 objects were entities whose type matched no script
++            // and therefore never ran. scripts/inspect_act.py compares the stock and
++            // packed bytes so a double shift cannot come back unnoticed.
++            if (object->type >= loadedScriptTypeCount)
++                PrintLog("WARNING: act layout names type %d, past the %d loaded "
++                         "types", object->type, loadedScriptTypeCount);
++
+ #if RETRO_USE_MOD_LOADER
+             if (loadGlobalScripts && offsetCount && object->type > globalObjCount)
+                 object->type += offsetCount; // offset it by our mod count
 diff --git a/RSDKv4/Script.cpp b/RSDKv4/Script.cpp
-index 71e569f..9dac752 100644
+index 71e569f..a56cab6 100644
 --- a/RSDKv4/Script.cpp
 +++ b/RSDKv4/Script.cpp
 @@ -525,6 +525,16 @@ const FunctionInfo functions[] = {
@@ -277,7 +309,7 @@ index 71e569f..9dac752 100644
      FunctionInfo("DrawText", 7),
  #endif
      FunctionInfo("GetVersionNumber", 2),
-@@ -1065,6 +1075,38 @@ enum ScrFunc {
+@@ -1065,6 +1075,43 @@ enum ScrFunc {
  };
  
  ObjectScript objectScriptList[OBJECT_COUNT];
@@ -285,6 +317,11 @@ index 71e569f..9dac752 100644
 +int objectTypeSplit      = -1;
 +int objectTypeGlobalCount = 0;
 +int currentObjectGame    = 0;
++int objectTypeBaseForGame1     = 0;
++int scriptFunctionBaseForGame1 = 0;
++int stageTypeBase              = 0;
++int loadedFunctionCount        = 0;
++int loadedScriptTypeCount      = 0;
 +
 +// Resolving an object name is a linear scan over every registered type. With one
 +// game that is unambiguous; with two it is not, because Sonic 1 and Sonic 2 share
@@ -316,7 +353,7 @@ index 71e569f..9dac752 100644
  ScriptFunction scriptFunctionList[FUNCTION_COUNT];
  #if RETRO_USE_COMPILER
  int scriptFunctionCount = 0;
-@@ -1796,13 +1838,10 @@ void ConvertFunctionText(char *text)
+@@ -1796,13 +1843,10 @@ void ConvertFunctionText(char *text)
                  funcName[0] = '0';
                  funcName[1] = 0;
  
@@ -334,7 +371,7 @@ index 71e569f..9dac752 100644
                  }
  
                  if (o == OBJECT_COUNT)
-@@ -2106,13 +2145,10 @@ void CheckCaseNumber(char *text)
+@@ -2106,13 +2150,10 @@ void CheckCaseNumber(char *text)
              caseValue[0] = '0';
              caseValue[1] = 0;
  
@@ -352,7 +389,7 @@ index 71e569f..9dac752 100644
              }
  
              if (o == OBJECT_COUNT)
-@@ -2312,13 +2348,10 @@ bool ReadSwitchCase(char *text)
+@@ -2312,13 +2353,10 @@ bool ReadSwitchCase(char *text)
                  caseValue[0] = '0';
                  caseValue[1] = 0;
  
@@ -370,7 +407,80 @@ index 71e569f..9dac752 100644
                  }
  
                  if (o == OBJECT_COUNT)
-@@ -3338,6 +3371,20 @@ void ClearScriptData()
+@@ -3251,8 +3289,22 @@ void LoadBytecode(int stageListID, int scriptID)
+         FileRead(&fileBuffer, 1);
+         functionCount |= fileBuffer << 8;
+ 
++        // Which slot each function goes in. GlobalCode.bin owns slots 0..N-1; a
++        // stage's own table is *appended*, because a stage file's operands are
++        // file-local and its table begins with verbatim copies of its game's global
++        // functions. Writing a stage's functions over slot 0 the way the original
++        // engine does - last writer wins - means whichever stage loaded last
++        // silently replaced the functions every global object calls.
++        const bool loadingGlobals = (stageListID == 4);
++        const int functionBase    = loadingGlobals ? 0 : loadedFunctionCount;
++        if (!loadingGlobals && loadedFunctionCount + functionCount > FUNCTION_COUNT) {
++            PrintLog("WARNING: %d stage functions would overflow the %d-entry "
++                     "function table", loadedFunctionCount + functionCount,
++                     FUNCTION_COUNT);
++        }
++
+         for (int f = 0; f < functionCount; ++f) {
+-            ScriptFunction *function = &scriptFunctionList[f];
++            ScriptFunction *function = &scriptFunctionList[functionBase + f];
+ 
+             FileRead(&fileBuffer, 1);
+             function->ptr.scriptCodePtr = fileBuffer;
+@@ -3265,7 +3317,7 @@ void LoadBytecode(int stageListID, int scriptID)
+         }
+ 
+         for (int f = 0; f < functionCount; ++f) {
+-            ScriptFunction *function = &scriptFunctionList[f];
++            ScriptFunction *function = &scriptFunctionList[functionBase + f];
+ 
+             FileRead(&fileBuffer, 1);
+             function->ptr.jumpTablePtr = fileBuffer;
+@@ -3276,6 +3328,39 @@ void LoadBytecode(int stageListID, int scriptID)
+             FileRead(&fileBuffer, 1);
+             function->ptr.jumpTablePtr |= fileBuffer << 24;
+         }
++        loadedFunctionCount = functionBase + functionCount;
++        if (scriptID + scriptCount > loadedScriptTypeCount)
++            loadedScriptTypeCount = scriptID + scriptCount;
++
++        // Now that every slot is known, give each object the numbering its own game
++        // was compiled against. Globals: game 0 keeps its numbers, game 1 shifts by
++        // whatever the pack said. Stage objects: the shift derived in Script.hpp,
++        // which also feeds the Act layout loader. Functions come from the appended
++        // block above, so a stage's own functions do not overwrite the globals' the
++        // way a flat slot index would.
++        //
++        // scriptID is where this container's types start, so for a stage the globals
++        // end one below it. Everything here is derived from those two numbers rather
++        // than hard-coded, because the shift differs per game (see stageTypeBase).
++        const int globalTotal   = loadingGlobals ? 0 : scriptID - 1;
++        const int thisGameCount = currentObjectGame ? globalTotal - objectTypeSplit
++                                                    : objectTypeSplit;
++        if (!loadingGlobals)
++            stageTypeBase = globalTotal - thisGameCount;
++
++        for (int s = 0; s < scriptCount; ++s) {
++            ObjectScript *script = &objectScriptList[scriptID + s];
++            if (loadingGlobals) {
++                const bool isGameOne = objectTypeSplit >= 0
++                                       && (scriptID + s) >= objectTypeSplit;
++                script->typeBase     = isGameOne ? objectTypeBaseForGame1 : 0;
++                script->functionBase = isGameOne ? scriptFunctionBaseForGame1 : 0;
++            }
++            else {
++                script->typeBase     = stageTypeBase;
++                script->functionBase = functionBase;
++            }
++        }
+ 
+         CloseFile();
+     }
+@@ -3338,6 +3423,20 @@ void ClearScriptData()
          scriptFunctionList[f].ptr.jumpTablePtr  = JUMPTABLE_COUNT - 1;
      }
  
@@ -391,7 +501,7 @@ index 71e569f..9dac752 100644
      SetObjectTypeName("Blank Object", OBJ_TYPE_BLANKOBJECT);
  }
  
-@@ -3349,16 +3396,139 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
+@@ -3349,16 +3448,139 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
      functionStackPos  = 0;
      foreachStackPos   = 0;
  
@@ -532,7 +642,7 @@ index 71e569f..9dac752 100644
  
              if (opcodeType == SCRIPTVAR_VAR) {
                  int arrayVal = 0;
-@@ -4186,6 +4356,17 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
+@@ -4186,6 +4408,17 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
              }
          }
  
@@ -550,11 +660,94 @@ index 71e569f..9dac752 100644
          ObjectScript *scriptInfo = &objectScriptList[objectEntityList[objectEntityPos].type];
          Entity *entity           = &objectEntityList[objectEntityPos];
          SpriteFrame *spriteFrame = nullptr;
+@@ -4943,7 +5176,15 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
+                 opcodeSize     = 0;
+                 Entity *newEnt = &objectEntityList[scriptEng.operands[0]];
+                 memset(newEnt, 0, sizeof(Entity));
+-                newEnt->type               = scriptEng.operands[1];
++                newEnt->type               = scriptEng.operands[1] + scriptInfo->typeBase;
++                if (newEnt->type >= loadedScriptTypeCount) {
++                    PrintLog("WARNING: ResetObjectEntity slot %d: raw %d + base %d "
++                             "= %d, past the %d loaded types; caller type %d (%s)",
++                             scriptEng.operands[0], scriptEng.operands[1],
++                             scriptInfo->typeBase, newEnt->type, loadedScriptTypeCount,
++                             objectEntityList[objectEntityPos].type,
++                             typeNames[objectEntityList[objectEntityPos].type]);
++                }
+                 newEnt->propertyValue      = scriptEng.operands[2];
+                 newEnt->xpos               = scriptEng.operands[3];
+                 newEnt->ypos               = scriptEng.operands[4];
+@@ -4989,7 +5230,14 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
+                     scriptEng.arrayPosition[8] = TEMPENTITY_START;
+                 Entity *temp = &objectEntityList[scriptEng.arrayPosition[8]];
+                 memset(temp, 0, sizeof(Entity));
+-                temp->type               = scriptEng.operands[0];
++                temp->type               = scriptEng.operands[0] + scriptInfo->typeBase;
++            if (temp->type >= loadedScriptTypeCount) {
++                PrintLog("WARNING: CreateTempObject: raw %d + base %d = %d, past the "
++                         "%d loaded types; caller type %d (%s)",
++                         scriptEng.operands[0], scriptInfo->typeBase, temp->type,
++                         loadedScriptTypeCount, objectEntityList[objectEntityPos].type,
++                         typeNames[objectEntityList[objectEntityPos].type]);
++            }
+                 temp->propertyValue      = scriptEng.operands[1];
+                 temp->xpos               = scriptEng.operands[2];
+                 temp->ypos               = scriptEng.operands[3];
+@@ -5209,8 +5457,20 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
+                 functionStack[functionStackPos++] = scriptCodePtr;
+                 functionStack[functionStackPos++] = jumpTableStart;
+                 functionStack[functionStackPos++] = scriptCodeStart;
+-                scriptCodeStart                   = scriptFunctionList[scriptEng.operands[0]].ptr.scriptCodePtr;
+-                jumpTableStart                    = scriptFunctionList[scriptEng.operands[0]].ptr.jumpTablePtr;
++                // The operand is an index into whatever function table the *caller's
++                // game* was compiled against, and both games' tables now share one
++                // array with Sonic 2's first. Adding the caller's base is what keeps
++                // a Sonic 1 script calling "its" function N out of Sonic 2's N.
++                const int functionIndex = scriptInfo->functionBase + scriptEng.operands[0];
++                if (functionIndex < 0 || functionIndex >= FUNCTION_COUNT) {
++                    PrintLog("WARNING: CallFunction %d resolves to slot %d, outside "
++                             "the %d-entry function table", scriptEng.operands[0],
++                             functionIndex, FUNCTION_COUNT);
++                    running = false;
++                    break;
++                }
++                scriptCodeStart                   = scriptFunctionList[functionIndex].ptr.scriptCodePtr;
++                jumpTableStart                    = scriptFunctionList[functionIndex].ptr.jumpTablePtr;
+                 scriptCodePtr                     = scriptCodeStart;
+                 break;
+             }
 diff --git a/RSDKv4/Script.hpp b/RSDKv4/Script.hpp
-index b845880..6a9b845 100644
+index b845880..940cfa6 100644
 --- a/RSDKv4/Script.hpp
 +++ b/RSDKv4/Script.hpp
-@@ -45,6 +45,30 @@ struct ScriptEngine {
+@@ -33,6 +33,26 @@ struct ObjectScript {
+     ScriptPtr eventStartup;
+     int frameListOffset;
+     AnimationFile *animFile;
++
++    // Where this type's numbers were before the two games shared one table.
++    //
++    // Sonic 1 and Sonic 2 each number their objects from 1, and they number them
++    // differently: in Sonic 1 "Stage Setup" is type 4, and in Sonic 2 type 4 is
++    // also "Stage Setup" but a different object with different code. Once both
++    // games' globals live in one table those numbers collide, and a number baked
++    // into a script - which is what `TypeName[...]` compiles to - names whichever
++    // game got that slot first.
++    //
++    // Rather than rewrite those constants in the bytecode, which is a bulk edit to
++    // compiled data, each type carries the offset its game's numbering needs and
++    // the two opcodes that create an object add it. Rewriting the bytecode would
++    // also mean trusting a decoder over code that cannot be inspected; two numbers
++    // the pack already knows are easier to verify and cannot go stale.
++    int typeBase;
++
++    // The same problem for named functions: `CallFunction`'s operand is an index
++    // into one shared `scriptFunctionList`, and Sonic 2's are listed first.
++    int functionBase;
+ };
+ 
+ struct ScriptEngine {
+@@ -45,6 +65,66 @@ struct ScriptEngine {
  enum ScriptSubs { EVENT_MAIN = 0, EVENT_DRAW = 1, EVENT_SETUP = 2 };
  
  extern ObjectScript objectScriptList[OBJECT_COUNT];
@@ -578,6 +771,42 @@ index b845880..6a9b845 100644
 +extern int objectTypeSplit;         // < 0 disables scoping
 +extern int objectTypeGlobalCount;   // globals occupy types [1, this]; stage objects follow
 +extern int currentObjectGame;       // 0 or 1
++
++// Where game 1's numbering starts: type constants were baked against each game's
++// own table, and Sonic 1's objects all moved up by objectTypeSplit when the two
++// games were merged. Read from ObjectGameSplit.bin; both are 0 for a single-game
++// pack, which leaves every number untouched.
++extern int objectTypeBaseForGame1;
++extern int scriptFunctionBaseForGame1;
++
++// Where a *stage's* own script object types start in the merged table, minus where
++// they started in their own game. Needed by the two opcodes that create an object,
++// because a stage's script bakes its own stage-local types as indices too:
++//
++//     stage type T  ->  T + (globalTotal - thatGame'sGlobalCount)
++//
++// A stage's types begin at globalCount + 1 in their own game and at globalTotal + 1
++// in the merged table, so the offset is the difference between those two starts. It
++// is not simply objectTypeSplit, because the two games have different numbers of
++// globals: for Sonic 1 it works out to 39 and for Sonic 2 to 38.
++//
++// Act *layout* files deliberately do not use this. The packer already resolves their
++// type indices by object name against the destination table, so they are already
++// destination indices; shifting them again was one of the two bugs that pushed Green
++// Hill's types past the end of the table.
++extern int stageTypeBase;
++
++// How many functions are loaded so far, which is where the next container's
++// function table starts. A stage's own functions are appended rather than
++// overwriting the globals', so a stage's scripts - whose operands are file-local,
++// and which repeat their game's global functions first - keep resolving correctly.
++extern int loadedFunctionCount;
++
++// The highest script type loaded so far. Globals fill [1, N] and a stage appends
++// after them, so this is where a script's types stop being real. Nothing enforces
++// it: an operand naming a type past this end creates an entity whose type matches
++// no script and which therefore never runs.
++extern int loadedScriptTypeCount;
 +
 +// Returns the object type whose registered name matches, preferring the running
 +// game's, or OBJECT_COUNT if there is none.
