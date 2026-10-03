@@ -56,6 +56,18 @@ PROBES = [
     (88,  "Sonic CD  Metallic Madness A3 Bad Future"),
 ]
 
+# Any stage in the merged regular list can be probed by index, which is how a stage
+# is selected when it is not one of the defaults above. The index is the engine's
+# own StartingScene value, so `python scripts/probe_stages.py --scene 92` boots
+# Chemical Plant Zone Act 2.
+#
+# This exists because a stage was requested by name that appears nowhere in the
+# shipped data: "EST" was searched for as a standalone token across all 1631 config
+# and stage files of Sonic 1, Sonic 2 and Sonic CD and does not occur once, and the
+# engine's stage list has no world field at all (Scene.hpp's SceneInfo is
+# name/folder/id). So rather than hard-code a guess, selection is a parameter.
+EXTRA_SCENES = []
+
 SETTINGS = """[Window]
 RefreshRate=60
 WindowScale=1
@@ -137,12 +149,35 @@ def main():
         sys.stderr.write("engine not built: %s\n" % EXE)
         return 2
 
+    probes = list(PROBES) + list(EXTRA_SCENES)
+
+    # `--scene N` probes one stage by its index in the merged regular list, which is
+    # the engine's own StartingScene value. That is how a stage is selected when it
+    # is not in the default set, rather than editing this file each time.
+    args = sys.argv[1:]
+    while args:
+        flag = args.pop(0)
+        if flag in ("--scene", "-s") and args:
+            try:
+                idx = int(args.pop(0))
+            except ValueError:
+                sys.stderr.write("--scene wants a number\n")
+                return 2
+            probes = [(idx, "scene %d" % idx)]
+        elif flag in ("--help", "-h"):
+            print(__doc__)
+            print("usage: probe_stages.py [--scene N]")
+            return 0
+        else:
+            sys.stderr.write("unknown option %r\n" % flag)
+            return 2
+
     print("%4s  %-38s %-7s %-10s %-7s %s" %
           ("idx", "stage", "loaded", "bytecode", "objects", "frames"))
     print("-" * 92)
 
     rows = []
-    for idx, label in PROBES:
+    for idx, label in probes:
         r = probe(idx)
         print("%4d  %-38s %-7s %-10s %-7d %s" %
               (idx, label,

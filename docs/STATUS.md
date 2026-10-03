@@ -62,8 +62,17 @@ it consumed and which operand tags it read (`RSDK_TRACE_ALL=1`).
 `scripts/oracle_check.py` boots five stages with that on and compares those numbers
 against the walker.
 
-Result: **710 of 710 distinct instruction sites confirmed, 100%** - operand widths
-*and* operand tags.
+Result: **24,508 of 24,508 distinct instruction sites confirmed, 100%** - operand
+widths *and* operand tags. That is every regular stage of both games: Sonic 1's 19
+stages (9,400 sites) and Sonic 2's 21 (15,108).
+
+The trace had to be uncapped before that number meant anything. The opcode line was
+silently limited to 300 instructions while the word-count line below it logged all
+7,000-odd, so the checker read 300 of them and reported an identical 142 confirmed
+sites from five completely different stages. Identical totals from different stages
+were the tell. With the cap gone, each stage reports its own count - 190 sites for
+Green Hill Act 1, 821 for Spring Yard Act 1, 831 for Oil Ocean - which is what real
+coverage looks like.
 
 Getting to a comparison that could be trusted took three corrections, each of which
 had produced a confident wrong answer first:
@@ -83,10 +92,15 @@ had produced a confident wrong answer first:
   25932 as wrong 33 times, when the trace plainly shows `WLower @25932` followed by
   `GetTableValue @25940` - a gap of 8, exactly what the walker computes.
 
-What is still *not* established: the check covers the instructions the engine actually
-executed while playing those five stages. Code that never runs headlessly remains
-unverified, and the static linear walk over every range in every container still
-agrees on only 81%. That gap is the honest limit of the claim.
+What is still *not* established: the check covers the instructions the engine
+*executed* in those runs. A stage reached in 9 seconds of headless play does not run
+every line of its bytecode, so branches that need player input, or a boss trigger, or
+several minutes of play, are still unverified. The static linear walk over every
+range in every container still agrees on only 81%, and that is the honest limit of
+the claim. Widening it means playing further into each stage, not reasoning harder.
+
+`scripts/oracle_check.py --from N --to M` sweeps a range of stages, and
+`scripts/probe_stages.py --scene N` boots any single one by index.
 
 `scripts/rsdkv4_walk.py` still walks only 81% of script *ranges* cleanly. Those two
 numbers are not in conflict: the 81% is a static linear walk over every range in

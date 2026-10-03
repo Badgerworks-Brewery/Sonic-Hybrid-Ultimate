@@ -80,11 +80,12 @@ def run_scene(category, scene, seconds=9):
         proc.kill()
         proc.wait()
     if not os.path.exists(LOG):
-        return [], "no log"
+        return [], "no log", None
 
     entries = []
     pending = None
     label = ""
+    stage_file = None
     for line in io.open(LOG, encoding="latin-1"):
         line = line.strip()
         m = RE_OP.match(line)
@@ -109,7 +110,14 @@ def run_scene(category, scene, seconds=9):
         m = re.match(r"Loading Scene .* - (.*)$", line)
         if m:
             label = m.group(1)
-    return entries, label
+        # Take the stage's bytecode file from the log rather than from a list kept
+        # in step with the config by hand. A stale list would silently compare a
+        # trace against the wrong container, which is exactly the mistake that
+        # produced 238 phantom "the engine read a different opcode" reports.
+        m = re.match(r"Loaded Data File 'Bytecode/(.+)\.bin'$", line)
+        if m and m.group(1) != "GlobalCode":
+            stage_file = m.group(1) + ".bin"
+    return entries, label, stage_file
 
 
 def check(entries, stage_file, label):
@@ -176,17 +184,46 @@ def main():
 
     total_sites = 0
     total_wrong = 0
-    for category, scene, stage_file in SCENES:
-        entries, label = run_scene(category, scene)
+    ran = 0
+
+    # `--from N --to M` sweeps a range of stages instead of the default five. The
+    # oracle only confirms what the engine *executes*, so covering more stages is the
+    # only way to widen the set of instructions that are safe to rewrite.
+    scenes = list(SCENES)
+    sweep = False
+    lo = hi = None
+    args = sys.argv[1:]
+    while args:
+        flag = args.pop(0)
+        if flag in ("--from", "--to") and args:
+            value = int(args.pop(0))
+            if flag == "--from":
+                lo = value
+            else:
+                hi = value
+        else:
+            sys.stderr.write("unknown option %r\n" % flag)
+            return 2
+    if lo is not None and hi is not None:
+        sweep = True
+        scenes = [(1, n, None) for n in range(lo, hi + 1)]
+
+    for category, scene, _fallback in scenes:
+        entries, label, stage_file = run_scene(category, scene)
         if not entries:
+            if sweep:
+                continue              # a stage that traced nothing is not a result
             print("  scene %-3d nothing traced (%s)" % (scene, label))
             total_wrong += 1
             continue
-        sites, wrong = check(entries, stage_file, "%s (scene %d)" % (label, scene))
+        ran += 1
+        sites, wrong = check(entries, stage_file or "",
+                             "%s (scene %d)" % (label, scene))
         total_sites += sites
         total_wrong += wrong
 
     print()
+    print("stages traced: %d" % ran)
     print("instruction sites confirmed against the engine: %d of %d (%.1f%%)"
           % (total_sites - total_wrong, total_sites,
              100.0 * (total_sites - total_wrong) / max(total_sites, 1)))

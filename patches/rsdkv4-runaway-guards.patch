@@ -257,7 +257,7 @@ index a450c82..6946d6b 100644
                  FileRead(&fileBuffer2, 1);
                  FileRead(strBuffer, fileBuffer2);
 diff --git a/RSDKv4/Script.cpp b/RSDKv4/Script.cpp
-index 71e569f..8bfdb5c 100644
+index 71e569f..9dac752 100644
 --- a/RSDKv4/Script.cpp
 +++ b/RSDKv4/Script.cpp
 @@ -525,6 +525,16 @@ const FunctionInfo functions[] = {
@@ -391,7 +391,7 @@ index 71e569f..8bfdb5c 100644
      SetObjectTypeName("Blank Object", OBJ_TYPE_BLANKOBJECT);
  }
  
-@@ -3349,16 +3396,161 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
+@@ -3349,16 +3396,139 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
      functionStackPos  = 0;
      foreachStackPos   = 0;
  
@@ -491,36 +491,14 @@ index 71e569f..8bfdb5c 100644
 +            // operand width instead of guessing at one from a desync count,
 +            // which has already produced two convincing wrong answers.
 +            if (traceAll) {
-+                // Per script, not global: a global budget is spent inside the first
-+                // loop it reaches, so a 4000-line cap only ever covered one script's
-+                // first loop and the comparison had almost nothing to check. 300
-+                // instructions per script covers the linear pass over most of a
-+                // script and still terminates on a loop.
-+                static int oracleForScript = 0;
-+                static int oracleLastKey = -1;
-+                const int oracleKey = objectEntityPos * 8 + scriptEvent;
-+                if (oracleKey != oracleLastKey) {
-+                    oracleLastKey = oracleKey;
-+                    oracleForScript = 0;
-+                }
-+                if (oracleForScript == 300) {
-+                    // Say where the trace stops. Without a marker the checker
-+                    // compares the last logged instruction against the first
-+                    // instruction of the *next* script and reads the difference as
-+                    // a wrong operand width - which is how WLower at word 89667
-+                    // came to need 22 words when it occupies 9.
-+                    ++oracleForScript;
-+                    PrintLog("ORACLE-END sc=%d", oracleKey);
-+                }
-+                else if (oracleForScript < 300) {
-+                    ++oracleForScript;
-+                    // scriptCodeStart identifies the script being run, so the
-+                    // checker can refuse to compare across a script boundary.
-+                    // Without it, the last instruction of one script looks like a
-+                    // 24024-word backwards jump from the next.
-+                    PrintLog("ORACLE: %s @%d sc=%d", functions[opcode].name,
-+                             scriptCodePtr - 1, scriptCodeStart);
-+                }
++                // Every instruction, with no cap. The cap this replaced was a
++                // silent one: the opcode line stopped after 300 instructions while
++                // the word-count line below kept logging all 7000-odd, so the
++                // checker read 300 of them and reported an identical 142 confirmed
++                // sites from five completely different stages. Tracing is opt-in via
++                // RSDK_TRACE_ALL, so log size is the caller's choice.
++                PrintLog("ORACLE: %s @%d sc=%d", functions[opcode].name,
++                         scriptCodePtr - 1, scriptCodeStart);
 +            }
 +            else {
 +            const int key = objectEntityPos * 8 + scriptEvent;
@@ -554,7 +532,7 @@ index 71e569f..8bfdb5c 100644
  
              if (opcodeType == SCRIPTVAR_VAR) {
                  int arrayVal = 0;
-@@ -4186,6 +4378,17 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
+@@ -4186,6 +4356,17 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
              }
          }
  
