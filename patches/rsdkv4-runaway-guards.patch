@@ -41,10 +41,10 @@ index 8cfa77c..cc6c7e5 100644
                      }
                      else {
 diff --git a/RSDKv4/Object.cpp b/RSDKv4/Object.cpp
-index 7ddf148..e61c675 100644
+index 7ddf148..74ecf31 100644
 --- a/RSDKv4/Object.cpp
 +++ b/RSDKv4/Object.cpp
-@@ -71,6 +71,15 @@ void ProcessStartupObjects()
+@@ -71,6 +71,54 @@ void ProcessStartupObjects()
  
  void ProcessObjects()
  {
@@ -54,8 +54,47 @@ index 7ddf148..e61c675 100644
 +    {
 +        static long long frames = 0;
 +        ++frames;
-+        if (frames <= 20 || frames % 300 == 0)
-+            PrintLog("HEARTBEAT: ProcessObjects frame %lld, gameMode %d", frames, Engine.gameMode);
++        if (frames <= 20 || frames % 300 == 0) {
++            // Count what is actually alive. "The frame counter advanced" is not
++            // the same as "the stage is running": a stage whose bytecode was
++            // never loaded still turns frames, with an empty entity list and a
++            // player frozen at the origin. Reporting the live count and the
++            // player's position makes that visible without a window.
++            int live = 0;
++            for (int i = 0; i < ENTITY_COUNT; ++i) {
++                if (objectEntityList[i].type || objectEntityList[i].xpos || objectEntityList[i].ypos)
++                    ++live;
++            }
++            const Entity *p = (playerListPos >= 0 && playerListPos < ENTITY_COUNT)
++                                  ? &objectEntityList[playerListPos]
++                                  : nullptr;
++            PrintLog("HEARTBEAT: ProcessObjects frame %lld, gameMode %d, "
++                     "%d live entities, player type %d at %d,%d speed %d",
++                     frames, Engine.gameMode, live,
++                     p ? (int)p->type : -1, p ? (p->xpos >> 16) : -1,
++                     p ? (p->ypos >> 16) : -1, p ? (p->speed >> 16) : -1);
++
++            // Once per run, say which object types are actually alive. A stage
++            // can load, spawn a few hundred static objects and still be missing
++            // the player, and "how many entities" cannot tell you that - only
++            // the list of types can.
++            if (frames == 300) {
++                static bool listed = false;
++                if (!listed) {
++                    listed = true;
++                    PrintLog("HEARTBEAT: live object types at frame 300:");
++                    for (int t = 1; t < OBJECT_COUNT; ++t) {
++                        int n = 0;
++                        for (int i = 0; i < ENTITY_COUNT; ++i) {
++                            if (objectEntityList[i].type == t)
++                                ++n;
++                        }
++                        if (n)
++                            PrintLog("  type %d: %d alive", t, n);
++                    }
++                }
++            }
++        }
 +    }
      for (int i = 0; i < DRAWLAYER_COUNT; ++i) drawListEntries[i].listSize = 0;
  

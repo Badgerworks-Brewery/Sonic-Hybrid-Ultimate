@@ -51,6 +51,10 @@ def check_pointers(label, c):
     for i, v in enumerate(c.functions):
         if v != NONE and not 0 <= v < limit_code:
             problems.append("%s: function %d scriptCode pointer %d out of range" % (label, i, v))
+    for i, v in enumerate(c.function_jumps):
+        if v != 0x3FFF and not 0 <= v < limit_jump:
+            problems.append("%s: function %d jump index %d out of range 0..%d"
+                            % (label, i, v, limit_jump - 1))
 
     return problems
 
@@ -152,13 +156,13 @@ def main():
     print("   serialized to %d bytes and re-parsed cleanly" % len(blob))
     print()
 
-    print("KNOWN LIMITATION")
-    print("  Sonic 1 contributes %d functions that are NOT merged. RSDKv4 indexes"
-          % dropped_functions)
-    print("  scriptFunctionList globally from 0, so both games' tables cannot start")
-    print("  there. Until that is renumbered, Sonic 1 scripts calling a named")
-    print("  function may reach Sonic 2's instead of their own. This merger reports")
-    print("  it rather than emitting something that looks fine and is not.")
+    print("  merged %d functions (%d Sonic 2 + %d Sonic 1). An earlier version of"
+          % (merged.function_count, s2.function_count, dropped_functions))
+    print("  this claimed functions could not be merged because scriptFunctionList is")
+    print("  global. That was wrong: the table is global, but each entry holds an")
+    print("  absolute scriptCode pointer, so appending gives every function its own")
+    print("  slot. Callers still need their function indices remapped, which is the")
+    print("  same job the object table needs and is not done yet.")
     print()
 
     if problems:
@@ -166,6 +170,24 @@ def main():
         for p in problems[:15]:
             print("      " + p)
         return 1
+
+    # The secondary's function tables must now be present and shifted.
+    base = len(s2.code)
+    jbase = len(s2.jumps)
+    for i, f in enumerate(s1.functions):
+        want = f if f == NONE else f + base
+        got = merged.functions[s2.function_count + i]
+        if got != want:
+            print("FAIL: sonic1 function %d: expected %d, got %d" % (i, want, got))
+            return 1
+    for i, fj in enumerate(s1.function_jumps):
+        want = fj if jump_none(fj) else fj + jbase
+        got = merged.function_jumps[s2.function_count + i]
+        if got != want:
+            print("FAIL: sonic1 function %d jump index: expected %d, got %d"
+                  % (i, want, got))
+            return 1
+    print("OK: both games' function tables are present and renumbered")
 
     print("OK: merged container is internally consistent")
     return 0

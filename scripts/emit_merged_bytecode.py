@@ -80,7 +80,7 @@ def object_names(game):
     raise ValueError("%s: object table did not parse" % game)
 
 
-def copy_stage_bytecode(game, zones, global_base_shift, jump_base_shift):
+def copy_stage_bytecode(game, zones, deltas, global_count):
     """Copy a game's per-stage containers, renumbering their absolute pointers.
 
     Per-stage pointers are absolute indices into the engine's *global*
@@ -95,10 +95,36 @@ def copy_stage_bytecode(game, zones, global_base_shift, jump_base_shift):
     the global array; everything else follows the globals. Both games agree on
     this split, which is the only reason a single rule works for both.
 
-    Merging changes the global word count, so every regular-stage file must shift
-    by the same delta. Presentation files keep base 0 and need no shift. Skipping
-    this makes a stage's objects run whichever script happens to sit at the old
-    offset - silent, and indistinguishable from "the game is broken".
+    Within a regular-stage file there are four groups of pointer, and each moves by
+    a different amount. Merging the globals reorders the global arrays, so "how
+    far did this game's globals move" and "how far did this file's own code move"
+    are different questions with different answers:
+
+      scripts[i][k]        this file's own code, which now sits after both games'
+                           merged globals                      -> stage_code
+      script_jumps[i][k]   this file's own jump words          -> stage_jump
+      functions[i]         i <  global_count: verbatim copies of the game's global
+        (code)              functions, whose addresses are set by where that game's
+                           globals ended up                    -> global_code
+      functions[i]         i >= global_count: stage-local       -> stage_code
+        (code)
+      function_jumps[i]    i <  global_count: the globals' own jump indices, which
+                           were based at 0 in the stock file   -> global_jump
+      function_jumps[i]    i >= global_count: based at the stock global jump size
+                                                            -> stage_jump
+      jumps[index]         a *relative* offset within one script. Never shifted.
+
+    Worked example, Sonic 1's Zone01. Stock it holds 1514 jump words and its
+    highest jump index is 4878, which is 3366 + 1514 - so indices are absolute.
+    Sonic 2 is the primary game, so its globals stay at words 0..3904 of the
+    merged arrays and Sonic 1's land at 3905..7270. Zone01's stage-local jump
+    indices (based at 3366 stock) must therefore move to 7271, a shift of +3905;
+    its copies of Sonic 1's global functions (based at 0) must also move by
+    +3905; and its function pointers move by +63679 to follow Sonic 1's globals.
+
+    Skipping any of these shifts makes a stage's objects run whichever script
+    happens to sit at the old offset - silent, and indistinguishable from "the
+    game is broken".
     """
     src = os.path.join(SRC, game, "Bytecode")
     presentation = {"Title", "LSelect", "Credits", "Special"}
@@ -114,25 +140,34 @@ def copy_stage_bytecode(game, zones, global_base_shift, jump_base_shift):
         c = parse(source)
 
         if stem in presentation:
-            code_delta = jump_delta = 0
+            # Loads before the globals, so every pointer in it stays put.
+            stage_code = stage_jump = global_code = global_jump = 0
         else:
-            code_delta, jump_delta = global_base_shift, jump_base_shift
+            stage_code = deltas["stage_code"]
+            stage_jump = deltas["stage_jump"]
+            global_code = deltas["global_code"]
+            global_jump = deltas["global_jump"]
 
         def shift(value, delta, sentinel):
             return value if value == sentinel else value + delta
 
-        if code_delta:
-            # Only the scriptCode pointers are absolute. jumpTable entries are
-            # *relative* offsets from the script's own start - the engine computes
-            # `scriptCodeStart + jumpTable[jumpTableStart + slot]`
-            # (Script.cpp:4324) - and every shipped value is small (0..935),
-            # consistent with a distance within one script. Adding a base to them
-            # sends every branch into whichever script happens to sit at the
-            # offset, which is exactly the infinite loop this merge produced:
-            # Sonic 1's Stage Setup branched into Sonic 2's Player 2 Object.
-            c.scripts = [[shift(v, code_delta, NONE) for v in s] for s in c.scripts]
-        # Functions are indexed globally from 0 and are not merged, so per-stage
-        # function pointers are left alone for the same reason as GlobalCode's.
+        c.scripts = [[shift(v, stage_code, NONE) for v in s] for s in c.scripts]
+        c.script_jumps = [[shift(v, stage_jump, 0x3FFF) for v in s]
+                          for s in c.script_jumps]
+
+        functions = []
+        jumps = []
+        for i in range(len(c.functions)):
+            f = c.functions[i]
+            fj = c.function_jumps[i]
+            if i < global_count:
+                functions.append(f + global_code if f != NONE else f)
+                jumps.append(fj + global_jump if fj != 0x3FFF else fj)
+            else:
+                functions.append(f + stage_code if f != NONE else f)
+                jumps.append(fj + stage_jump if fj != 0x3FFF else fj)
+        c.functions = functions
+        c.function_jumps = jumps
 
         io.open(target, "wb").write(serialize(c))
         copied += 1
@@ -150,15 +185,47 @@ def main():
     blob = serialize(merged)
     io.open(os.path.join(OUT, "GlobalCode.bin"), "wb").write(blob)
 
-    # Each game ships per-stage files whose scriptCode pointers assume its own
-    # GlobalCode. Shift them by however much the merged global changed. Jump
-    # tables need no shift: their entries are relative to each script's start.
-    for game, zones, own in (("sonic2", SONIC2_ZONES, s2), ("sonic1", SONIC1_ZONES, s1)):
-        code_shift = len(merged.code) - len(own.code)
-        print("%s per-stage scriptCode shift: %+d (jump tables unchanged)"
-              % (game, code_shift))
+    # Each game ships per-stage files whose pointers assume its own GlobalCode. Two
+    # different deltas are involved, because a per-stage file contains pointers
+    # into two different places:
+    #
+    #   script_delta  how far the file's *own* code block moves, which is however
+    #                 much the merged globals grew. Applies to `scripts`.
+    #   global_delta  how far that game's *global* code moves, which depends on
+    #                 whether the game is the primary (stays at 0) or the secondary
+    #                 (appended after the primary). Applies to the first
+    #                 `global_count` function entries of each file, which are
+    #                 verbatim copies of the game's global functions.
+    #
+    # The jump *values* those indices point at are relative to each script's
+    # start and are never touched.
+    s2_code, s1_code = len(s2.code), len(s1.code)
+    s2_jump, s1_jump = len(s2.jumps), len(s1.jumps)
+    merged_code, merged_jump = len(merged.code), len(merged.jumps)
+    plan = (
+        # Sonic 2 is the primary game: its globals keep words 0..s2_code-1 and
+        # jump words 0..s2_jump-1, so both of its global groups shift by nothing
+        # while its stage-local code and jumps move past Sonic 1's globals.
+        ("sonic2", SONIC2_ZONES, s2.function_count, {
+            "stage_code": merged_code - s2_code,
+            "stage_jump": merged_jump - s2_jump,
+            "global_code": 0,
+            "global_jump": 0,
+        }),
+        # Sonic 1 is secondary: its globals now start after Sonic 2's.
+        ("sonic1", SONIC1_ZONES, s1.function_count, {
+            "stage_code": merged_code - s1_code,
+            "stage_jump": merged_jump - s1_jump,
+            "global_code": s2_code,
+            "global_jump": s2_jump,
+        }),
+    )
+    for game, zones, gcount, deltas in plan:
+        print("%s per-stage: stage code %+d, stage jumps %+d, globals %+d/%+d"
+              % (game, deltas["stage_code"], deltas["stage_jump"],
+                 deltas["global_code"], deltas["global_jump"]))
         globals()["_copied_" + game] = copy_stage_bytecode(
-            game, zones, code_shift, 0)
+            game, zones, deltas, gcount)
 
     c1, m1 = globals()["_copied_sonic1"]
     c2, m2 = globals()["_copied_sonic2"]
@@ -178,24 +245,106 @@ def main():
     # pointers were not renumbered lands in the middle of the *global* code and
     # runs the wrong script, silently.
     total_code = len(merged.code)
+    total_jump = len(merged.jumps)
+    s2_code, s2_jump = len(s2.code), len(s2.jumps)
     presentation = {"TitleS1", "LSelectS1", "CreditsS1", "Special1",
                     "TitleS2", "LSelectS2", "CreditsS2", "Special2"}
-    for folder in [f for _s, f in SONIC1_ZONES] + [f for _s, f in SONIC2_ZONES]:
-        path = os.path.join(OUT, folder + ".bin")
-        if not os.path.exists(path):
-            continue
-        c = parse(path)
-        # Presentation files sit at base 0; everything else follows the globals.
-        base = 0 if folder in presentation else total_code
-        for i, s in enumerate(c.scripts):
-            for k, v in enumerate(s):
+
+    # Each game's globals occupy a known half of the merged container, so a stage
+    # file's copies of its own global functions can be checked against that
+    # game's region instead of against the whole thing.
+    s2_len = len(s2.code)
+    globals_range = {"sonic2": (0, s2_len),
+                     "sonic1": (s2_len, total_code)}
+    # ...and the same for the jump table, which the two games share.
+    globals_jump_range = {"sonic2": (0, s2_jump),
+                          "sonic1": (s2_jump, total_jump)}
+    function_count = {"sonic1": s1.function_count, "sonic2": s2.function_count}
+
+    for game, zones in (("sonic1", SONIC1_ZONES), ("sonic2", SONIC2_ZONES)):
+        glo, ghi = globals_range[game]
+        gjlo, gjhi = globals_jump_range[game]
+        real_gcount = function_count[game]
+        for _stem, folder in zones:
+            path = os.path.join(OUT, folder + ".bin")
+            if not os.path.exists(path):
+                continue
+            c = parse(path)
+            # Presentation files load before the globals, so their own words sit
+            # at the start of both arrays and they carry no copies of the global
+            # functions at all - a presentation file's every function is its own.
+            is_presentation = folder in presentation
+            base = 0 if is_presentation else total_code
+            jump_base = 0 if is_presentation else total_jump
+            gcount = 0 if is_presentation else real_gcount
+
+            for i, s in enumerate(c.scripts):
+                for k, v in enumerate(s):
+                    if v == NONE:
+                        continue
+                    if not base <= v < base + len(c.code):
+                        problems.append(
+                            "%s script %d event %d: word %d is outside its own "
+                            "range [%d,%d)"
+                            % (folder, i, k, v, base, base + len(c.code)))
+                        break
+
+            for i, sj in enumerate(c.script_jumps):
+                for k, v in enumerate(sj):
+                    if v == 0x3FFF:
+                        continue
+                    # One past the end is allowed, and is not something this
+                    # merge introduced: 11 such entries exist in the stock files
+                    # at exactly the same script, event and value - Sonic 1's
+                    # LSelect script 7 event 2 holds 374 in a 374-word table,
+                    # Sonic 2's Credits scripts 3 and 4 hold 194 in a 194-word
+                    # one, and so on. They always sit on the highest-numbered
+                    # script, which suggests the compiler marks "this event
+                    # continues at the next script" by pointing one past its own
+                    # table. RSDKv4 evidently tolerates it. Asserting a strict
+                    # bound here would flag stock data, which is worse than
+                    # useless - it would train the check to be ignored.
+                    if not jump_base <= v <= jump_base + len(c.jumps):
+                        problems.append(
+                            "%s script %d event %d: jump index %d is outside its "
+                            "own table [%d,%d]"
+                            % (folder, i, k, v, jump_base,
+                               jump_base + len(c.jumps)))
+                        break
+
+            # A stage file's function table is not its own. Its first `gcount`
+            # entries are verbatim copies of that game's *global* functions -
+            # Sonic 1's Zone01 has 149 functions of which the first 93 are
+            # identical to GlobalCode.bin's - and only the rest are stage-local.
+            # The two groups therefore have to be checked against different
+            # ranges, and conflating them is what left Sonic 1 calling into
+            # Sonic 2's global code.
+            for i, v in enumerate(c.functions):
                 if v == NONE:
                     continue
-                if not base <= v < base + len(c.code):
+                if i < gcount:
+                    lo, hi, what = glo, ghi, "copy of a global"
+                else:
+                    lo, hi, what = base, base + len(c.code), "stage-local"
+                if not lo <= v < hi:
                     problems.append(
-                        "%s script %d event %d: word %d is outside its own range "
-                        "[%d,%d)" % (folder, i, k, v, base, base + len(c.code)))
-                    break
+                        "%s function %d (%s): word %d is outside [%d,%d)"
+                        % (folder, i, what, v, lo, hi))
+
+            for i, v in enumerate(c.function_jumps):
+                if v == 0x3FFF:
+                    continue
+                # Two groups, two ranges: the copies of the game's global
+                # functions address that game's global jump table, and the
+                # stage-local ones address this file's own.
+                if i < gcount:
+                    lo, hi = gjlo, gjhi
+                else:
+                    lo, hi = jump_base, jump_base + len(c.jumps)
+                if not lo <= v <= hi:
+                    problems.append(
+                        "%s function %d: jump index %d is outside [%d,%d]"
+                        % (folder, i, v, lo, hi))
 
     print("merged GlobalCode.bin: %d bytes, %d scripts (%d Sonic 2 + %d Sonic 1)"
           % (len(blob), merged.script_count, s2.script_count, s1.script_count))
@@ -212,13 +361,19 @@ def main():
         print("  Sonic 1 missing: %s" % ", ".join(m1))
     if m2:
         print("  Sonic 2 missing: %s" % ", ".join(m2))
-    if dropped_functions:
-        print()
-        print("KNOWN LIMITATION: %d Sonic 1 functions are not merged. RSDKv4 indexes"
-              % dropped_functions)
-        print("  scriptFunctionList globally from 0, so both games' tables cannot")
-        print("  start there. A Sonic 1 script calling a named function may reach")
-        print("  Sonic 2's instead of its own.")
+    print()
+    print("functions merged: %d (%d Sonic 2 + %d Sonic 1)"
+          % (merged.function_count, s2.function_count, dropped_functions))
+    print("  An earlier version of this script claimed Sonic 1's functions could not")
+    print("  be merged because scriptFunctionList is global. That was wrong: the")
+    print("  table is global, but each entry holds an absolute scriptCode pointer,")
+    print("  so appending gives every function its own slot.")
+    print()
+    print("KNOWN LIMITATION: CallFunction operands still index Sonic 2's function")
+    print("  table. A Sonic 1 script calling function N reaches Sonic 2's N, and a")
+    print("  Sonic 2 script calling a function past its own table runs off the end.")
+    print("  Remapping those operands is the same job the object table needed and is")
+    print("  not done yet - it needs the function-name table for each game.")
 
     if problems:
         print()

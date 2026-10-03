@@ -196,11 +196,21 @@ def merge(primary, secondary, secondary_object_offset):
         out.scripts.append([shift_code(v, code_base) for v in s])
         out.script_jumps.append([shift_jump_index(v, jump_base) for v in sj])
 
-    # Functions cannot be merged: RSDKv4 indexes scriptFunctionList from 0
-    # globally, so two games' tables would overlap. Carried over only when the
-    # secondary has none.
+    # Functions merge too. An earlier version of this file recorded that they could
+    # not, reasoning that scriptFunctionList is indexed globally from 0 so both
+    # games' tables would overlap. That was wrong. The *table* is global, but each
+    # entry holds an absolute scriptCode pointer, so appending the secondary's
+    # entries after the primary's gives every function a distinct slot. Verified
+    # on the shipped files: Sonic 1's 93 function pointers span 262..49042 within
+    # its 52319 code words, and Sonic 2's 97 span 262..62570 within 63679 - both
+    # absolute into their own container.
     out.functions = list(primary.functions)
     out.function_jumps = list(primary.function_jumps)
+    for f, fj in zip(secondary.functions, secondary.function_jumps):
+        # Function scriptCode pointers are absolute; function jumpTable pointers
+        # are indices into the jump array, so they move with jump_base.
+        out.functions.append(shift_code(f, code_base))
+        out.function_jumps.append(jump_base if jump_none(fj) else fj + jump_base)
 
     return out, secondary.function_count
 

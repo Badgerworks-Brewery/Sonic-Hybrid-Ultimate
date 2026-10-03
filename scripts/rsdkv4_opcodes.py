@@ -23,6 +23,26 @@ SCRIPT_CPP = os.path.join(ROOT, "Hybrid-RSDK-Main", "RSDKV4-Decompilation",
 RETRO_REV00 = False
 
 
+def _guard_active(directive):
+    """Whether the `#if` on this line is true for this project's configuration.
+
+    The `!` matters and an earlier version of this file ignored it, so
+    `#if RETRO_REV00` and `#if !RETRO_REV00` were treated identically. That put a
+    7-operand `SetPaletteFade` in the table instead of the 6-operand one, and
+    kept `MatrixInverse`, which shifted every opcode after index 63 and made the
+    table disagree with the engine by one - which in turn made a bytecode walk
+    desynchronise on almost every instruction.
+    """
+    parts = directive.split()
+    condition = parts[1] if len(parts) > 1 else ""
+    negated = condition.lstrip().startswith("!")
+    name = condition.lstrip("!~ ")
+    if "REV00" not in name:
+        return True                       # every other guard is configured in
+    value = RETRO_REV00
+    return (not value) if negated else value
+
+
 def _walk():
     src = io.open(SCRIPT_CPP, encoding="utf-8", errors="replace").read()
     lines = src.split("\n")
@@ -41,9 +61,7 @@ def _walk():
         if s.startswith("};"):
             break
         if s.startswith("#if"):
-            # A guard naming REV00 is inactive; anything else is treated as
-            # active, which matches how RSDKv4 is configured for this project.
-            stack.append(not RETRO_REV00 if "REV00" in s else True)
+            stack.append(_guard_active(s))
             continue
         if s.startswith("#else"):
             if stack:
