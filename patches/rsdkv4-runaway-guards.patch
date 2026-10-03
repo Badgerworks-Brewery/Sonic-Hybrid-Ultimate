@@ -41,16 +41,22 @@ index 8cfa77c..cc6c7e5 100644
                      }
                      else {
 diff --git a/RSDKv4/Object.cpp b/RSDKv4/Object.cpp
-index 7ddf148..9927bff 100644
+index 7ddf148..4139086 100644
 --- a/RSDKv4/Object.cpp
 +++ b/RSDKv4/Object.cpp
-@@ -61,8 +61,13 @@ void ProcessStartupObjects()
+@@ -61,8 +61,19 @@ void ProcessStartupObjects()
          scriptInfo->spriteSheetID   = 0;
          entity->type                = i;
  
 -        if (scriptCode[scriptInfo->eventStartup.scriptCodePtr] > 0)
 +        if (scriptCode[scriptInfo->eventStartup.scriptCodePtr] > 0) {
-+            static const bool startupTrace = getenv("RSDK_TRACE_ALL") != nullptr;
++            // Its own switch, deliberately NOT RSDK_TRACE_ALL. The per-instruction
++            // trace writes a handful of log lines for every opcode executed, which
++            // slows the startup loop so much that it is still running when the probe's
++            // timeout kills the process - which looks exactly like the loop dying part
++            // way through and is not. Measuring how far the loop gets must not be
++            // something that changes how far it gets.
++            static const bool startupTrace = getenv("RSDK_TRACE_STARTUP") != nullptr;
 +            if (startupTrace)
 +                PrintLog("STARTING type %d '%s' startup @%d", i, typeNames[i],
 +                         scriptInfo->eventStartup.scriptCodePtr);
@@ -59,7 +65,7 @@ index 7ddf148..9927bff 100644
          scriptInfo->frameCount = scriptFrameCount - scriptInfo->frameListOffset;
      }
      entity->type  = 0;
-@@ -71,6 +76,54 @@ void ProcessStartupObjects()
+@@ -71,6 +82,54 @@ void ProcessStartupObjects()
  
  void ProcessObjects()
  {
@@ -114,7 +120,7 @@ index 7ddf148..9927bff 100644
      for (int i = 0; i < DRAWLAYER_COUNT; ++i) drawListEntries[i].listSize = 0;
  
      for (objectEntityPos = 0; objectEntityPos < ENTITY_COUNT; ++objectEntityPos) {
-@@ -337,6 +390,10 @@ void Process2PObjects()
+@@ -337,6 +396,10 @@ void Process2PObjects()
  
  void SetObjectTypeName(const char *objectName, int objectID)
  {
@@ -304,7 +310,7 @@ index a450c82..7dced45 100644
              if (loadGlobalScripts && offsetCount && object->type > globalObjCount)
                  object->type += offsetCount; // offset it by our mod count
 diff --git a/RSDKv4/Script.cpp b/RSDKv4/Script.cpp
-index 71e569f..fe81531 100644
+index 71e569f..d551d7c 100644
 --- a/RSDKv4/Script.cpp
 +++ b/RSDKv4/Script.cpp
 @@ -1,3 +1,4 @@
@@ -474,7 +480,7 @@ index 71e569f..fe81531 100644
  
              FileRead(&fileBuffer, 1);
              function->ptr.jumpTablePtr = fileBuffer;
-@@ -3276,6 +3336,72 @@ void LoadBytecode(int stageListID, int scriptID)
+@@ -3276,6 +3336,80 @@ void LoadBytecode(int stageListID, int scriptID)
              FileRead(&fileBuffer, 1);
              function->ptr.jumpTablePtr |= fileBuffer << 24;
          }
@@ -502,17 +508,25 @@ index 71e569f..fe81531 100644
 +        if (!loadingGlobals)
 +            stageTypeBase = globalTotal - thisGameCount;
 +
++        // RSDK_NO_FUNCTION_BASE=1 leaves every functionBase at 0, which is the stock
++        // behaviour: a Sonic 1 script calling function N reaches Sonic 2's N. That is
++        // wrong, and it is also the only way to tell whether the per-object base is
++        // what stops ProcessStartupObjects partway through Sonic 1's globals - the loop
++        // dies at about type 55, and Sonic 1 is the only game with a non-zero base.
++        const bool noFunctionBase = getenv("RSDK_NO_FUNCTION_BASE") != nullptr;
++
 +        for (int s = 0; s < scriptCount; ++s) {
 +            ObjectScript *script = &objectScriptList[scriptID + s];
 +            if (loadingGlobals) {
 +                const bool isGameOne = objectTypeSplit >= 0
 +                                       && (scriptID + s) >= objectTypeSplit;
 +                script->typeBase     = isGameOne ? objectTypeBaseForGame1 : 0;
-+                script->functionBase = isGameOne ? scriptFunctionBaseForGame1 : 0;
++                script->functionBase = (isGameOne && !noFunctionBase)
++                                           ? scriptFunctionBaseForGame1 : 0;
 +            }
 +            else {
 +                script->typeBase     = stageTypeBase;
-+                script->functionBase = functionBase;
++                script->functionBase = noFunctionBase ? 0 : functionBase;
 +
 +                // First few stage scripts, with the absolute word index their code
 +                // landed at. This is the number every tool mapping engine-reported
@@ -547,7 +561,7 @@ index 71e569f..fe81531 100644
  
          CloseFile();
      }
-@@ -3338,6 +3464,20 @@ void ClearScriptData()
+@@ -3338,6 +3472,20 @@ void ClearScriptData()
          scriptFunctionList[f].ptr.jumpTablePtr  = JUMPTABLE_COUNT - 1;
      }
  
@@ -568,7 +582,7 @@ index 71e569f..fe81531 100644
      SetObjectTypeName("Blank Object", OBJ_TYPE_BLANKOBJECT);
  }
  
-@@ -3349,16 +3489,151 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
+@@ -3349,16 +3497,151 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
      functionStackPos  = 0;
      foreachStackPos   = 0;
  
@@ -721,7 +735,7 @@ index 71e569f..fe81531 100644
  
              if (opcodeType == SCRIPTVAR_VAR) {
                  int arrayVal = 0;
-@@ -4186,6 +4461,17 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
+@@ -4186,6 +4469,17 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
              }
          }
  
@@ -739,7 +753,7 @@ index 71e569f..fe81531 100644
          ObjectScript *scriptInfo = &objectScriptList[objectEntityList[objectEntityPos].type];
          Entity *entity           = &objectEntityList[objectEntityPos];
          SpriteFrame *spriteFrame = nullptr;
-@@ -4943,7 +5229,15 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
+@@ -4943,7 +5237,15 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
                  opcodeSize     = 0;
                  Entity *newEnt = &objectEntityList[scriptEng.operands[0]];
                  memset(newEnt, 0, sizeof(Entity));
@@ -756,7 +770,7 @@ index 71e569f..fe81531 100644
                  newEnt->propertyValue      = scriptEng.operands[2];
                  newEnt->xpos               = scriptEng.operands[3];
                  newEnt->ypos               = scriptEng.operands[4];
-@@ -4989,7 +5283,14 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
+@@ -4989,7 +5291,14 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
                      scriptEng.arrayPosition[8] = TEMPENTITY_START;
                  Entity *temp = &objectEntityList[scriptEng.arrayPosition[8]];
                  memset(temp, 0, sizeof(Entity));
@@ -772,7 +786,7 @@ index 71e569f..fe81531 100644
                  temp->propertyValue      = scriptEng.operands[1];
                  temp->xpos               = scriptEng.operands[2];
                  temp->ypos               = scriptEng.operands[3];
-@@ -5209,8 +5510,20 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
+@@ -5209,8 +5518,20 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
                  functionStack[functionStackPos++] = scriptCodePtr;
                  functionStack[functionStackPos++] = jumpTableStart;
                  functionStack[functionStackPos++] = scriptCodeStart;

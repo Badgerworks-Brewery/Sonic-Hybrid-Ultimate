@@ -170,194 +170,102 @@ of those, confirmed: 950 (100%)
 
 Two things follow, and the first is the serious one.
 
-**Stage-object scripts never execute at all. Every stage is running on global code
-alone.** This is the most consequential thing in this document, and it was hidden behind
-a bookkeeping problem in the oracle until the engine was made to report where it actually
-puts things.
+**Corrected: stage-object scripts do run. Both earlier claims about them were
+measurement artefacts, and the thing that produced them is worth more than either.**
 
-Measured, with `RSDK_TRACE_ALL=1` on a 12-second run of Sonic 1 Green Hill Act 1:
+What I reported twice, in order:
 
-```
-PLACE Bytecode/GlobalCode.bin: code starts at word 0,    types 1..77,   functions at 0
-PLACE Bytecode/GHZS1.bin:      code starts at word 115998, types 78..113, functions at 190
+1. *No traced instruction ever falls in the stage container's range, so stage-local
+   scripts never execute.*
+2. *`ProcessStartupObjects` dies partway through Sonic 1's globals, at about type 55, so
+   every stage object from there on never gets its startup.*
 
-instructions the engine executed: 29789
-traced word index range: 18238 .. 97929
-```
+Both are false, and both were the same mistake: **the instrumentation was slower than the
+measurement window.**
 
-So the placement model the tools assume is *correct* - the globals occupy `[0, 115998)`,
-the stage container `[115998, 146379)` - and `container_for()` was never the problem. The
-problem is that **every single traced instruction falls inside the globals' range.** Not
-one lands in the stage container, including for the stage's own setup object:
+`RSDK_TRACE_ALL=1` writes several log lines for every opcode the engine executes. That
+slows `ProcessStartupObjects` enough that a 12-second run kills the process while the loop
+is still going. The probe then reported however far it had got - 53 types once, 44 the
+next time - and I read a truncated measurement as a crash.
 
-```
-STAGESCRIPT type 78 'GHZSetup': update @116818, startup @117221
-```
-
-`GHZSetup` is what spawns the player, runs the stage's logic and drives the level. Its
-update is at word 116818. That word is never executed.
-
-What this means for what the probes have been reporting as success:
-
-- Objects *are* placed correctly. Green Hill puts 305 objects on registered Sonic 1 types
-  - rings, monitors, spikes, Buzz Bombers, Crabmeats, Newtron Fly - because that happens
-  in `LoadActLayout`, which is engine code and needs no scripts.
-- Objects *do not animate*. Anything whose logic lives in a stage-local script is inert.
-  The player is placed but sits at the origin at speed 0; the frame counter advances and
-  the ring count stays exactly 165.
-- The 305-of-305 figure, and the earlier "Green Hill runs 600 frames", are both true and
-  both much weaker than they read. Objects spawning proves the Act layout is right. It
-  proves nothing about whether the stage runs.
-
-This also explains the whole shape of the oracle's output - identical 190 distinct sites
-for five different stages, all inside the globals, all of which agree 100%. Five different
-stages producing byte-identical coverage is not a coincidence; they are running the same
-code. The 950-of-950 agreement is real, but it is agreement about the globals only, which
-is a much smaller claim than "the bytecode walker decodes RSDKv4 correctly".
-
-### Localised: `ProcessStartupObjects` dies partway through the global list
-
-`ProcessStartupObjects` (Object.cpp:40) loops `for (i = 0; i < OBJECT_COUNT; ++i)` -
-all 256 types - and runs each type's `eventStartup`. Logging every iteration on a traced
-Green Hill run:
+Removing the per-instruction trace and logging only the loop's progress:
 
 ```
-STARTING logged 53 types; last few: 49, 50, 51, 52, 53, 54
+no-trace run: startup loop reached 110 types
+highest type reached: 113
+last 8: [106, 107, 108, 109, 110, 111, 112, 113]
 ```
 
-It stops in Sonic 1's global range. The merged table has Sonic 2 in types 1..39 and Sonic
-1 in 40..77, so the loop is dying at roughly type 55 - a Sonic 1 global - and every type
-from there to 113, which is every stage object, never gets its startup run. That is the
-direct cause of stage-local scripts never executing.
+All 110 types, every stage object included. The loop was never dying.
 
-That this is Sonic 1's range is the whole clue, because Sonic 1 is the only game with a
-non-zero `functionBase`. The `CallFunction` work gave game 1's globals a base of 97 so
-their function *N* lands on 97+N instead of Sonic 2's N. Distinct-site coverage fell from
-~831 to exactly 190 when that landed, and 190 is the size of Sonic 2's globals' reachable
-code. A Sonic 1 global's `CallFunction` therefore resolving somewhere that unwinds the
-startup loop is the prime suspect, and it is my own regression, not a pre-existing
-condition.
+That also dissolves the first claim on its own. Under tracing the engine had only got
+through the globals when the timeout killed it, which is exactly why every traced word sat
+in `GlobalCode`'s range - not because stage code was unreachable, but because the run never
+reached it.
 
-Not yet tested, and the obvious next run: set `functionBase` back to 0 for globals, which
-restores the stock behaviour of Sonic 1 globals calling Sonic 2's functions - wrong, but
-it would confirm whether the append is what stops the loop. If coverage returns to ~831
-the cause is confirmed and the fix belongs in how the base is applied; if it stays at 190
-the append is exonerated and the fault is elsewhere.
+### What is actually true, measured
 
-Everything that made this findable stays in the engine:
+With a budget long enough for the traced engine to finish the work - 30 seconds per stage
+rather than 9:
 
-- `PLACE` - a container's own placement base, jump base, type range and function base.
-- `STAGESCRIPT` - the first few stage scripts' entry points, plus the *values* of those
-  words in memory, which is what proved the code is present and non-zero and the
-  `scriptCode[ptr] > 0` guard was passing.
-- `ENTER` - the distinct entry points `ProcessScript` is actually entered at. Nine, all
-  between 18238 and 34533. Everything else is unreachable.
-- `STARTING` - every type `ProcessStartupObjects` reaches, which is what located the cut.
+```
+stages traced: 5
+instructions the engine executed: 47752
+instruction sites placed against the walker's containers: 4157
+of those, confirmed: 4157 (100.0%)
+not placed, so not compared: 0        (unplaced 0, opcode differs 0, undecodable 0)
+```
 
-## Still to determine: how to fix it
+Per stage: Marble Zone 3 821 sites, Final Zone 821, Chemical Plant 2 863, Oil Ocean 1 831.
 
-Two things, in order:
+Every one of those 4,157 sites was compared, and all four ways of *failing* to compare are
+zero: no word index no container covers, no place where the walker and the engine read
+different opcodes, nothing the walker could not decode, and no disagreement about operand
+widths or tags. The earlier 950-of-950 was the same agreement over a much smaller window,
+cut short by the same timeout; the 24,508 figure was that, inflated by a checker that
+discarded what it could not explain.
 
-1. Confirm the cause with the single revert above.
-2. Then either drop the per-object `functionBase` and find a way to renumber Sonic 1's
-   `CallFunction` operands in the bytecode after all - which is the thing I argued was
-   unverifiable, and this failure is the argument against me - or make the startup loop
-   survive a bad function index so one bad object cannot silently disable a third of the
-   object table.
+The 47,752 against 4,157 is not a shortfall. The engine re-executes the same sites every
+frame; 4,157 is the number of *distinct* instructions, and each was checked once.
 
-The second is worth doing regardless. A loop that iterates every object type and dies
-without a word of complaint is the deeper defect here: it turns a bad number in one
-script into "the rest of the game quietly does nothing", which is exactly the failure mode
-that produced every false positive in this project.
+### The `CallFunction` base is exonerated
 
+Worth recording as a negative result, since I was about to blame it. `scripts/
+bisect_function_base.py` runs the same stage twice, once with the per-object function base
+and once with `RSDK_NO_FUNCTION_BASE=1` (stock behaviour, which is wrong in the other
+direction). Both runs reached the same 44 types and the same 44 distinct entry points. The
+base does not stop anything; only the extra 3,240 traced instructions differ, which is more
+execution rather than further reach.
 
-, when their pointers are correct
-and their code is present. The candidates, none yet tested: `ProcessStartupObjects` and
-`ProcessObjectControl` not reaching stage types; the stage container being loaded twice
-(the log shows `Bytecode/GHZS1.bin` loaded twice) and the second load overwriting the
-first's script pointers with `NONE`; or the function-table append introduced for
-`CallFunction` changing which code a stage object starts at. That last one is the most
-suspicious because it is the only change here that is not a pre-existing condition, and
-distinct-site coverage fell from ~831 to 190 when it landed.
+### Standing rules that came out of this
 
-`LoadBytecode` now logs its own `PLACE` line - placement base, jump-table base, type range
-and function base - so this does not have to be re-derived by hand next time.
+- A measurement that changes the thing it measures is a measurement, not evidence. The
+  oracle now defaults to 30 seconds per stage and `docs/STATUS.md` records that
+  `RSDK_TRACE_ALL` costs roughly a 3x slowdown, because that is why the number moved.
+- Diagnostics that could not have shown what I wanted are worse than none. The
+  `STARTUPTYPE` run printed only the five types hard-coded into it; I read the two that
+  appeared as "the loop stopped at 40", which was my own filter talking.
+- Prefer a counter to a sample. "Reached 110 types, highest 113" answers the question;
+  "types 4 and 40 logged" answers a different, narrower one that I then over-read.
+- Still worth fixing: the startup loop would fail silently if it ever *did* die, since
+  nothing between `ProcessStartupObjects` and the frame loop reports how far it got. The
+  `STARTING` log now answers that, but only when asked.
 
- Every distinct site resolves inside
-`GlobalCode.bin`, whose 115,998 words cover the globals; no traced instruction lands in
-the 30,381 words of `GHZS1.bin` or `CPZS2.bin`, even though those containers load and
-their objects demonstrably run - Green Hill spawns Buzz Bombers, Crabmeats and Newtron
-Fly, which are stage objects. Either the walker's placement base for a regular stage is
-wrong, or stage-object code is executing from somewhere other than where the container
-says it lives. Distinct coverage per stage fell from ~831 before the object-numbering
-work to exactly 190 now, the same figure for all five stages, which is the shape of
-something that stopped rather than something that varies. **This is unresolved and is the
-next thing to look at.**
+### Kept, because they made this findable
 
-Until it is, the honest statement is narrow: *where the walker and the engine could be
-compared on a site the walker had placed, they agreed on 950 of 950.* That is worth
-something - widths and tags both, on real executed code - and it is a great deal less
-than 24,508.
-
-What is still genuinely established, because each was checked against the engine rather
-than inferred:
-
-- The derived opcode table matches the engine's compiled table exactly, at 149 entries.
-  The stock table wrongly included `LoadFontFile` and `DrawText`, which sit inside
-  `#if !RETRO_REV02` and never compile, so every opcode after them was shifted by one.
-- All 107 handlers stay within their declared operand count.
-- `scripts/inspect_act.py` reads Act layouts with a parser independent of the packer's.
-- The Act layout type bounds hold, checked against a re-injected second shift.
-
-The measurement lesson is the same one this project keeps relearning, and it is now
-written down: **an aggregate that should have been checked from the start.** `max` of a
-type range was 150 where it should have been 111, and it took printing the high end to
-see it. Here, the aggregate that was missing was the count of instructions that could
-*not* be compared - reported as 0 because the code that would have counted them was a
-`continue`.
-
-The trace itself had to be uncapped before any of this meant anything. The opcode line
-was silently limited to 300 instructions while the word-count line below it logged all
-7,000-odd, so the checker read 300 of them and reported an identical "142 confirmed"
-from five completely different stages. Identical totals from different stages were the
-tell, and I read past them twice.
-
-`scripts/oracle_check.py --from N --to M` sweeps a range of stages;
-`scripts/probe_stages.py --scene N` boots any single one by index. Both now write
-`DisableFocusPause=1`, because with no window to take focus the engine sees
-`hasFocus=0` and pauses, which reports as a stage that stops after 20 frames - a failure
-that looks exactly like a broken stage and was not one.
-
-## Where the object-name collision stands
-
-Sonic 1 and Sonic 2 share 33 object names, and the engine resolves a name by scanning
-the whole table, so whichever game registered first wins. The engine now scopes that
-scan to one game when `Data/Game/ObjectGameSplit.bin` says where the global table
-splits, and takes the stage's game from an `S1`/`S2` suffix on its folder name
-(`GHZS1`, `MZS1`, `EHZS2`, `CPZS2`, …). Absent the split file the engine falls back to
-the original single-game scan.
-
-This is correct but currently unexercised on the bytecode path, for the reason above.
-It does matter for text scripts, which are currently inert.
-
-## Deliberately not claimed
-
-- Sonic 1 and Sonic 2 have never been played through in sequence. Both work
-  individually; the transition between them is untested.
-- No stage has been verified with visible rendering. The engine cannot open a window in
-  this environment, so everything here is established from object state, not pixels.
-- The test suite is 18 passed, 2 failed, and is meant to be red. Both failures report
-  real remaining defects — Sonic CD having no working stage, and the script-entrypoint
-  check finding 748 inert text scripts. Do not make it green by weakening assertions.
-- Emerald Hill and Death Egg are excluded from the probe by request.
+`PLACE` (a container's own placement base, jump base, type range, function base),
+`STAGESCRIPT` (stage entry points and the *values* of those words in memory - which is what
+proved the code was present and non-zero, so "never reached" was not "pointed at nothing"),
+`ENTER` (distinct entry points `ProcessScript` is entered at), and `STARTING` (every type
+the startup loop reaches, now on its own `RSDK_TRACE_STARTUP` switch so measuring it cannot
+change it).
 
 ## Next steps, in order of value
 
-1. **Find out why no stage-object instruction is placed.** `scripts/oracle_check.py`
-   maps every distinct site it can confirm into `GlobalCode.bin` and none into the stage
-   containers, though their objects run. Until that is explained the walker is verified
-   on 950 sites rather than on the game, and it is the cheapest open question here -
-   everything else about the bytecode is downstream of trusting it.
+1. **Widen the oracle, now that it is trustworthy.** 4,157 distinct sites, 100% confirmed,
+   zero gaps - on five stages and only what executes in 30 seconds of headless play. The
+   static linear walk over every range in every container still agrees on only 81%, and
+   branches needing player input or a boss trigger are still unexercised.
 2. Build the RSDKv3 → RSDKv4 bytecode compiler for Sonic CD. It is the only game whose
    stages are still inert, and the decompiler that reads the format is finished.
 3. Widen the oracle once it is trustworthy. It covers only what the engine *executes* in
