@@ -81,3 +81,7 @@ stderr.txt
 # ---------------------------------------------------------------------------
 .DS_Store
 Thumbs.db
+
+# Python bytecode caches
+__pycache__/
+*.pyc

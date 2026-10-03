@@ -52,10 +52,44 @@ There is no runtime lookup to fix, which I checked rather than assumed. Filterin
 name lookup by game changes Green Hill's live types not one bit, because `TypeName` is
 resolved at compile time. Rewriting those constants needs a bytecode walker.
 
-**The bytecode walker is at 81%.** `scripts/rsdkv4_walk.py` agrees with the engine on
-647 of 794 script ranges. Three earlier walkers were deleted rather than shipped; this
-one is kept because its docstring records three real engine bugs it found (see below)
-and states plainly that it cannot be used to rewrite operands. Nothing depends on it.
+**The bytecode walker's operand widths are now verified against the engine.** Widths
+were the thing that had been guessed at, and guessing had already produced two
+convincing wrong answers. The engine can now log every instruction it executes
+(`RSDK_TRACE_ALL=1`), which is the only authoritative answer to "how many words does
+this instruction occupy", and `scripts/oracle_check.py` drives that: it boots five
+stages with tracing on and compares the walker against the engine instruction by
+instruction.
+
+Result: **1073 of 1074 distinct instruction sites confirmed, 99.9%.** One site
+remains, `WLower` at word 89667, which the engine never agreed with in Chemical
+Plant Zone Act 2 and which did not appear in the other four stages. It needs a
+targeted look and is recorded rather than rounded away.
+
+Two flaws in the comparison itself had to be fixed first, and both had produced
+convincing nonsense. The engine appends GlobalCode.bin and then the *one* stage the
+scene needs, and every word in the trace is an absolute index into that combined
+array; checking a log against all 31 shipped stage files at once reported 238 sites
+where "the engine read a different opcode than we did", when it had simply read the
+words out of the wrong container. And a site has to be judged by whether *any* of its
+executions agrees, because scripts loop - a version that recorded the first mismatch
+and never cleared it reported `WLower` at word 25932 as wrong 33 times over, when
+the trace plainly shows `WLower @25932` followed by `GetTableValue @25940`, a gap of
+8, exactly what the walker computes.
+
+`scripts/rsdkv4_walk.py` still walks only 81% of script *ranges* cleanly. Those two
+numbers are not in conflict: the 81% is a static linear walk over every range in
+every container, and the 99.9% is the set of instructions the engine actually
+executed while playing five stages. The static walk disagrees about code the engine
+never reached, which is dead or headlessly-unreachable code. Rewriting operands is
+still not safe on that evidence alone, but the width rules - the thing that was
+genuinely unknown - are now confirmed rather than assumed.
+
+Also added `scripts/check_opcode_table.py`, which has the engine print its own
+compiled opcode table and diffs it against the Python derivation. It matches exactly,
+index for index, at 149 entries. The engine stating its own table is the point: the
+derivation has now been wrong twice, once over `!` and once over `RSDK_REVISION`, and
+both times the Python side was confidently disagreeing with the thing actually
+running.
 
 Getting that number to mean something took two corrections, and both earlier versions
 were reporting a flattering figure for the wrong reason. The first filtered script
