@@ -232,24 +232,34 @@ fi
 # One stage with a short budget: this is a regression guard, not the coverage report.
 # docs/STATUS.md carries the real numbers from a full sweep.
 if [ -f "build/bin/Release/rsdkv4.exe" ] && command -v python3 >/dev/null 2>&1; then
-    oracle_out=$(python3 scripts/oracle_check.py 2>&1 || true)
-    if printf '%s\n' "$oracle_out" | grep -q "not placed, so not compared: 0"; then
-        ok "oracle compared every site it traced - nothing silently dropped"
+    oracle_out=$(python3 scripts/oracle_check.py 2>&1); oracle_rc=$?
+    # Exit 3 means another oracle run holds the lock - a sweep in flight, not a defect.
+    # Reporting that as a failure would make the suite's verdict depend on whether a
+    # background job happens to be running, which is its own kind of wrong answer.
+    if [ "$oracle_rc" -eq 3 ]; then
+        printf '  SKIP  oracle checks (another oracle run holds the lock)\n'
     else
-        bad "oracle silently dropped sites it could not place"
-        printf '%s\n' "$oracle_out" | grep -E "not placed|opcode differs" | sed 's/^/    /'
-    fi
+        if printf '%s\n' "$oracle_out" | grep -q "not placed, so not compared: 0"; then
+            ok "oracle compared every site it traced - nothing silently dropped"
+        else
+            bad "oracle silently dropped sites it could not place"
+            printf '%s\n' "$oracle_out" | grep -E "not placed|opcode differs" | sed 's/^/    /'
+        fi
 
-    distinct=$(printf '%s\n' "$oracle_out" | grep -oE 'placed +[0-9]+' | \
-              grep -oE '[0-9]+' | sort -u | wc -l)
-    total=$(printf '%s\n' "$oracle_out" | grep -c 'placed ')
-    if [ "$total" -lt 2 ]; then
-        printf '  SKIP  oracle coverage-uniformity check (only %d stage traced)\n' "$total"
-    elif [ "$distinct" -lt "$total" ]; then
-        ok "oracle coverage varies per stage ($distinct of $total distinct)"
-    else
-        bad "oracle coverage identical across all $total stages - the traced run is
-    probably not getting past the globals, whatever the agreement figure says"
+        # Both guards must sit inside the non-locked branch. Left outside, the
+        # uniformity check ran against an empty result and reported a failure for a
+        # run that never started - which is the same class of error as the ones these
+        # guards exist to catch.
+        distinct=$(printf '%s\n' "$oracle_out" | grep -oE 'placed +[0-9]+' | \
+                  grep -oE '[0-9]+' | sort -u | wc -l)
+        total=$(printf '%s\n' "$oracle_out" | grep -c 'placed ')
+        if [ "$total" -lt 2 ]; then
+            printf '  SKIP  oracle coverage-uniformity check (only %d stage traced)\n' "$total"
+        elif [ "$distinct" -lt "$total" ]; then
+            ok "oracle coverage varies per stage ($distinct of $total distinct)"
+        else
+            bad "oracle coverage identical across all $total stages - the traced run probably did not get past the globals"
+        fi
     fi
 else
     printf '  SKIP  engine binary not built, or python3 unavailable\n'
