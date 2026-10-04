@@ -1786,6 +1786,62 @@ thing between "A.I.R.'s headers compile in our target" and a real link.
 **Once that links, the collision count is finally knowable** - and it will be a real number
 rather than an assumption, which is the only reason any of this was worth doing carefully.
 
+## The AIR patch chain: true state, and why `--check` shows conflicts on a clean tree
+
+`apply_air_patches.py --check` against a genuinely pristine submodule:
+
+```
+0001-restartable-engine.patch                  NOT applied
+0002-restart-selftest.patch                    NOT applied
+0003-restart-realsession.patch                 CONFLICT
+0004-sdl-include-path.patch                    NOT applied
+0005-stdcxxfs-guard.patch                      NOT applied
+0006-endswith-data-call.patch                  NOT applied
+0007-adddouble-duplicate-decl.patch            NOT applied
+0008-operator-assign-dependent-cast.patch      NOT applied
+0011-remove-dead-getunicode.patch              NOT applied
+```
+
+**0003 conflicting on a clean tree is correct and expected, not a defect.** It touches
+`main.cpp` alongside 0001 and 0002, and was generated with both of those already applied as a
+staged baseline - the only method that produced an isolated diff. Its context therefore
+assumes they are present. The same is true of 0008 and 0011 on `String.h` after 0007.
+
+**So the patches are a chain per file, not an independent set.** Three consequences worth
+stating plainly, because each cost time:
+
+1. `git apply --reverse --check` and `git apply --check` both fail for a non-first patch in a
+   file's chain. That is a conflict, not "already applied" and not "not applied".
+2. Each patch must be generated with **every lower-numbered patch staged as the baseline** -
+   not just the immediately preceding one, and not just the patches touching that file.
+3. Regenerating one patch requires re-staging the baseline *before* making the edit. Doing it
+   afterwards stages the edit too and `git diff` comes back empty, which is what happened on
+   the first attempt at this.
+
+**A `git` gotcha that produced a genuinely misleading state.** `git checkout -- .` reverts the
+worktree *from the index*, it does not reset the index. A previous run had staged a baseline,
+so after `checkout -- .` the tree still reported 0007 and 0008 as applied, from a pristine
+`HEAD`. The correct sequence is:
+
+```
+git -C vendor/sonic3air reset -q      # index back to HEAD first
+git -C vendor/sonic3air checkout -- .  # then worktree back to index
+```
+
+Without the reset, "reverted" means nothing. This is the fourth distinct way a green result
+has turned out to describe something other than the worktree, after a truncated patch, a
+duplicated patch, and a mis-detected patch.
+
+**What remains**, in order:
+
+- Regenerate 0003, 0008 and 0011 with the full lower-numbered baseline staged, then confirm
+  `--check` reports `applied` for all nine from a clean tree.
+- Re-run the `OxygenEngine` build. The last real build result was a failure in
+  `rmxbase.vcxproj` at `FileHandle.h(27)`, which was traced to the retracted 0010 being
+  re-applied by an unqualified `apply_air_patches.py` run - 0010's file has since been deleted,
+  so that should no longer recur.
+- Only then does the symbol-collision question get its first real answer.
+
 ## Next steps, in order of value
 
 1. **Widen the oracle, now that it is trustworthy.** 4,157 distinct sites, 100% confirmed,
