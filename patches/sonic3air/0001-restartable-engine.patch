@@ -1,0 +1,97 @@
+diff --git a/Oxygen/oxygenengine/source/oxygen/application/EngineMain.cpp b/Oxygen/oxygenengine/source/oxygen/application/EngineMain.cpp
+index a2d2dfb3..2f95a954 100644
+--- a/Oxygen/oxygenengine/source/oxygen/application/EngineMain.cpp
++++ b/Oxygen/oxygenengine/source/oxygen/application/EngineMain.cpp
+@@ -63,6 +63,9 @@ struct EngineMain::Internal
+ #endif
+ };
+ 
++// [Sonic Hybrid Ultimate] See patches/sonic3air/0001-restartable-engine.patch
++bool EngineMain::sProcessShutDown = false;
++
+ 
+ void EngineMain::earlySetup()
+ {
+@@ -104,7 +107,8 @@ void EngineMain::execute()
+ 		run();
+ 	}
+ 
+-	// Done, now shut everything down
++	// Done, now shut down this session. Process-wide teardown is separate - see
++	// EngineMain::shutdownProcess() and patches/sonic3air/0001-restartable-engine.patch.
+ 	shutdown();
+ }
+ 
+@@ -327,14 +331,29 @@ void EngineMain::shutdown()
+ 	// Shutdown drawer
+ 	mDrawer.shutdown();
+ 
+-	// Cleanup system
++	mInternal.mModManager.copyModSettingsToConfig();
++	Configuration::instance().saveSettings();
++
++	// [Sonic Hybrid Ultimate] Process-wide teardown used to live here, at the end of every
++	// shutdown(), which made EngineMain one-shot: FTX::Audio, FTX::System, the job manager
++	// and logging are process-global, and ending them on the way out of a game meant a
++	// second EngineMain could never be brought up in the same process. The Hybrid needs to
++	// leave Sonic 3 and come back, so that work moved to shutdownProcess(), which the host
++	// calls once at process exit. See patches/sonic3air/0001-restartable-engine.patch.
++}
++
++void EngineMain::shutdownProcess()
++{
++	// Guarded because FTX::JobManager->~JobManager() is an explicit destructor call rather
++	// than a delete: reaching it twice is a double destruction, not a no-op.
++	if (sProcessShutDown)
++		return;
++	sProcessShutDown = true;
++
+ 	RMX_LOG_INFO("System shutdown");
+ 	FTX::Audio->exit();
+ 	FTX::System->exit();
+ 	FTX::JobManager->~JobManager();
+-
+-	mInternal.mModManager.copyModSettingsToConfig();
+-	Configuration::instance().saveSettings();
+ 	oxygen::Logging::shutdown();
+ }
+ 
+diff --git a/Oxygen/oxygenengine/source/oxygen/application/EngineMain.h b/Oxygen/oxygenengine/source/oxygen/application/EngineMain.h
+index 717567aa..263cfefc 100644
+--- a/Oxygen/oxygenengine/source/oxygen/application/EngineMain.h
++++ b/Oxygen/oxygenengine/source/oxygen/application/EngineMain.h
+@@ -84,6 +84,7 @@ class EngineMain : public SingleInstance<EngineMain>
+ public:
+ 	static EngineDelegateInterface& getDelegate()  { return EngineMain::instance().mDelegate; }
+ 	static void earlySetup();
++	static void shutdownProcess();
+ 
+ public:
+ 	EngineMain(EngineDelegateInterface& delegate_, ArgumentsReader& arguments);
+@@ -123,6 +124,10 @@ private:
+ 	EngineDelegateInterface& mDelegate;
+ 	ArgumentsReader& mArguments;
+ 
++	// [Sonic Hybrid Ultimate] Guards shutdownProcess() against being run twice; see
++	// patches/sonic3air/0001-restartable-engine.patch.
++	static bool sProcessShutDown;
++
+ 	struct Internal;
+ 	Internal& mInternal;
+ 
+diff --git a/Oxygen/sonic3air/source/sonic3air/main.cpp b/Oxygen/sonic3air/source/sonic3air/main.cpp
+index 6b34ea88..a8af95fe 100644
+--- a/Oxygen/sonic3air/source/sonic3air/main.cpp
++++ b/Oxygen/sonic3air/source/sonic3air/main.cpp
+@@ -115,5 +115,11 @@ int main(int argc, char** argv)
+ 		RMX_ERROR("Caught unhandled exception in main loop: " << e.what(), );
+ 	}
+ 
++	// [Sonic Hybrid Ultimate] execute() no longer performs process-wide teardown, so the
++	// standalone build has to ask for it explicitly. Without this the exe would exit
++	// without shutting down the audio system, the system framework, the job manager or
++	// logging. See patches/sonic3air/0001-restartable-engine.patch.
++	EngineMain::shutdownProcess();
++
+ 	return 0;
+ }

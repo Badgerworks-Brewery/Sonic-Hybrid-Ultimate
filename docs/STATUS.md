@@ -978,6 +978,102 @@ step - "enter A.I.R., leave it, enter it again, get a working second session" fa
 and would pass after this, and until it is observed failing for this reason there is no
 evidence the diagnosis is right.
 
+### Patch 0001 is written, builds, and the engine still runs
+
+`patches/sonic3air/0001-restartable-engine.patch` (3,827 bytes) splits
+`EngineMain::shutdown()` into per-session teardown plus a new
+`EngineMain::shutdownProcess()`, and has the standalone `main.cpp` call the latter so
+`Sonic3AIR.exe` keeps its behaviour. The change is 3 files, 35 insertions, 5 deletions.
+
+The patch mechanism itself is verified end to end, not just written:
+
+```
+patch captured from the real diff              3,827 bytes
+worktree reverted to pristine                  git -C vendor/sonic3air checkout -- .
+apply_air_patches.py --check                   NOT applied        exit 0
+apply_air_patches.py                           applied            exit 0
+apply_air_patches.py  (again)                   skipped            exit 0
+worktree diff after re-apply                    3 files, 35 insertions, 5 deletions
+```
+
+That last line is the one that matters: the patch reproduces the change exactly, and
+re-running is a no-op. A patch file that had never been round-tripped through
+revert-and-reapply would be an untested artefact that fails on someone else's machine.
+
+**Build:** Release|x64, exit 0, no errors. `oxygen.lib` relinked, exe 7,383,040 ->
+7,383,552 bytes.
+
+**Runtime:** the patched exe boots and reaches `Ready to go` - ROM loaded, persistent data
+loaded, scripts loaded, frames presenting. So the patch does not break startup.
+
+### What patch 0001 is *not* verified as doing
+
+Stated plainly, because the temptation is to read a green build as a finished change:
+
+- **The new `shutdownProcess()` has never executed.** The engine was killed rather than
+  allowed to exit cleanly, so the function the patch exists to create has not run once.
+  Nothing yet demonstrates that AIR can be left and re-entered - only that it still starts.
+- **No symbol-level proof the patch reached the binary.** Release/LTCG strips private
+  symbols from both the exe and `oxygen.lib`, so `dumpbin /SYMBOLS` finds neither
+  `shutdownProcess` nor `sProcessShutDown`. Two symbol greps returned "not found" here and
+  both were the checker being wrong about a stripped Release build, not the patch missing.
+  A Debug build would settle it if that level of proof is wanted.
+- **Restartability is still a hypothesis.** The diagnosis is read from
+  `shutdown()`/`startupEngine()` and is well-evidenced, but "enter AIR, leave it, enter it
+  again, get a working second session" has not been attempted. It cannot be until the Hybrid
+  can call `EngineMain` from a host, which is the next piece of work.
+
+### Sonic 3 A.I.R. runs, and the ROM is the right one
+
+This is the thing that was reported blocked for most of the project. It is not.
+
+`Sonic3AIR.exe` reached `Ready to go`:
+
+```
+Persistent data loading...  Simulation startup  Setup of EmulatorInterface
+Loading scripts  Runtime environment ready  Adding game app instance
+First present screen call  Ready to go
+```
+
+Getting there needed the ROM in the right place, and the search for that produced the
+sharpest measurement error of the session - recorded below because the pattern is the
+recurring one.
+
+**Where the ROM goes:** `%APPDATA%\Sonic3AIR\Sonic_Knuckles_wSonic3.bin`.
+`ResourcesCache.cpp:31-43` looks there first and is explicitly "where the ROM gets copied
+to after it was found once". Later fallbacks are `config.mLastRomPath`,
+`config.mRomPath`, the bare filename relative to the working directory, and finally a Steam
+install search - which is where it ends up if none of the earlier ones hit, and which is why
+a first run reports `Trying to find Steam ROM` and gives up. It never searched Steam
+successfully and did not need to.
+
+**The ROM is verified correct, and the check is a whole-file hash.** A.I.R. declares
+`mRomCheck.mSize = 0x400000` and `mRomCheck.mChecksum = 0x344983ffcfeff8cb`
+(`sonic3air/ConfigurationImpl.cpp:38-39`). Our ROM is exactly 0x400000 bytes, and its
+MurmurHash2-64 over the **whole file** is `0x344983ffcfeff8cb` - an exact match.
+
+**The error nearly made, and why it nearly recurred.** There are two different hashes in
+this code and they are easy to confuse:
+
+- `ResourcesCache::getHeaderChecksum()` - MurmurHash2-64 over the **first 512 bytes**
+- `mRomCheck.mChecksum` - MurmurHash2-64 over the **whole file**
+
+Computing the 512-byte header hash gives `0xf96026e52f80283e` against an expected
+`0x344983ffcfeff8cb`, which reads as "this is the wrong ROM". It is not. The header hash
+feeds `romInfo.mHeaderChecksum`, which `ConfigurationImpl` leaves at 0, so it is skipped
+entirely; only the whole-file hash is actually enforced.
+
+This is the third time this session that a wrong answer came from measuring the wrong
+*scope* rather than from the code being wrong - after the 300-instruction trace cap and
+after treating one shared `log.txt` as two runs. The header hash is even named
+`getHeaderChecksum`, which is an accurate name describing an accurate function that answers
+a different question from the one being asked of it. Compute the hash the check actually
+performs before concluding the input is wrong.
+
+**Game data stays untracked.** The ROM lives in `%APPDATA%`, outside the repository. It is
+not in `vendor/sonic3air` and not in this repo. A copy was briefly placed next to the exe
+while testing paths and has been removed, so there is exactly one documented location.
+
 ### The three ways out, and which one fits
 
 **A. Run AIR's loop once and never leave it.** Every game has to run inside AIR's loop.
