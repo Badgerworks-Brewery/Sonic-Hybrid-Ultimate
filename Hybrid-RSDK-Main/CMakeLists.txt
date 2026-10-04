@@ -570,28 +570,42 @@ if(BUILD_SONIC3AIR)
         if(TARGET oxygen)
             target_link_libraries(OxygenEngine PRIVATE oxygen)
 
-            # A.I.R.'s headers, so OxygenWrapper.cpp can actually name AIR types.
+            # Link rmxbase rather than transcribing its include directories.
             #
-            # Without these the link "succeeds" while containing none of A.I.R.: `oxygen` is a
-            # static library, and the linker only pulls in object files whose symbols are
-            # actually referenced. A wrapper that does not call AIR therefore yields a DLL
-            # with zero A.I.R. code in it - measured at 16,384 bytes against a 51,549,744
-            # byte oxygen.lib. That is a green build that tests nothing.
+            # OxygenWrapper.cpp includes rmxbase/memory/StringImpl.h, and line 765 fails with
+            #   error C3867: 'std::basic_string_view<char,...>::data': non-standard syntax
+            # while compiling cleanly in rmxbase's own target. Release|x64 flags are identical
+            # between the two targets (stdcpp17, WIN32 _WINDOWS NDEBUG, no AdditionalOptions),
+            # so it is not a flag difference. The include lists are not identical either:
+            # rmxbase has 18 directories and this target had 5, including several that
+            # StringImpl.h may need - librmx/source/rmxmedia/_glew among them, since
+            # rmxbase.h pulls rendering types through GLEW.
+            #
+            # Inheriting INTERFACE_INCLUDE_DIRECTORIES fixes that by construction. Hand-listing
+            # directories is how the list came to be wrong in the first place, and it would
+            # drift again the next time A.I.R. reorganises. The explicit list is kept only as
+            # a fallback for the case where rmxbase is not a target.
+            if(TARGET rmxbase)
+                target_link_libraries(OxygenEngine PRIVATE rmxbase)
+            else()
+                message(WARNING
+                    "rmxbase target absent; falling back to hand-listed A.I.R. include dirs. "
+                    "StringImpl.h may fail to compile - see docs/STATUS.md.")
+            endif()
+
             get_filename_component(SONIC3AIR_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../vendor/sonic3air" ABSOLUTE)
             target_include_directories(OxygenEngine PRIVATE
                 ${SONIC3AIR_ROOT}/Oxygen/oxygenengine/source
                 ${SONIC3AIR_ROOT}/Oxygen/sonic3air/source
                 ${SONIC3AIR_ROOT}/Oxygen/lemonscript/source
                 ${SONIC3AIR_ROOT}/librmx/source
+                ${SONIC3AIR_ROOT}/librmx/source/rmxmedia/_glew
                 ${SONIC3AIR_ROOT}/framework/include
+                ${SONIC3AIR_ROOT}/framework/external/ogg-vorbis/libogg/include
+                ${SONIC3AIR_ROOT}/framework/external/ogg-vorbis/libvorbis/include
+                ${SONIC3AIR_ROOT}/framework/external/zlib/zlib/contrib/minizip
             )
 
-            # NB: OXYGEN_EMBEDDED_MODE is deliberately NOT defined. It is a macro this project
-            # invented for the old external-process stub and A.I.R. has no knowledge of it, so
-            # it should be inert - but it is the one remaining difference between this target
-            # and A.I.R.'s own, and StringImpl.h(765) fails here with C3867 while compiling
-            # fine in A.I.R.'s targets. Testing it by absence is cheaper than another
-            # hypothesis. See docs/STATUS.md.
             message(STATUS "✓ OxygenEngine will use embedded Sonic 3 AIR (linked 'oxygen')")
         else()
             message(WARNING
