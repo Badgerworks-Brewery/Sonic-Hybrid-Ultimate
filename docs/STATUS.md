@@ -618,6 +618,46 @@ leftovers (two SDL2 makefiles, one stray `DebugTracking.cpp`, three boost debug 
 8 MB Discord `.dylib`), and reported from it that there was no AIR source and nothing to
 add as a submodule. Both claims were false. `.gitmodules` had the answer.
 
+## Sonic 3 A.I.R. builds from the vendored source
+
+The first step of the linking route is done, and it was never actually blocked.
+
+```
+Oxygen\sonic3air\bin\Release_x64\Sonic3AIR.exe      7,383,040 bytes
+Oxygen\sonic3air\bin\Release_x64\Sonic3AIR.lib        188,544
+Oxygen\lemonscript\lib\x64\lemonscript.lib        50,942,714
+```
+
+Built Release|x64 from `Oxygen\sonic3air\build\_vstudio\sonic3air.sln`, after
+`framework\external\build_externals_windows.bat` produced the SDL, zlib, ogg-vorbis, curl
+and imgui libraries it needs. Exit 0, no errors. The dependency chain is
+
+```
+librmx.sln  ->  lemonscript.sln  ->  oxygenengine.sln  ->  sonic3air.sln
+```
+
+**`Sonic3AIR.lib` existing is the useful part.** It means AIR already compiles to a static
+library, which is the shape the linking route needs. Step 2 becomes: expose its entry
+points, keep `Sonic3AIR.exe` working as the reference build to diff behaviour against, and
+link the library into `rsdkv4.vcxproj`. Nothing about the decision has to be re-litigated
+and nothing needs the library rebuilt from scratch to try it.
+
+**Two corrections to what I told you earlier, because both were wrong and both cost time.**
+
+I said Sonic 3 needed `sonic3air.exe` from you and could not be built here. It could: the
+source has been vendored at `vendor/sonic3air`, pinned to `b584686f`, since before this
+session.
+
+I then said there was no AIR source and nothing to add as a submodule. Also wrong, from the
+same root cause both times - I read `Hybrid-RSDK-Main/Sonic 3 AIR Main`, an 8-file skeleton
+of leftovers, instead of `vendor/`. `.gitmodules` had the answer and I did not read it.
+That folder is now deleted, which is safe because nothing referenced it, but I deleted it
+before checking that and should not have.
+
+**What is still true:** the ROM is game data and never enters git. It is on this machine at
+`school\N\Sonic_Knuckles_wSonic3.bin`. AIR unpacks it into data at runtime; that data stays
+untracked, like every other game's assets in this project.
+
 ## Next steps, in order of value
 
 1. **Widen the oracle, now that it is trustworthy.** 4,157 distinct sites, 100% confirmed,
