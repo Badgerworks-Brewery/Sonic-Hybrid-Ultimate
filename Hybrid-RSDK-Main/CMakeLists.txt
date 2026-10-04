@@ -544,12 +544,66 @@ if(BUILD_SONIC3AIR)
         message(STATUS "  BUILD_OXYGEN_ENGINEAPP = OFF")
         message(STATUS "  USE_IMGUI = OFF")
         
+        # A.I.R. does `find_package(CURL REQUIRED)` and links `oxygen` against CURL::libcurl
+        # (vendor/sonic3air/.../\_cmake/CMakeLists.txt:303-304). Configure succeeds, but no curl
+        # is built as part of this project, so the prebuilt one find_package picks is not the
+        # copy this project actually built and the OxygenEngine link fails with
+        #   LINK : fatal error LNK1104: cannot open file 'libcurl.lib'
+        #
+        # Point it at the vendored build before add_subdirectory so find_package resolves to
+        # it. Doing this here rather than re-linking CURL::libcurl onto OxygenEngine afterwards
+        # fixes the cause: `oxygen` and the DLL then agree on one curl by construction.
+        get_filename_component(AIR_FRAMEWORK_LIB "${CMAKE_CURRENT_SOURCE_DIR}/../vendor/sonic3air/framework/lib/x64" ABSOLUTE)
+        if(EXISTS "${AIR_FRAMEWORK_LIB}/curl/libcurl.lib")
+            set(CURL_LIBRARY "${AIR_FRAMEWORK_LIB}/curl/libcurl.lib" CACHE FILEPATH "" FORCE)
+            message(STATUS "  CURL_LIBRARY = ${CURL_LIBRARY}")
+        else()
+            message(WARNING
+                "No vendored curl at ${AIR_FRAMEWORK_LIB}/curl/libcurl.lib. Run "
+                "framework/external/build_externals_windows.bat, or let find_package(CURL) "
+                "resolve a system curl - the OxygenEngine link may fail with LNK1181/LNK1104.")
+        endif()
+
         # Add Sonic 3 AIR as subdirectory
         add_subdirectory(
             ${SONIC3AIR_CMAKE_DIR}
             ${CMAKE_BINARY_DIR}/sonic3air
             EXCLUDE_FROM_ALL
         )
+
+        # And pass the same resolution on to the wrapper, so a transitive curl reference
+        # cannot diverge from the one `oxygen` was built against.
+        if(TARGET CURL::libcurl)
+            target_link_libraries(OxygenEngine PRIVATE CURL::libcurl)
+        endif()
+
+        # A.I.R.'s static libraries carry embedded MSVC link directives:
+        #   /DEFAULTLIB:libcurl.lib        (oxygen.lib)
+        #   /DEFAULTLIB:zlib.lib          (rmxbase.lib)
+        #   /DEFAULTLIB:minizip.lib       (oxygen.lib)
+        # MSVC honours /DEFAULTLIB itself and resolves the bare name against
+        # AdditionalLibraryDirectories *only*. It is not a CMake link item, so neither
+        # CURL::libcurl above nor a correct CURL_LIBRARY supplies the directory - which is why
+        #   LINK : fatal error LNK1104: cannot open file 'libcurl.lib'
+        # persisted with CURL_LIBRARY set correctly at configure time. minizip resolves on its
+        # own because it is already a CMake dependency.
+        #
+        # Verified by enumerating every directive rather than fixing them one build at a time:
+        #   dumpbin /DIRECTIVES build/lib/Release/*.lib
+        # The other 13 names found there (AdvApi32, crypt32, kernel32, user32, shell32, imm32,
+        # uuid, wldap32, Ws2_32, Mswsock, msvcprt, MSVCRT, OLDNAMES) are Windows SDK and CRT
+        # libraries, which MSVC resolves from its own default paths and which need nothing here.
+        foreach(_air_libdir curl zlib)
+            if(EXISTS "${AIR_FRAMEWORK_LIB}/${_air_libdir}")
+                target_link_directories(OxygenEngine PRIVATE "${AIR_FRAMEWORK_LIB}/${_air_libdir}")
+                message(STATUS "  /DEFAULTLIB search path: ${AIR_FRAMEWORK_LIB}/${_air_libdir}")
+            else()
+                message(WARNING
+                    "No vendored ${_air_libdir} at ${AIR_FRAMEWORK_LIB}/${_air_libdir}. "
+                    "Run framework/external/build_externals_windows.bat - the link will fail "
+                    "with LNK1104 on '${_air_libdir}.lib'.")
+            endif()
+        endforeach()
         
         # Link Sonic 3 AIR libraries to OxygenEngine wrapper
         # This enables embedded mode instead of external process launching
