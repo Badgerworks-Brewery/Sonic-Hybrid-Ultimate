@@ -2,8 +2,25 @@ cmake_minimum_required(VERSION 3.15)
 project(HybridRSDK)
 
 # Force MSVC on Windows
-if(WIN32)
+#
+# NB: these must NOT be set to a bare "cl.exe" unconditionally. They are directory-scope
+# normal variables, so every add_subdirectory() inherits them, and a nested project() then
+# tries to validate a compiler that is not a full path and configure aborts:
+#
+#   CMake Error at vendor/sonic3air/.../\_cmake/CMakeLists.txt:9 (project):
+#     The CMAKE_C_COMPILER: cl.exe is not a full path and was not found in the PATH.
+#
+# That is what made BUILD_SONIC3AIR=ON impossible, independently of the target-name bug
+# fixed further down. A.I.R.'s CMakeLists calls project(Sonic3AIR); it inherited "cl.exe" from
+# here and the configure died before reaching any of our own logic.
+#
+# The Visual Studio generator already selects MSVC on its own, so CMAKE_<LANG>_COMPILER is
+# populated before this point and the guard below simply does not fire. It only intervenes
+# for a generator that has not chosen a compiler.
+if(WIN32 AND NOT CMAKE_C_COMPILER)
     set(CMAKE_C_COMPILER "cl.exe")
+endif()
+if(WIN32 AND NOT CMAKE_CXX_COMPILER)
     set(CMAKE_CXX_COMPILER "cl.exe")
 endif()
 

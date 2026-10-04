@@ -1,0 +1,22 @@
+diff --git a/Oxygen/sonic3air/build/_cmake/CMakeLists.txt b/Oxygen/sonic3air/build/_cmake/CMakeLists.txt
+index ed859405..1ea5517c 100644
+--- a/Oxygen/sonic3air/build/_cmake/CMakeLists.txt
++++ b/Oxygen/sonic3air/build/_cmake/CMakeLists.txt
+@@ -90,6 +90,17 @@ if (BUILD_SDL_STATIC)
+ 	set(SDL_STATIC ON)
+ 	set(SDL_SHARED OFF)
+ 	include_directories(SDL/include)
++	# [Sonic Hybrid Ultimate] "SDL/include" above is resolved against this directory, where no
++	# "SDL" exists: the name "SDL" is the *binary* directory given to add_subdirectory() further
++	# down, not a source path. It therefore adds a path that does not exist, and nothing
++	# provides the <SDL/SDL.h> spelling that MSVC builds use.
++	#
++	# Linux and GCC builds ask for <SDL2/SDL.h> (see librmx/source/rmxmedia_externals.h), which
++	# SDL2's own CMake exports, so this never showed up there. MSVC takes the #else branch and
++	# asks for <SDL/SDL.h>, which only the bundled copy under framework/include provides.
++	# Without this, every rmxmedia translation unit fails with
++	#   error C1083: Cannot open include file: 'SDL/SDL.h'
++	include_directories(${WORKSPACE_DIR}/framework/include)
+ else()
+ 	set(SDL_STATIC OFF)
+ 	set(SDL_SHARED ON)

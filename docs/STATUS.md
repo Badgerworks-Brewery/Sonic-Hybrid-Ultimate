@@ -1339,6 +1339,72 @@ which will contend with this project's `${CMAKE_BINARY_DIR}/bin` for output loca
 `OxygenWrapper.cpp` still has to be written to actually call into `oxygen` - the define and the
 link are necessary but not sufficient.
 
+### Three defects stood between `BUILD_SONIC3AIR=ON` and a working link
+
+Enabling the option exposed three separate faults, each of which alone would have stopped
+it. All three were in place before this session and none was visible without trying.
+
+**1. The target name and kind (`Hybrid-RSDK-Main/CMakeLists.txt`).** Described above:
+`if(TARGET sonic3air)` is never true, and `Sonic3AIR` is an executable that could not be
+linked into a DLL even if the name matched. Now `if(TARGET oxygen)`.
+
+**2. Bare `cl.exe` poisoning nested `project()` calls.** `Hybrid-RSDK-Main/CMakeLists.txt`
+set `CMAKE_C_COMPILER`/`CMAKE_CXX_COMPILER` to `"cl.exe"` unconditionally. Those are
+directory-scope *normal* variables, inherited by every `add_subdirectory()`, and A.I.R.'s
+`project(Sonic3AIR)` then tried to validate a compiler that is not a full path:
+
+```
+CMake Error at vendor/sonic3air/Oxygen/sonic3air/build/_cmake/CMakeLists.txt:9 (project):
+  The CMAKE_C_COMPILER: cl.exe is not a full path and was not found in the PATH.
+```
+
+Configure died before reaching any of this project's own logic. Putting `cl.exe` on `PATH`
+does not help, because the value is validated as a cache entry needing a full path. Now
+guarded by `NOT CMAKE_C_COMPILER`, so the Visual Studio generator's own choice stands.
+
+**3. A.I.R.'s SDL include path does not exist on MSVC.** In
+`vendor/sonic3air/Oxygen/sonic3air/build/_cmake/CMakeLists.txt`:
+
+```cmake
+include_directories(SDL/include)
+add_subdirectory(${WORKSPACE_DIR}/framework/external/sdl/SDL2 SDL)
+```
+
+`SDL` is the *binary* directory argument to `add_subdirectory()`, not a source path. The
+relative `SDL/include` resolves against `build/_cmake/`, where no `SDL` directory exists, so
+the line adds nothing. Nothing then provides `<SDL/SDL.h>`:
+
+```
+rmxmedia_externals.h(35,12): error C1083: Cannot open include file: 'SDL/SDL.h'
+```
+
+This never appears upstream because `rmxmedia_externals.h:31-37` branches on compiler:
+GCC/Linux asks for `<SDL2/SDL.h>`, which SDL2's own CMake exports, while MSVC asks for
+`<SDL/SDL.h>`, which only A.I.R.'s bundled `framework/include` provides - and A.I.R.'s CMake
+never adds it. So A.I.R. genuinely has never built on Windows through CMake, which is what
+the stale "only supported on Unix-like systems" comment was half-remembering. Its
+Visual Studio solution works because its `.vcxproj` sets the include path itself.
+
+Fixed by `patches/sonic3air/0004-sdl-include-path.patch`, which adds
+`include_directories(${WORKSPACE_DIR}/framework/include)` and explains the
+binary-versus-source-directory confusion in a comment so it does not get "tidied" away.
+
+**After all three, `BUILD_SONIC3AIR=ON` configures successfully:**
+
+```
+-- ✓ OxygenEngine will use embedded Sonic 3 AIR (linked 'oxygen')
+-- Sonic 3 AIR integration complete
+Configuring done (68.8s)
+```
+
+`OxygenEngine` now genuinely links `oxygen` with `OXYGEN_EMBEDDED_MODE` defined - a branch
+that has never previously been reachable.
+
+**Still unproven: that it links.** Configure resolving the target graph is not the same as
+the linker accepting it, and the linker is where duplicate `main()` symbols, two SDL copies
+and overlapping file-scope globals actually surface. That is the next measurement, and it is
+the one that answers the question this whole line of work has been avoiding.
+
 **The lesson, which is the fourth instance of it.** A feature directory named after the
 feature (`Sonic 3 AIR Main`, `sonic-hybrid/Data/`, the `BUILD_SONIC3AIR` comment) was read
 instead of the one the build uses (`vendor/sonic3air`, `rsdk-source-data/`, the actual CMake
