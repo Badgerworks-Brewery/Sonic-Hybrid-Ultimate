@@ -1,0 +1,20 @@
+diff --git a/Oxygen/sonic3air/build/_cmake/CMakeLists.txt b/Oxygen/sonic3air/build/_cmake/CMakeLists.txt
+index 1ea5517c..a5d90b80 100644
+--- a/Oxygen/sonic3air/build/_cmake/CMakeLists.txt
++++ b/Oxygen/sonic3air/build/_cmake/CMakeLists.txt
+@@ -199,7 +199,14 @@ if (NOT CMAKE_VERSION VERSION_LESS "3.16.0")
+ 	target_precompile_headers(rmxbase PRIVATE ${WORKSPACE_DIR}/librmx/source/rmxbase.h)
+ endif()
+ 
+-target_link_libraries(rmxbase stdc++fs)
++# [Sonic Hybrid Ultimate] stdc++fs is a GCC/MinGW library for <filesystem>. MSVC has
++# <filesystem> in the standard library and has no such library, so linking it there fails:
++#   LINK : fatal error LNK1181: cannot open input file 'stdc++fs.lib'
++# Only link it for compilers that actually ship it. See
++# patches/sonic3air/0005-stdcxxfs-guard.patch.
++if (NOT MSVC)
++	target_link_libraries(rmxbase stdc++fs)
++endif()
+ target_link_libraries(rmxbase zlibstatic)
+ 
+ 

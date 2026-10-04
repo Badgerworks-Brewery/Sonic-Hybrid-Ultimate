@@ -1,0 +1,45 @@
+{
+  "_comment": [
+    "Content assertions for each patch. `must_contain` and `must_not_contain` are plain",
+    "substrings checked against the patch file itself, before it is applied.",
+    "",
+    "This exists because two patches were wrong in ways that 'applies cleanly' could not",
+    "detect. 0003 was truncated to 2 of its 4 files and applied fine, doing nothing. 0005 was",
+    "captured while 0004 was still applied to the same file, so it silently carried 0004's",
+    "change too; applying the pair left 0005's own guard out, the build failed exactly as",
+    "before, and apply_air_patches.py reported 'skipped (already applied)'. A duplicated patch",
+    "is worse than a truncated one, because it reports success.",
+    "",
+    "`must_not_contain` is the load-bearing half: it is what catches duplication."
+  ],
+
+  "0001-restartable-engine.patch": {
+    "why": "Split EngineMain::shutdown() into per-session teardown plus shutdownProcess(), so the engine can be left and re-entered in one process.",
+    "must_contain": ["shutdownProcess", "FTX::JobManager->~JobManager()"],
+    "must_not_contain": ["framework/include", "stdc++fs"]
+  },
+
+  "0002-restart-selftest.patch": {
+    "why": "Add -restartselftest: two EngineMain sessions back to back, exiting after script loading.",
+    "must_contain": ["mRestartSelfTest", "-restartselftest"],
+    "must_not_contain": ["sSelfTestFrameLimit", "restartrealtest"]
+  },
+
+  "0003-restart-realsession.patch": {
+    "why": "Add -restartrealtest: two sessions running real frames, quitting via FTX::System->quit().",
+    "must_contain": ["sSelfTestFrameLimit", "-restartrealtest"],
+    "must_not_contain": ["include_directories(${WORKSPACE_DIR}/framework/include)"]
+  },
+
+  "0004-sdl-include-path.patch": {
+    "why": "Add A.I.R.'s bundled SDL include dir; MSVC needs <SDL/SDL.h>, which only framework/include provides.",
+    "must_contain": ["framework/include"],
+    "must_not_contain": ["stdc++fs"]
+  },
+
+  "0005-stdcxxfs-guard.patch": {
+    "why": "Do not link stdc++fs under MSVC; it is a GCC/MinGW library and does not exist there.",
+    "must_contain": ["if (NOT MSVC)", "stdc++fs"],
+    "must_not_contain": ["framework/include"]
+  }
+}

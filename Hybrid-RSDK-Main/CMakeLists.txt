@@ -569,6 +569,23 @@ if(BUILD_SONIC3AIR)
         #    take the engine library, not the game front-end.
         if(TARGET oxygen)
             target_link_libraries(OxygenEngine PRIVATE oxygen)
+
+            # A.I.R.'s headers, so OxygenWrapper.cpp can actually name AIR types.
+            #
+            # Without these the link "succeeds" while containing none of A.I.R.: `oxygen` is a
+            # static library, and the linker only pulls in object files whose symbols are
+            # actually referenced. A wrapper that does not call AIR therefore yields a DLL
+            # with zero A.I.R. code in it - measured at 16,384 bytes against a 51,549,744
+            # byte oxygen.lib. That is a green build that tests nothing.
+            get_filename_component(SONIC3AIR_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../vendor/sonic3air" ABSOLUTE)
+            target_include_directories(OxygenEngine PRIVATE
+                ${SONIC3AIR_ROOT}/Oxygen/oxygenengine/source
+                ${SONIC3AIR_ROOT}/Oxygen/sonic3air/source
+                ${SONIC3AIR_ROOT}/Oxygen/lemonscript/source
+                ${SONIC3AIR_ROOT}/librmx/source
+                ${SONIC3AIR_ROOT}/framework/include
+            )
+
             target_compile_definitions(OxygenEngine PRIVATE OXYGEN_EMBEDDED_MODE)
             message(STATUS "✓ OxygenEngine will use embedded Sonic 3 AIR (linked 'oxygen')")
         else()

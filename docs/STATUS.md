@@ -1551,6 +1551,115 @@ instead of the one the build uses (`vendor/sonic3air`, `rsdk-source-data/`, the 
 target names). Each time the answer was confidently wrong in the same direction, and each time
 the correct answer was sitting in a directory I had already listed.
 
+## Sonic 3 A.I.R. now compiles on Windows through this project's own build
+
+`oxygen.lib` builds, Release|x64, and is 51,549,744 bytes. Every A.I.R. library builds:
+`oxygen`, `oxygen_netcore`, `rmxbase`, `rmxmedia`, `rmxext_oggvorbis`, `lemonscript`,
+`SDL2-static`, `imgui`, `zlibstatic`, `minizip`, `oggvorbis`. That is the thing the stale
+"only supported on Unix-like systems" comment said could not be done, and it took five
+defects to get there.
+
+| # | defect | symptom |
+|---|---|---|
+| 1 | `if(TARGET sonic3air)` - wrong case, and it is an executable | never linked; warned, did nothing |
+| 2 | bare `cl.exe` set as a directory variable | AIR's `project()` aborted before our logic ran |
+| 3 | `include_directories(SDL/include)` - nonexistent path | `error C1083: 'SDL/SDL.h'` |
+| 4 | `USE_IMGUI=OFF` forced, but AIR defines `SUPPORT_IMGUI` unconditionally on Windows | `error C1083: 'imgui.h'` |
+| 5 | `target_link_libraries(rmxbase stdc++fs)` unguarded | `LNK1181: 'stdc++fs.lib'` - a GCC library |
+
+Fixes: 1, 2 and 4 in `Hybrid-RSDK-Main/CMakeLists.txt`; 3 and 5 as
+`patches/sonic3air/0004` and `0005`.
+
+**Defects 3, 4 and 5 are all upstream A.I.R. inconsistencies** between what its source
+assumes and what its own CMake provides on Windows. Defect 4 in particular is a genuine bug:
+`ImGuiDefinitions.h:14` reads `defined(PLATFORM_WINDOWS) || (defined(PLATFORM_LINUX) &&
+defined(USE_IMGUI)) || ...`, so `SUPPORT_IMGUI` is unconditional on Windows while the build
+option is not.
+
+### The first `OxygenEngine.dll` was hollow, and said nothing
+
+It built. It was 16,384 bytes.
+
+```
+OxygenEngine.dll:     16,384 bytes
+oxygen.lib:       51,549,744 bytes
+```
+
+`oxygen` is a **static library**, and a static library contributes only the object files
+whose symbols are referenced. `OxygenWrapper.cpp` referenced none of them, so the link
+succeeded, CMake printed `OxygenEngine will use embedded Sonic 3 AIR`, and the output
+contained no A.I.R. whatsoever.
+
+**So the symbol-collision question is still open**, after being called "the tedious half" for
+most of the session. Two engines' file-scope globals, two SDL copies and two audio stacks
+only collide once something pulls A.I.R.'s objects in. Four near-misses: the 16 KB DLL, then
+the include path I miscounted, then my own header mistake, then the flag inheritance below.
+
+`OxygenWrapper.cpp` is now a **probe** rather than a stub: it names `EngineMain`,
+`EngineDelegateInterface` and `EngineDelegate`, takes the address of
+`EngineMain::shutdownProcess`, and implements the full pure-virtual set so the vtable is
+emitted. It does not pretend to be a working delegate - `createGameApp()` and
+`createAudioOut()` reinterpret `this`, which is honest about being a probe rather than
+quietly returning a bad reference that would crash later.
+
+### The first real Windows-versus-A.I.R. collision: the `ERROR` macro
+
+Compiling A.I.R.'s headers from a translation unit that included `<windows.h>` first
+produced a cascade of syntax errors pointing at A.I.R.'s source and never mentioning macros:
+
+```
+librmx/source/rmxbase/base/ErrorHandler.h(63,3): error C2143: syntax error: missing '}' before 'constant'
+```
+
+`ErrorHandler.h:59-64` is:
+
+```cpp
+enum class ErrorSeverity { INFO, WARNING, ERROR };
+```
+
+`windows.h` defines `ERROR` as a macro. So the enumerator expanded to `0` and the enum would
+not parse. Fixed by including A.I.R.'s headers first and defining `EXPORT` without
+`<windows.h>` at all.
+
+This is the class of problem that was predicted and is now observed rather than assumed -
+except it is a **preprocessor** collision, not a link-time one, and it surfaces in whichever
+file includes things in the wrong order. Worth remembering for the Custom Client and any
+future host translation unit.
+
+### A.I.R.'s headers only compile inside A.I.R.'s own CMake scope
+
+The probe now fails at:
+
+```
+librmx/source/rmxbase/memory/StringImpl.h(765,23): error C3867:
+  'std::basic_string_view<char,...>::data': non-standard syntax
+```
+
+`StringImpl.h:765` passes `str.data` where `str` is a `StdStringView`. C3867 is an MSVC
+permissive-mode diagnostic that AIR's own build does not trip, because A.I.R. sets
+directory-scope compile state that a host target does not inherit:
+
+```
+_cmake/CMakeLists.txt:56-63
+  set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+  add_compile_options(-Wno-unused-function)
+  add_compile_options(-Wno-stringop-overflow)
+  add_compile_options(-Wno-psabi)
+```
+
+`OxygenEngine` is declared at `Hybrid-RSDK-Main/CMakeLists.txt:393`, and the
+`add_subdirectory` that pulls A.I.R. in is at `:518`. CMake's directory-scope variables and
+`add_compile_options` only affect targets created *after* them, so `OxygenEngine` is built
+with different flags from every A.I.R. target, and A.I.R.'s headers do not survive that.
+
+**The fix is ordering, not flags**: declare `OxygenEngine` after the `add_subdirectory`, or
+re-apply A.I.R.'s compile options to it explicitly. Ordering is better because it stays
+correct as A.I.R. changes. This is the next thing to do, and it is expected to be the last
+thing between "A.I.R.'s headers compile in our target" and a real link.
+
+**Once that links, the collision count is finally knowable** - and it will be a real number
+rather than an assumption, which is the only reason any of this was worth doing carefully.
+
 ## Next steps, in order of value
 
 1. **Widen the oracle, now that it is trustworthy.** 4,157 distinct sites, 100% confirmed,

@@ -33,6 +33,7 @@ patch under suspicion, and silently reverting unrelated ones produces a tree tha
 the experiment anyone meant to run. Restricting by name is what makes reverting 0001 for a
 falsification run a one-line operation instead of a hand-rolled `git apply`.
 """
+import json
 import os
 import subprocess
 import sys
@@ -40,6 +41,49 @@ import sys
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SUBMODULE = os.path.join(REPO, "vendor", "sonic3air")
 PATCH_DIR = os.path.join(REPO, "patches", "sonic3air")
+MANIFEST = os.path.join(PATCH_DIR, "manifest.json")
+
+
+def load_manifest():
+    """Per-patch content assertions, or {} if the manifest is absent or unreadable.
+
+    Checking content is the only thing that catches a patch which is *wrong but applies
+    cleanly*. Two were: one truncated to half its files, one carrying a previous patch's
+    change as well. Both applied without complaint. The second is the worse case, because
+    `git apply --reverse --check` then succeeds and this script reports "already applied",
+    so a no-op reads as success.
+    """
+    if not os.path.isfile(MANIFEST):
+        return {}
+    try:
+        with open(MANIFEST, "r", encoding="utf-8") as fh:
+            data = json.load(fh)
+    except (ValueError, OSError) as exc:
+        print("WARNING: could not read %s (%s); content checks skipped"
+              % (os.path.basename(MANIFEST), exc))
+        return {}
+    return {k: v for k, v in data.items() if not k.startswith("_")}
+
+
+def check_content(path, spec):
+    """Return a list of human-readable problems with this patch file's content."""
+    problems = []
+    name = os.path.basename(path)
+    if not isinstance(spec, dict):
+        return problems
+    with open(path, "r", encoding="utf-8", errors="replace") as fh:
+        body = fh.read()
+    if not body.strip():
+        problems.append("%s is EMPTY - it would apply cleanly and do nothing" % name)
+    for marker in spec.get("must_contain", []):
+        if marker not in body:
+            problems.append("%s is missing required content %r" % (name, marker))
+    for marker in spec.get("must_not_contain", []):
+        if marker in body:
+            problems.append(
+                "%s contains %r, which belongs to another patch - this patch is "
+                "duplicated and would silently no-op" % (name, marker))
+    return problems
 
 
 def git(*args):
