@@ -1,0 +1,13 @@
+diff --git a/librmx/source/rmxbase/memory/StringImpl.h b/librmx/source/rmxbase/memory/StringImpl.h
+index 2f8cf542..16de9492 100644
+--- a/librmx/source/rmxbase/memory/StringImpl.h
++++ b/librmx/source/rmxbase/memory/StringImpl.h
+@@ -762,7 +762,7 @@ TEMPLATE bool STRING::endsWith(const CHAR* str, int length) const
+ 
+ TEMPLATE bool STRING::endsWith(StdStringView str) const
+ {
+-	return includesAt(str.data, (int)mLength - str.length());
++	return includesAt(str.data(), (int)mLength - str.length());
+ }
+ 
+ TEMPLATE void STRING::makeSubString(int pos, int len)
