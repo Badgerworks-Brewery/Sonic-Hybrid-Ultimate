@@ -50,6 +50,10 @@
 // ErrorHandler.h(63,3) - none of which mention macros. This is the first genuine
 // Windows-versus-A.I.R. collision this integration has hit, and it is a quiet one: the
 // error points at AIR's source, not at the include order that caused it.
+// NB: including rmxbase.h first does NOT help - tried, same two C3867 errors. Include order
+// is eliminated alongside compile flags, SDL shadowing and /external:I. See docs/STATUS.md.
+#include "rmxbase.h"
+
 #include "oxygen/application/EngineMain.h"
 #include "sonic3air/EngineDelegate.h"
 
