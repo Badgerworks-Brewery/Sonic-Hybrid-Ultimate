@@ -1,0 +1,74 @@
+diff --git a/Oxygen/sonic3air/source/sonic3air/GameArgumentsReader.h b/Oxygen/sonic3air/source/sonic3air/GameArgumentsReader.h
+index e314f839..10d039bd 100644
+--- a/Oxygen/sonic3air/source/sonic3air/GameArgumentsReader.h
++++ b/Oxygen/sonic3air/source/sonic3air/GameArgumentsReader.h
+@@ -18,6 +18,10 @@ public:
+ 	bool mPack = false;
+ 	bool mNativize = false;
+ 	bool mDumpCppDefinitions = false;
++	// [Sonic Hybrid Ultimate] Runs two EngineMain sessions back to back to test whether the
++	// engine can be left and re-entered in one process. See
++	// patches/sonic3air/0002-restart-selftest.patch.
++	bool mRestartSelfTest = false;
+ 
+ protected:
+ 	virtual bool readParameter(const std::string& parameter) override
+@@ -42,6 +46,11 @@ protected:
+ 			mDumpCppDefinitions = true;
+ 			return true;
+ 		}
++		else if (parameter == "-restartselftest")
++		{
++			mRestartSelfTest = true;
++			return true;
++		}
+ 		return false;
+ 	}
+ };
+diff --git a/Oxygen/sonic3air/source/sonic3air/main.cpp b/Oxygen/sonic3air/source/sonic3air/main.cpp
+index a8af95fe..e541e3d4 100644
+--- a/Oxygen/sonic3air/source/sonic3air/main.cpp
++++ b/Oxygen/sonic3air/source/sonic3air/main.cpp
+@@ -87,6 +87,42 @@ int main(int argc, char** argv)
+ 	// Randomization is quite important for server communication
+ 	randomize();
+ 
++	// [Sonic Hybrid Ultimate] Restart self-test. Runs two complete EngineMain sessions back
++	// to back in one process, with no process teardown between them, which is exactly what
++	// the Hybrid needs in order to leave Sonic 3 and come back. mExitAfterScriptLoading makes
++	// each session exit deterministically once scripts are loaded, so this needs no window
++	// interaction and finishes in seconds.
++	//
++	// Expected results:
++	//   patch 0001 applied   - both sessions report completion, process exits 0
++	//   patch 0001 reverted  - session 2 fails or hangs, which is the bug being fixed
++	//
++	// See patches/sonic3air/0002-restart-selftest.patch.
++	if (arguments.mRestartSelfTest)
++	{
++		for (int session = 1; session <= 2; ++session)
++		{
++			RMX_LOG_INFO("=== RESTART SELFTEST: session " << session << " of 2 ===");
++			try
++			{
++				EngineDelegate myDelegate;
++				EngineMain myMain(myDelegate, arguments);
++				Configuration::instance().mExitAfterScriptLoading = true;
++				myMain.execute();
++				RMX_LOG_INFO("=== RESTART SELFTEST: session " << session << " returned normally ===");
++			}
++			catch (const std::exception& e)
++			{
++				RMX_LOG_INFO("=== RESTART SELFTEST: session " << session << " THREW: " << e.what() << " ===");
++				EngineMain::shutdownProcess();
++				return 3;
++			}
++		}
++		RMX_LOG_INFO("=== RESTART SELFTEST: both sessions completed ===");
++		EngineMain::shutdownProcess();
++		return 0;
++	}
++
+ 	try
+ 	{
+ 		// Create engine delegate and engine main instance

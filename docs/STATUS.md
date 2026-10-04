@@ -1023,6 +1023,77 @@ Stated plainly, because the temptation is to read a green build as a finished ch
   again, get a working second session" has not been attempted. It cannot be until the Hybrid
   can call `EngineMain` from a host, which is the next piece of work.
 
+### Restartability is proven, in both directions
+
+This is the result that justifies option B. It was measured twice - once with patch 0001
+applied and once with it reverted - because a single green run only shows the test is
+compatible with the code, not that the code was broken before.
+
+`patches/sonic3air/0002-restart-selftest.patch` adds `-restartselftest`, which runs two
+complete `EngineMain` sessions back to back in one process with no teardown between them,
+each exiting deterministically via `mExitAfterScriptLoading` once scripts load. It needs no
+window interaction and finishes in seconds.
+
+**With 0001 applied - both sessions complete:**
+
+```
+=== RESTART SELFTEST: session 1 returned normally ===
+=== RESTART SELFTEST: session 2 of 2 ===
+=== RESTART SELFTEST: session 2 returned normally ===
+=== RESTART SELFTEST: both sessions completed ===
+System shutdown
+exit code: 0
+```
+
+**With 0001 reverted (pristine `shutdown()`) - the process dies:**
+
+```
+--- SHUTDOWN ---
+Simulation shutdown
+System shutdown
+exit code: -1073740940          (0xC0000374, STATUS_HEAP_CORRUPTION)
+```
+
+No second-session marker is emitted at all, and the reason is visible in the log: session
+1's `shutdown()` ran `oxygen::Logging::shutdown()`, so by the time session 2 starts there is
+no logging left to report anything with. Then it corrupts the heap.
+
+That is the predicted failure, from the predicted cause. The double-destruction hazard
+flagged when patch 0001 was written - `FTX::JobManager->~JobManager()` being an explicit
+destructor call rather than a delete - is what a torn-down process-global state looks like
+from the outside.
+
+**So: the claim is no longer a hypothesis.** A.I.R. could not be left and re-entered, and
+now it can. That was the gating unknown behind "one exe containing the compiled code of
+every game", and it is now closed by 80 lines across 4 files.
+
+**What this does not establish.** Both sessions here stop after script loading. This does
+not show that a *played* Sonic 3 session can be exited and restarted - no gameplay state,
+no save data written or reloaded, no window torn down and recreated under real conditions,
+and no second real session rendering frames. Those are the next things to test, and the
+window path is the one most likely to surprise: `createWindow()` is private to `EngineMain`
+and is called per session, so a second window has to be created after the first was
+destroyed, and that has not happened yet.
+
+### Two gaps in the patch tooling, found by using it
+
+**`--reverse` reverts every patch, not one.** Reverting 0001 alone was wanted, to run the
+falsification. It needs an `--only` / `--skip` option; until then, reverting a single patch
+means `git -C vendor/sonic3air apply --reverse <absolute path>` by hand.
+
+**`git -C <submodule> apply <relative-path>` silently resolves against the submodule**, not
+the parent, so a path like `patches/sonic3air/0001-...patch` fails with "can't open patch"
+even though the file exists relative to the current directory. Needs an absolute path.
+Worth remembering because the failure looks like a missing file rather than a path
+resolution difference.
+
+**A failure message that was right for the wrong reason.** Reverting after hand-editing
+`main.cpp` reported "1 patch(es) failed. The most likely cause is that the submodule has
+moved off the pinned SHA" - which was not the cause. The tree had been deliberately
+modified outside the patch system, so 0002 could not reverse. The message guessed and was
+wrong, and "most likely" is doing real work in that sentence. It should name what it
+actually checked.
+
 ### Sonic 3 A.I.R. runs, and the ROM is the right one
 
 This is the thing that was reported blocked for most of the project. It is not.
