@@ -824,6 +824,92 @@ This is a bigger obstacle than symbol collisions and it is not visible from link
 It is the actual reason the work is hard, and it was worth finding before writing any
 linker configuration.
 
+### Correction: `SingleInstance` is not the obstacle I said it was
+
+The section above says `EngineMain` is a `SingleInstance<EngineMain>` and lists that among
+the reasons A.I.R. is one-shot. **That part is wrong**, and it is worth correcting before
+anything gets built on it.
+
+`librmx/source/rmxbase/data/SingleInstance.h:25-36`:
+
+```cpp
+protected:
+    SingleInstance()
+    {
+        // TODO: Sanity check: (nullptr == mSingleInstance)
+        mSingleInstance = static_cast<CLASS*>(this);
+    }
+
+    virtual ~SingleInstance()
+    {
+        // TODO: Sanity check: (mSingleInstance == this)
+        mSingleInstance = nullptr;
+    }
+```
+
+The sanity checks are `// TODO` comments and were never implemented. The constructor
+unconditionally overwrites the pointer and the destructor unconditionally clears it. So it
+is a lookup convenience, not a guard: constructing a second `EngineMain` after the first is
+destroyed is perfectly legal and will work. The same is true of `Application`, which is also
+a `SingleInstance<Application>` (`oxygen/application/Application.h:29`) - though that one is
+irrelevant either way, because `run()` constructs a fresh `Application` on every call.
+
+I read `SingleInstance<T>` as a runtime-enforced singleton because that is what the name
+says. It is not one. Same shape of error as reading `Hybrid-RSDK-Main/Sonic 3 AIR Main` and
+concluding there was no AIR source: trusting a name over the code under it.
+
+### The real mechanism, which is narrower than stated
+
+The one-shot behaviour is real, but it comes from one thing, not from a class hierarchy:
+`EngineMain::shutdown()` performs the **process** teardown that the framework reserves for
+exit, on every return from `execute()`.
+
+`librmx/rmx_test/main.cpp:45-51` is the canonical one-shot sequence:
+
+```cpp
+FTX::System->initialize();
+FTX::System->run<App>();
+FTX::System->exit();
+```
+
+`exit()` there is the end of the process's framework lifetime. AIR's `shutdown()` calls
+`FTX::System->exit()` itself (`EngineMain.cpp:332`), so every return from `execute()` ends
+that lifetime. Symmetrically, `startupEngine()` calls `oxygen::Logging::startup(...)`
+(`:245`) and `shutdown()` calls `oxygen::Logging::shutdown()` (`:338`) - a matched pair
+bracketing one process lifetime, not one game session.
+
+### Which means option B is smaller than I described
+
+The change is not "make `EngineMain` non-singleton". It is: **do not run process teardown
+when leaving a game.** Concretely, these lines in `shutdown()` are the ones doing process
+tear-down rather than session teardown, and they are what has to move to real process exit:
+
+```cpp
+FTX::Audio->exit();                  // :332
+FTX::System->exit();                 // :333
+FTX::JobManager->~JobManager();      // :334
+oxygen::Logging::shutdown();         // :338
+```
+
+Everything else in `shutdown()` - `ImGuiIntegration::shutdown()`, `destroyWindow()`,
+`mVideoOut.shutdown()`, the audio-out object, `mDrawer.shutdown()`, saving settings - is
+per-session state and can stay exactly as it is.
+
+Two edges to watch when doing it, both flagged now so they are not discovered as surprises:
+
+- `FTX::JobManager->~JobManager()` is an **explicit destructor call**, not a delete. If
+  teardown is skipped, the job manager survives - fine. If it is ever reached twice, that is
+  a double-destruction rather than a null check. This is the sharpest edge in the file.
+- Skipping `destroyWindow()` vs not: the window *should* be destroyed per session, since
+  AIR creates it in `createWindow()` (`:582`, private) and a second session has to be able to
+  create one again. That path needs exercising once, not assumed.
+
+This is still option B, still the option that fits, and it is a smaller and better-targeted
+change than the section above implies. The failure-proving harness is still the right first
+step - "enter A.I.R., leave it, enter it again, get a working second session" fails today
+and would pass after this, and until it is observed failing for this reason there is no
+evidence the diagnosis is right.
+
 ### The three ways out, and which one fits
 
 **A. Run AIR's loop once and never leave it.** Every game has to run inside AIR's loop.
