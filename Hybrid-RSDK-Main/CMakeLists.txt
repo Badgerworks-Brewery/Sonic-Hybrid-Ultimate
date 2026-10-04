@@ -720,6 +720,22 @@ if(BUILD_SONIC3AIR)
                 "-NOWHOLEARCHIVE"
             )
             target_link_libraries(OxygenEngine PRIVATE rsdk_core_whole sonic_hybrid)
+            # sonic3air_game is the Sonic 3 *game layer*: EngineDelegate, GameApp, AudioOut,
+            # the menu system and the nativized code. oxygen provides the abstract interfaces
+            # (EngineDelegateInterface, GuiBase, AudioOutBase); this is what implements them.
+            #
+            # It is a separate target because patches/sonic3air/0013 compiles those sources into
+            # a library as well as into the Sonic3AIR executable. Without it the host has to
+            # implement the interfaces itself, which is what OxygenWrapper.cpp used to do with
+            # reinterpret_casts.
+            if(TARGET sonic3air_game)
+                target_link_libraries(OxygenEngine PRIVATE sonic3air_game)
+                message(STATUS "  OxygenEngine: A.I.R.'s real EngineDelegate/GameApp/AudioOut")
+            else()
+                message(FATAL_ERROR "sonic3air_game missing. The wrapper needs A.I.R.'s game
+                        "layer; without it the host must implement EngineDelegateInterface itself, which
+                        "is what the previous probe did with reinterpret_casts.")
+            endif()
             # TEMPORARY diagnostic: /WHOLEARCHIVE forces the linker to *resolve* every
             # rsdk_core object, but Release keeps /OPT:REF and then strips code nothing calls.
             # Turning REF off makes the retained bytes visible so the coexistence test can be

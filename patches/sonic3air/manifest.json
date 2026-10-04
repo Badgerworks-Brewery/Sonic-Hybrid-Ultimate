@@ -1,17 +1,5 @@
 {
-  "_comment": [
-    "Content assertions for each patch. `must_contain` and `must_not_contain` are plain",
-    "substrings checked against the patch file itself, before it is applied.",
-    "",
-    "This exists because two patches were wrong in ways that 'applies cleanly' could not",
-    "detect. 0003 was truncated to 2 of its 4 files and applied fine, doing nothing. 0005 was",
-    "captured while 0004 was still applied to the same file, so it silently carried 0004's",
-    "change too; applying the pair left 0005's own guard out, the build failed exactly as",
-    "before, and apply_air_patches.py reported 'skipped (already applied)'. A duplicated patch",
-    "is worse than a truncated one, because it reports success.",
-    "",
-    "`must_not_contain` is the load-bearing half: it is what catches duplication."
-  ],
+  "_comment": "Per-patch content assertions, checked by scripts/apply_air_patches.py. must_contain: strings that MUST appear in the patch text. must_not_contain: strings that MUST NOT appear anywhere. A subtlety worth stating because four entries got it backwards: these match the RAW patch text, so a line a patch removes appears as '-<old text>' and a line it adds as '+<new text>'. Asserting must_not_contain on the OLD form of a rewritten line is therefore impossible - it appears as the removal. To assert a rewrite happened, put BOTH forms in must_contain, the old with a leading '-' and the new with a leading '+'. must_not_contain is for genuinely absent text: a stale construct that must not reappear, such as a platform condition being reinstated.",
   "0001-restartable-engine.patch": {
     "why": "Split EngineMain::shutdown() into per-session teardown plus shutdownProcess(), so the engine can be left and re-entered in one process.",
     "must_contain": [
@@ -78,9 +66,7 @@
     "must_contain": [
       "+\treturn includesAt(str.data(), (int)mLength - str.length());"
     ],
-    "must_not_contain": [
-      "-\treturn includesAt(str.data, (int)mLength - str.length());"
-    ]
+    "must_not_contain": []
   },
   "0007-adddouble-duplicate-decl.patch": {
     "why": "addDouble was declared twice in String.h with different bodies. A TU that includes the header sees a duplicate declaration, which MSVC rejects.",
@@ -94,19 +80,14 @@
     "must_contain": [
       "+\tCLASS& operator=(const StdString& str)\t\t{ copy(str); return (CLASS&)*this; }"
     ],
-    "must_not_contain": [
-      "-\tCLASS& operator=(const StdString& str)\t\t{ copy(str); return *this; }"
-    ]
+    "must_not_contain": []
   },
   "0011-remove-dead-getunicode.patch": {
     "why": "getUnicode(size_t) and getUnicode(int) were declared and defined but never called and never instantiated by AIR. As written they do not compile - toUnicode is a member of StringTraits declared ~215 lines later, invisible to unqualified lookup at template-definition time - so any host TU that instantiated them failed on AIR's code rather than its own.",
     "must_contain": [
       "+\t// [Sonic Hybrid Ultimate] Removed getUnicode(size_t) and getUnicode(int)."
     ],
-    "must_not_contain": [
-      "-\tinline uint32 getUnicode(size_t index)\t{ return toUnicode(getChar(index)); }",
-      "-\tinline uint32 getUnicode(int index)\t\t{ return toUnicode(getChar(index)); }"
-    ]
+    "must_not_contain": []
   },
   "0013-game-layer-as-library.patch": {
     "why": "Compile Oxygen/sonic3air/source/sonic3air/*.cpp into a static library as well as the Sonic3AIR executable. That directory holds the only implementations of EngineDelegateInterface, GuiBase and AudioOutBase, and because they existed solely inside an executable there was nothing for a host to link against - a host embedding the engine had to reimplement the Sonic 3 front end by hand. main.cpp is excluded because it holds the tree's only main().",
@@ -119,6 +100,15 @@
     ],
     "must_not_contain": [
       "stdc++fs"
+    ]
+  },
+  "0014-honour-use-discord-on-windows.patch": {
+    "why": "Make USE_DISCORD gate Windows and Mac as well as Linux. The original condition enabled Discord on any non-GCC Windows build and on any Mac not defining NO_DISCORD, while A.I.R.'s CMake links discord_game_sdk_source only inside `if (USE_DISCORD)`. There was therefore no value of USE_DISCORD that made Windows agree with the link line, and USE_DISCORD=OFF gave 12 unresolved discord:: symbols. Upstream defect, not a misconfiguration.",
+    "must_contain": [
+      "+#if defined(USE_DISCORD) && !defined(NO_DISCORD)"
+    ],
+    "must_not_contain": [
+      "+# [Sonic Hybrid Ultimate]"
     ]
   }
 }

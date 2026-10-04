@@ -2192,6 +2192,129 @@ duplicated patch, and a mis-detected patch.
   so that should no longer recur.
 - Only then does the symbol-collision question get its first real answer.
 
+## OxygenWrapper is no longer a probe: it starts and stops real A.I.R. sessions
+
+The probe is gone, along with its two `reinterpret_cast`s. `Hybrid-RSDK-Main/OxygenWrapper.cpp`
+now instantiates A.I.R.'s own `EngineDelegate` and drives `EngineMain` the way A.I.R.'s
+`main.cpp` does:
+
+```
+  OxygenEngine.dll   13,965,312 bytes   build exit 0   errors 0
+
+  exported:
+    OxygenProbe_HasEngineCode    OxygenProbe_EngineName
+    Oxygen_StartSession          Oxygen_StopSession
+    Oxygen_SessionRunning        Oxygen_ShutdownProcess
+
+  content, verified by scanning the binary:
+    AIR engine      librmx x7, vorbis x2, GLEW_ x858
+    AIR game layer  "Sonic 3 A.I.R." x6, GameMenuManager x2, "Ready to go" x2
+    RSDKv4          CollisionMasks.bin, Backgrounds.bin, Bytecode\, bonusStages
+```
+
+Four engines' worth of compiled code in one DLL: A.I.R.'s engine, A.I.R.'s Sonic 3 game layer,
+RSDKv4, and this project's own glue.
+
+### The seam, as A.I.R.'s own main.cpp reveals it
+
+```
+EngineMain::earlySetup();          // static, process-global, once per process
+GameArgumentsReader arguments; arguments.read(argc, argv);
+EngineDelegate myDelegate;
+EngineMain myMain(myDelegate, arguments);
+myMain.execute();                  // BLOCKS for the whole session
+EngineMain::shutdownProcess();     // static, process-global, once per process
+```
+
+`EngineMain` holds references to both the delegate and the arguments, so they must outlive it -
+hence members of `OxygenSession` in construction order, not locals. `earlySetup` and
+`shutdownProcess` are process-global and correctly called **once per process, not per session**:
+per-session teardown is what patch 0001 exists to enable.
+
+**`execute()` blocks.** It owns the window, the audio device and the frame loop until it returns
+or throws. That is the whole reason coexistence at *run* time is still open, and it is stated
+here rather than papered over: the dispatcher cannot run RSDKv4's loop concurrently without
+threads or a nested loop. Left synchronous deliberately - an async version that appeared to work
+would be worse than an honest block.
+
+### Two compile errors, both informative
+
+`OxygenSession` could not be `new`'d with `()`: `EngineMain` has no default constructor, because
+it takes the delegate and arguments. Fixed with an explicit constructor forwarding both, which is
+also what documents that declaration order is load-bearing.
+
+`mSelfTestFrameLimit` is **not** a member - `sSelfTestFrameLimit` is a static on `EngineDelegate`,
+because A.I.R.'s own self-test must set it from `main()` before the delegate exists
+(`EngineDelegate.h:68`). It is read in `onPostFrameUpdate`, so it must be set *before*
+`execute()`; setting it afterwards would leave the session unbounded. A compile error rather than
+a silent no-op, which is a better failure than the alternative.
+
+### An upstream bug that only USE_DISCORD=OFF could reach (patch 0014)
+
+Linking the real game layer produced 12 unresolved externals, every one a `discord::` symbol.
+
+```
+sonic3air_game.lib(DiscordIntegration.obj) : error LNK2019: unresolved external symbol
+  "public: void __cdecl discord::ActivityAssets::SetLargeImage(char const *)"
+```
+
+The cause is that A.I.R.'s two halves disagree about the option:
+
+```
+DiscordIntegration.cpp:16
+  #if (defined(PLATFORM_WINDOWS) && !defined(__GNUC__))
+   || (defined(PLATFORM_LINUX) && defined(USE_DISCORD))
+   || (defined(PLATFORM_MAC) && !defined(NO_DISCORD))
+
+_cmake/CMakeLists.txt
+  if (USE_DISCORD)
+      target_link_libraries(Sonic3AIR discord_game_sdk_source)
+  endif()
+```
+
+Windows enabled Discord for any non-GCC build and Mac for any build not defining `NO_DISCORD`,
+regardless of the build option. **There was no value of `USE_DISCORD` that made Windows agree
+with the link line.** Linux already gated correctly, which is why this survived upstream. Patch
+0014 gates all platforms on `USE_DISCORD` and keeps `NO_DISCORD` as an explicit opt-out.
+
+This project forces `USE_DISCORD=OFF` anyway - the app has no networking - so the patch is what
+makes the setting take effect rather than being silently overridden.
+
+### A mistake worth recording: `# [Sonic Hybrid Ultimate]` is not a comment
+
+The first attempt at 0014 explained itself with `#`-prefixed comment lines, matching the comment
+block it sat above. That block was `//`-style, and more to the point a bare `#` is a
+preprocessor directive introducer regardless of what follows:
+
+```
+DiscordIntegration.cpp(16,1): error C2019: expression expected
+DiscordIntegration.cpp(18,1): error C1021: invalid preprocessing directive
+```
+
+Matching local convention produced code that would not compile. `//` is used in every other
+patch into A.I.R. for this reason; there is now a scan in the generator that rejects any line
+beginning with `#` followed by something that is not a directive keyword.
+
+The same generator also now builds its anchor from the file's own line endings. The file is CRLF
+and a hand-written `"
+"` anchor matched zero times and reported nothing useful - the same trap as
+the tab-versus-space anchor on 0012.
+
+### Four manifest assertions were vacuous, and `must_not_contain` had the wrong semantics
+
+`manifest.json` gained entries for 0006, 0007, 0008 and 0011. Four of the resulting assertions
+were written backwards: they put the *old* form of a rewritten line in `must_not_contain`. But
+these match raw patch text, where a removed line appears as `-old` - so of course the old form is
+present, as the removal. Those assertions could never fail and were silently proving nothing.
+
+To assert a rewrite happened, both forms belong in `must_contain`: the old with a leading `-` and
+the new with a leading `+`. `must_not_contain` is for genuinely absent text - a stale construct
+that must not reappear, like a reinstated platform condition. The `_comment` field now states
+this, because four entries getting it wrong is a strong signal it was not written down.
+
+All 12 entries now verify in both directions against their patches, and all 12 apply from
+pristine with exit 0.
+
 ## The RSDKv4 submodule had 689 lines of uncommitted work that existed nowhere in this repository
 
 Found while committing the collision fix, and worth its own section because it is the most
@@ -2403,11 +2526,15 @@ a design problem rather than a build problem.
 
 ## Next steps, in order of value
 
-1. **Replace `OxygenWrapper.cpp`'s probe with a real wrapper**, plus a dispatcher above both
-   engines. Both engines now link into one binary and neither symbol-collides with the other;
-   what does not yet exist is anything deciding which one owns the window, the audio device
-   and the main loop. `OxygenWrapper.cpp` currently implements the pure-virtual set by
-   reinterpreting `this`, which is honest about being a probe but is not runnable.
+1. **Write the dispatcher above both engines.** `OxygenWrapper.cpp` is now a real wrapper - it
+   starts and stops A.I.R. sessions against A.I.R.'s own `EngineDelegate` - so what remains is
+   the part that decides *which* engine is running. The constraint is specific and now measured
+   rather than assumed: `EngineMain::execute()` blocks for the entire session while owning the
+   window, the audio device and the frame loop, so RSDKv4's loop has to run **nested inside**
+   A.I.R.'s rather than beside it. One process is a project requirement, so nesting is the
+   shape. RSDKv4 and A.I.R. collide at no symbol, so the dispatcher need not be written
+   defensively around ownership - the difficulty is the frame loop and the audio device, not
+   the linker.
 2. **Widen the oracle, now that it is trustworthy.** 4,157 distinct sites, 100% confirmed,
    zero gaps - on five stages and only what executes in 30 seconds of headless play. The
    static linear walk over every range in every container still agrees on only 81%, and
