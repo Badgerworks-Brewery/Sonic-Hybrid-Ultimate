@@ -752,6 +752,109 @@ rather than guessed at.
 packs natively. It is the data source for Sonic 3 once the engine is linked in. Like every
 other game's assets it stays untracked.
 
+## What linking A.I.R. in actually requires, read from the source
+
+The plan above says step2 is "resolve renderer and audio ownership one subsystem at a
+time". Reading the code says the renderer and audio are the *easy* part, and that there is
+a bigger problem behind them. Both are recorded here because the second one changes the
+shape of the work.
+
+### The good news: AIR is built to be hosted
+
+`oxygen/application/EngineMain.h:29-79` declares `EngineDelegateInterface`, all pure
+virtual, and it owns the two things that looked like the hard part:
+
+```cpp
+virtual const AppMetaData& getAppMetaData() = 0;
+virtual GuiBase&  createGameApp()  = 0;      // the GUI backend
+virtual AudioOutBase& createAudioOut() = 0;  // the audio backend
+```
+
+Window creation and audio output are injected, not hard-coded. A host supplies both. So
+"two graphics backends fighting over the window" and "two audio stacks fighting over the
+device" - the two obstacles I led with - are not forced on us. AIR was given an injection
+point for exactly this.
+
+`sonic3air/source/sonic3air/main.cpp:47-119` is correspondingly thin. It parses arguments,
+calls `changeWorkingDirectory`, `randomize()`, then:
+
+```cpp
+EngineDelegate myDelegate;
+EngineMain myMain(myDelegate, arguments);
+myMain.execute();
+```
+
+That is the whole of it. There is no work in `main()` that a host could not do itself.
+
+### The bad news: AIR is one-shot per process
+
+```cpp
+void EngineMain::execute()          // EngineMain.cpp:98
+{
+    if (startupEngine()) run();     // run() -> FTX::System->run(application)
+    shutdown();
+}
+
+void EngineMain::shutdown()         // EngineMain.cpp:313
+{
+    ImGuiIntegration::shutdown();
+    destroyWindow();
+    mInternal.mVideoOut.shutdown();
+    mAudioOut->shutdown();  SAFE_DELETE(mAudioOut);
+    mDrawer.shutdown();
+    FTX::Audio->exit();
+    FTX::System->exit();
+    FTX::JobManager->~JobManager();      // explicit destructor call
+    Configuration::instance().saveSettings();
+    oxygen::Logging::shutdown();
+}
+```
+
+`execute()` returns, but only because the RMX application loop was told to quit - and by
+then `shutdown()` has torn down process-global state: the audio system, the system
+framework, the job manager (by explicitly calling its destructor rather than deleting it,
+which is a strong hint it is not re-entrant), and logging. `EngineMain` is additionally a
+`SingleInstance<EngineMain>`.
+
+So **A.I.R. cannot currently be started, left, and re-entered within one process.** And
+the requirement is that it must be: Sonic 1 to CD to 2 to 3 has to hand control back and
+forth, or at minimum enter Sonic 3 after having run something else.
+
+This is a bigger obstacle than symbol collisions and it is not visible from link errors.
+It is the actual reason the work is hard, and it was worth finding before writing any
+linker configuration.
+
+### The three ways out, and which one fits
+
+**A. Run AIR's loop once and never leave it.** Every game has to run inside AIR's loop.
+That discards RSDKv4 as an engine for the other three games and contradicts the
+requirement that all four games' compiled code is in the executable and on equal terms.
+
+**B. Make AIR restartable.** Split `shutdown()` into "tear down this game's state" and
+"tear down the process", keep the second one at process exit only, and make `EngineMain`
+constructible more than once. This is a small, bounded, readable change to vendored AIR -
+a few dozen lines in one file plus the `SingleInstance` constraint - and it is verifiable:
+"enter AIR, leave it, enter it again, get a working second session" is a testable claim
+that fails today and would pass after the change. **This is the option that fits the
+requirement.**
+
+**C. One engine per thread.** Each loop runs forever; only the active one reads input and
+presents. Heaviest option, and it does not avoid the ownership problem so much as move it
+to the window, which SDL does not let two threads share cleanly.
+
+Option B first, and the useful first step is not the change itself but a harness that
+proves the failure: call `execute()` with an application that quits immediately, then try
+to construct a second `EngineMain`, and record what breaks. A test that fails for the
+stated reason is what makes the subsequent fix trustworthy - the alternative is editing
+`shutdown()` and then discovering the second failure without knowing whether the fix
+caused it.
+
+Note the delegate work this implies. If AIR is to be entered and left repeatedly while
+RSDKv4 keeps its own state, then the thing that decides *which game is running* has to sit
+above both engines, and `EngineDelegateInterface` is already the interface that would
+carry that decision. RSDKv4's `main()` currently does `Engine.Init(); Engine.Run();` with
+no dispatch, so the dispatcher is new code, not a modification.
+
 ## Next steps, in order of value
 
 1. **Widen the oracle, now that it is trustworthy.** 4,157 distinct sites, 100% confirmed,
