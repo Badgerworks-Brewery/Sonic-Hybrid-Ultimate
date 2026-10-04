@@ -1551,6 +1551,51 @@ instead of the one the build uses (`vendor/sonic3air`, `rsdk-source-data/`, the 
 target names). Each time the answer was confidently wrong in the same direction, and each time
 the correct answer was sitting in a directory I had already listed.
 
+## Patch 0008 is complete; the check that called it partial was itself wrong
+
+A previous commit reported patch 0008 as partial, because its verification printed
+`bare returns gone = False`. **That check was a substring search over the whole file and did
+not consider scope.** The two remaining bare returns are at:
+
+```
+String.h:238   String&  operator=(const String& str)  { copy(str); return *this; }
+String.h:269   WString& operator=(const WString& str) { copy(str); return *this; }
+```
+
+Both are in the **derived** classes, not in `StringTemplate<CHAR,CLASS>`. There `*this` really
+is a `String&` / `WString&`, so `return *this` converts exactly and the code is correct as
+written. Patch 0008 fixed the only two bare returns that were ill-formed - both inside the
+template, where `CLASS` is an unresolved parameter.
+
+So the patch is complete and the alarm was spurious.
+
+**Recorded because it is the mirror image of the mistake this session has been fighting.** The
+recurring error was measuring the wrong thing and reporting it as fact - a 512-byte hash when
+the check uses a whole file, the output tree when the data was in the source tree, the Debug
+condition block when the build was Release. Here it is a check too crude to see scope
+manufacturing a defect that does not exist. Same underlying habit: trusting a check without
+first confirming the check is sharper than the thing it is checking.
+
+A verification added to catch a real class of bug is still a piece of code that can be wrong,
+and "applied" from `apply_air_patches.py` has never meant "fixed the class of problem" -
+only "this diff applied". The manifest's `must_contain` / `must_not_contain` assertions are
+the part that is load-bearing, because those were written from the specific duplication that
+actually happened.
+
+**Live error, unchanged:**
+
+```
+String.h(73,48): error C3861: 'toUnicode': identifier not found
+```
+
+Lines 72 and 73 are `getUnicode(size_t)` and `getUnicode(int)`, both with the body
+`return toUnicode(getChar(index));` - textually identical. `toUnicode` is presumably a free
+function reached by argument-dependent lookup or declared per character type, so for
+`CHAR = wchar_t` the expected overload may not exist. The next step is to read its
+declaration. Inferring the rule from the diagnostic is what produced this session's run of
+wrong answers, and the pattern across all three AIR header bugs has been consistent: latent
+template code that A.I.R.'s own translation units never instantiate.
+
 ## Sonic 3 A.I.R. now compiles on Windows through this project's own build
 
 `oxygen.lib` builds, Release|x64, and is 51,549,744 bytes. Every A.I.R. library builds:
