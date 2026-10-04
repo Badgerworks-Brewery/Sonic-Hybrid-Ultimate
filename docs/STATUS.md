@@ -493,51 +493,70 @@ Both of those say the same thing: stop reasoning about the format and look at th
 `MZS1.bin` word 121077 and 126301, with the tag byte and selector byte printed, will say
 in one look what three rounds of reading have not. That is the next step, and it is cheap.
 
-### The disagreement is in placement, not in operand widths
+### The walker was right all along; the bug was in my trace
 
-Looking at the words rather than reasoning about them settled it, and not in the direction
-I expected. `scripts/dump_disagree.py` prints the bytes at each site next to what each
-side would make of them.
+Three diagnoses in a row, all wrong, and the real cause was the instrumentation I had
+written myself.
 
-The engine's selector switch (`Script.cpp:3646-3672`) is complete and short:
+**What the checker reported.** Marble Zone Act 2: 2 sites where the walker and the engine
+disagreed about operand width, and 227 more where they read different opcodes.
+
+**First guess, wrong.** `Equal`'s declared operand count. Checked: `FunctionInfo("Equal", 2)`
+and the handler uses `operands[0]` and `operands[1]`. Two declared, two used.
+
+**Second guess, wrong.** The per-tag width rules. Checked: the walker's 3 words for `VAR`
+and 5 for an array-selected `VAR` match `Script.cpp:3646-3672` exactly, `ARRAY_KINDS`
+matches the enum, and the switch is only four cases plus a `default` that consumes
+nothing.
+
+**Third guess, wrong.** Placement. Checked: the engine's own `PLACE` line says
+`MZS1.bin` starts at word 115,998 and `len(GlobalCode.bin)` is 115,998.
+
+**The actual cause.** `ProcessScript` declares `int scriptCodeOffset = scriptCodePtr;` at
+L3588, once per call, and never updates it per instruction. It is the *script's* entry
+point. The original trace used it only for a word count, which happened to be harmless. When
+I merged the trace into one line I also used it for the word index:
 
 ```c
-switch (scriptCode[scriptCodePtr++]) {
-    case VARARR_NONE:       arrayVal = objectEntityPos; break;          // nothing more
-    case VARARR_ARRAY:      if (... == 1) ... else ...; break;          // flag + index
-    case VARARR_ENTNOPLUS1: if (... == 1) ... else ...; break;          // flag + index
-    case VARARR_ENTNOMINUS1:if (... == 1) ... else ...; break;          // flag + index
-    default: break;                                                        // nothing more
-}
+PrintLog("ORACLE %s @%d consumed=%d tags=%s",
+         functions[opcode].name, scriptCodeOffset - 1, ...);   // the script's entry!
 ```
 
-So a `VAR` really is 3 words for `NONE` and for any unrecognised selector, and 5 for the
-three that read a flag and an index. The walker's model is right.
+So every instruction after the first in a script reported the same address, and `consumed`
+was the distance travelled since the script began rather than the words that instruction
+occupied. Fixed by recording the instruction's own start before the opcode is read:
 
-Now the bytes at `MZS1.bin` container word 5079, which is global word 121077:
-
-```
-1  Equal
-6      operand 0 selector - matches no case, so default: nothing more
-29     operand 1 tag
-2      operand 1 constant
-0 ...
+```c
+const int instructionStart = scriptCodePtr;
+int opcode = scriptCode[scriptCodePtr++];
+...
+PrintLog(..., instructionStart, scriptCodePtr - instructionStart - 1, tagBuf);
 ```
 
-Run that through the engine's own code: selector 6 hits `default: break`, so operand 0
-costs 3 words and operand 1's tag byte is **29**. But the engine reported tags **[1, 2]**
-and **7** words. It cannot have executed these bytes - by its own source, this site is a
-3+2 = 5 word `Equal` whose second tag is 29.
+The `- 1` excludes the opcode word, matching the walker, which counts operand words only.
 
-So the container the checker attributed the site to is not where the engine ran that code.
-The walker's `placement_base()` - derived from the sibling `GlobalCode.bin` word count -
-is wrong for this stage, and every disagreement in this stage is one contiguous region
-executed from a different offset than the checker assumes. That is why 227 sites disagree
-on *which opcode* they are: they are real code, read at the wrong offset.
+Marble Zone Act 2, before and after:
 
-**This redirects the search.** It is not `Equal`, and it is not the per-tag width rules -
-both of which I chased. It is where a regular stage's words actually land, which is the
-one thing every previous "the walker is right about the format" conclusion assumed.
+```
+before   placed 1847  confirmed 1845  WRONG 2  opcode differs 227  undecodable 30
+after    placed 1754  confirmed 1754  WRONG 0  opcode differs   0  undecodable  0
+```
+
+Clean, and with no gaps of any kind.
+
+**Why this is worth more than the bug.** The walker, the opcode table, the operand counts
+and the stage placement were all correct the whole time, and the only defect was in the
+measurement I built to check them. Every conclusion in this section above - about `Equal`,
+about width rules, about placement - was a statement about my own instrumentation dressed
+up as a statement about the bytecode. This is the fourth time here that a measurement
+reported something false about the thing it was measuring, and the second time the
+instrument was the fault.
+
+The lesson generalises past this file: when a checker disagrees with code that has no
+reason to be wrong, suspect the checker first, and check whether the disagreement is
+*shaped* like a known artefact. 227 sites disagreeing about which opcode they are, in one
+contiguous region, is not what a mis-sized operand looks like; it is what a lost offset
+looks like.
 
 ## Next steps, in order of value
 
