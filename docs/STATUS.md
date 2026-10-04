@@ -658,6 +658,100 @@ before checking that and should not have.
 `school\N\Sonic_Knuckles_wSonic3.bin`. AIR unpacks it into data at runtime; that data stays
 untracked, like every other game's assets in this project.
 
+## What the "og hybrid" folder actually contains
+
+`C:\Users\charl\Documents\Sonic Hybrid Manual\RSDKs` was named as the thing to
+reference. It is **not a repository and contains no source** - no `.git`, no `.cpp`, no
+`.vcxproj`, nothing to build. It is four data packs:
+
+```
+Sonic 1.rsdk      38,198,396
+Sonic 2.rsdk      46,736,289
+Sonic 3.rsdk      18,190,008
+Sonic CD.rsdk     78,710,917
+```
+
+So the original hybrid was a **data-level** hybrid: four packs, one per game. Nothing in
+that folder shows how games were combined at the code level, because there is no code in
+it. There is no prior art here for the thing we are actually being asked to do.
+
+### The three packs are three different things
+
+First bytes of each, which is enough to classify them:
+
+```
+Sonic 1.rsdk    52 53 44 4b 76 42 59 01   "RSDKvB" + 0x0159 = 345 entries
+Sonic 2.rsdk    52 53 44 4b 76 42 d6 01   "RSDKvB" + 0x01d6 = 470 entries
+Sonic 3.rsdk    52 53 44 4b 76 35 c7 04   "RSDKv5" + 0x04c7 = 1223 entries
+Sonic CD.rsdk   0d 0a 00 00 74 00 ...     no recognised signature
+```
+
+Three findings, in order of how much they matter:
+
+**1. `Sonic 3.rsdk` is an RSDKv5 pack, not RSDKv4.** The original hybrid was already
+running its Sonic 3 through a *different engine version* from its Sonic 1 and 2. That is
+consistent with Sonic 3 A.I.R. being a separate engine rather than an RSDKv4 game, and it
+means the original hybrid never had all four games on one engine. Whatever "hybrid" meant
+there, it did not include compiling them together.
+
+**2. `Sonic CD.rsdk` is not a pack this project can read.** No `RSDKvB` header, and no
+`RSDKvB` signature anywhere inside it despite 78 MB of content. Whole-file gzip, zlib, raw
+deflate, lzma and bz2 all fail. Magic-byte counts for gzip/zlib/png inside it are at
+background-noise levels for arbitrary data. Its structure looks like fixed-stride records
+of high-bit-set bytes. It is a binary blob in a format not identified here, and guessing
+further is not worth the time.
+
+**3. The two RSDKv4 packs have no stages and no per-zone bytecode.** Verified by probe,
+not by eye - see below.
+
+### How that was measured, and why it can be trusted
+
+An `.rsdk` pack stores MD5 keys, not filenames, so its contents cannot be listed; you can
+only ask whether a specific path is present. Guessing names one at a time is how you end
+up concluding "the stages aren't in there" when you simply guessed the wrong folder, so
+the guessing is done as a grid instead: `scripts/probe_pack.py` asks about specific paths,
+`scripts/sweep_pack.py` walks 520 candidate layouts per pack and prints every hit.
+
+Both were calibrated against `Hybrid-RSDK-Main/sonic-hybrid/Data.rsdk`, whose contents are
+known because it is the pack this repo builds: all four anchors hit, including
+`data/bytecode/GHZS1.bin` and `data/bytecode/GlobalCode.bin`. The tool finds things that
+are there. Against the old packs:
+
+```
+Sonic 1.rsdk   HIT data/game/gameconfig.bin     HIT data/sprites/global/display.gif
+               HIT data/animations/sonic.ani      HIT bytecode/globalcode.bin
+               miss data/scripts/global/stagesetup.txt
+               0 of 400 stage paths, 0 of 120 per-zone bytecode paths
+Sonic 2.rsdk   identical pattern, 470 entries
+```
+
+Note the layout difference the sweep caught that single guesses had missed:
+`data/bytecode/globalcode.bin` is **absent** while `bytecode/globalcode.bin` is present.
+Bytecode sits at the pack root in these older packs, not under `data/`. Probing only the
+modern layout would have reported "no bytecode at all".
+
+So the old packs hold game assets - sprites, animations, game config, one global script -
+and nothing else. They are partial.
+
+### What this does and does not settle
+
+**Settles:** the reference folder does not contain Sonic CD bytecode, so it does not
+remove the need for an RSDKv3-to-RSDKv4 bytecode compiler. That work is still required and
+is still the largest unstarted item. All 70 CD stages remain without
+`Bytecode/Zone<CC><A><T>.bin`.
+
+**Settles:** the original hybrid is not a template for the current requirement. The current
+requirement is one executable containing the compiled code of all four games; the original
+was four data packs, and for Sonic 3 it was a different engine version again. There is no
+prior art to follow, which is worth knowing before anyone goes looking for it.
+
+**Does not settle:** whether `Sonic CD.rsdk`'s blob is recoverable. Left alone deliberately
+rather than guessed at.
+
+**Usable:** `Sonic 3.rsdk` is 1223 RSDKv5 entries of Sonic 3 data, and A.I.R. reads RSDKv5
+packs natively. It is the data source for Sonic 3 once the engine is linked in. Like every
+other game's assets it stays untracked.
+
 ## Next steps, in order of value
 
 1. **Widen the oracle, now that it is trustworthy.** 4,157 distinct sites, 100% confirmed,
