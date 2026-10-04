@@ -2040,6 +2040,62 @@ x1  LNK1169  one or more multiply defined symbols
 
 All 63 SDL collisions are gone. Only GLEW remains.
 
+### GLEW: no dllimport complication, so one copy genuinely can serve both
+
+Checked before proposing anything, because a static-vs-`dllimport` mismatch would have made a
+shared copy impossible and changed the whole approach.
+
+```
+A.I.R. bundled  _glew/GL/glew.h:201   #  define GLEWAPI extern
+vcpkg          include/GL/glew.h:202 #  define GLEWAPI extern
+```
+
+Identical logic, and it resolves to plain `extern` in both - neither is a `dllimport` build.
+So there is no `GLEW_STATIC` to get wrong, and the symbols are ordinary external definitions
+that one copy can satisfy for both engines.
+
+**The fix, concretely.** `_cmake/CMakeLists.txt:216-219` currently globs A.I.R.'s bundled GLEW
+into `rmxmedia` itself:
+
+```cmake
+file(GLOB_RECURSE RMXMEDIA_SOURCES ${WORKSPACE_DIR}/librmx/source/rmxmedia/*.cpp
+                                   ${WORKSPACE_DIR}/librmx/source/rmxmedia/_glew/*.c)
+add_library(rmxmedia ${RMXMEDIA_SOURCES})
+```
+
+Splitting it out is a small, well-bounded patch to A.I.R., of the same shape as patches 0004
+and 0005:
+
+```cmake
+file(GLOB_RECURSE RMXMEDIA_SOURCES ${WORKSPACE_DIR}/librmx/source/rmxmedia/*.cpp)
+file(GLOB GLEW_SOURCES ${WORKSPACE_DIR}/librmx/source/rmxmedia/_glew/*.c)
+add_library(glew ${GLEW_SOURCES})
+target_include_directories(glew PUBLIC ${WORKSPACE_DIR}/librmx/source/rmxmedia/_glew)
+add_library(rmxmedia ${RMXMEDIA_SOURCES})
+target_link_libraries(rmxmedia glew)
+```
+
+Then in `Hybrid-RSDK-Main/CMakeLists.txt`, the same way SDL was done:
+
+```cmake
+if(BUILD_SONIC3AIR)
+    set(HYBRID_GLEW_TARGET glew)
+else()
+    set(HYBRID_GLEW_TARGET GLEW::GLEW)
+endif()
+```
+
+used by `rsdk_core` and `rsdkv3_core` alongside the existing `HYBRID_SDL2_TARGET`.
+
+That also removes the obstacle noted above, because it makes the choice per-build rather than
+per-consumer: `rsdk_core` links exactly one GLEW target, and `rsdkv4` gets vcpkg's while
+`OxygenEngine` gets A.I.R.'s - without either engine needing to know which is which.
+
+Not yet written or built. Recorded as a design because it touches vendored CMake and a
+project-wide dependency, and this session has produced enough confident guesses that did not
+survive a build that the value of a checked design exceeds the value of one more unverified
+attempt.
+
 ### GLEW: the compatibility judgement, now resolved on evidence
 
 ```
