@@ -2554,6 +2554,34 @@ neither is a build problem:
 - **The audio device likewise.** A.I.R. has `createAudioOut()` returning `AudioOutBase&`;
   RSDKv4 calls `InitAudioPlayback()`. Same shape of problem.
 
+### The window conflict has a seam too, in Drawing.cpp
+
+Both engines create their own window and both own the GL context. Worth recording where, because
+it turns "two engines want the window" from a wall into a lookup:
+
+```
+Drawing.cpp:100   Engine.window    = SDL_CreateWindow(gameTitle, ...)
+Drawing.cpp:201   Engine.glContext = SDL_GL_CreateContext(Engine.window)
+RetroEngine.cpp:344   InitRenderDevice()
+RetroEngine.cpp:650   ReleaseRenderDevice()
+```
+
+Both window creation and context creation sit inside `InitRenderDevice()`. So "render into a
+window someone else made" is a matter of supplying `Engine.window` and letting `SDL_GL_CreateContext`
+run against it - and "render into the *same* context A.I.R. is using" needs
+`SDL_GL_MakeCurrent`, which RSDKv4 currently never calls.
+
+`SDL_GL_MakeCurrent` is the missing piece and it is a genuine complication, not a detail. Two GL
+contexts on one window means whichever context was made current last owns rendering, so an
+interleaved frame sequence - A.I.R.'s frame, then RSDKv4's frame - needs a context switch every
+frame. That works but costs a `SDL_GL_MakeCurrent` per engine per frame, and on some drivers it is
+not free.
+
+The alternative - one context, two renderers drawing into it - requires the two engines' draw
+state to be compatible, which is a much larger question and not one to attempt without measuring.
+Recorded as the honest options rather than a decision, because choosing between them needs a
+driver to measure on and there is no measurement yet.
+
 ### What this rules out, and why it is worth saying plainly
 
 Running one engine per process would sidestep all of it and is the obvious fallback. It is ruled
