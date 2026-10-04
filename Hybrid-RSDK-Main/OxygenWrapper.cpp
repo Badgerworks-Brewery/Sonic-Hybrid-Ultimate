@@ -61,6 +61,15 @@
 // file, which included rmxbase.h, was the only place the diagnostic appeared:
 //   error C3867: std::basic_string_view<char,...>::data: non-standard syntax
 // Forward declaring the one symbol we reference keeps the probe minimal. docs/STATUS.md.
+// Real headers for the types ProbeDelegate overrides. Declaring them by hand is invalid:
+// `struct lemon::Program` is not legal C++ (an elaborated-type-specifier cannot carry a
+// qualified name), MSVC accepted it anyway, and the resulting never-defined type made
+//   include\vector(1539,96): error C2036: lemon::RuntimeFunction *const : unknown size
+// when a std::vector of pointers to it was instantiated. These are the same includes
+// A.I.R.s own EngineDelegate.cpp uses.
+#include <lemon/program/Module.h>
+#include <lemon/program/Program.h>
+#include <lemon/runtime/RuntimeFunction.h>
 #include "oxygen/simulation/EmulatorInterface.h"
 #include "oxygen/application/EngineMain.h"
 #include "sonic3air/EngineDelegate.h"
@@ -109,8 +118,8 @@ public:
     void startupGame(EmulatorInterface&) override {}
     void shutdownGame() override {}
     void updateGame(float) override {}
-    void registerScriptBindings(struct lemon::Module&) override {}
-    void registerNativizedCode(struct lemon::Program&) override {}
+    void registerScriptBindings(lemon::Module&) override {}
+    void registerNativizedCode(lemon::Program&) override {}
     void onRuntimeInit(CodeExec&) override {}
     void onPreFrameUpdate() override {}
     void onPostFrameUpdate() override {}
@@ -122,9 +131,9 @@ public:
     void onActiveModsChanged() override {}
     void onStartNetplayGame(bool) override {}
     void onStopNetplayGame(bool) override {}
-    void serializeGameSettings(struct VectorBinarySerializer&) override {}
-    void onGameRecordingHeaderLoaded(const std::string&, const struct std::vector<uint8>&) override {}
-    void onGameRecordingHeaderSave(struct std::vector<uint8>&) override {}
+    void serializeGameSettings(VectorBinarySerializer&) override {}
+    void onGameRecordingHeaderLoaded(const std::string&, const std::vector<uint8>&) override {}
+    void onGameRecordingHeaderSave(std::vector<uint8>&) override {}
     Font& getDebugFont(int) override { return *reinterpret_cast<Font*>(this); }
     void fillDebugVisualization(Bitmap&, int&) override {}
 
