@@ -1848,6 +1848,77 @@ If that is not enough, set `CURL_LIBRARY` and `CURL_INCLUDE_DIR` to the vendored
 this project actually built. The second is the more robust of the two, because it fixes the
 cause rather than propagating a resolution that is already fragile.
 
+## How the SDL, GLEW and CRT problems can each be resolved
+
+Not library-versus-library for all three. They are structurally different problems and need
+different fixes.
+
+### SDL: two real libraries, so this is ordinary link-time unification
+
+```
+project side   vcpkg shared SDL2, via find_package(SDL2 CONFIG REQUIRED) + SDL2::SDL2 on rsdk_core
+A.I.R. side    SDL2-static.lib, built by A.I.R.'s own
+               add_subdirectory(${WORKSPACE_DIR}/framework/external/sdl/SDL2 SDL)
+               with SDL_STATIC ON / SDL_SHARED OFF, forced there by Hybrid-RSDK-Main
+```
+
+Neither carries an embedded `/DEFAULTLIB` for SDL - the directive dump listed no SDL entry -
+so it is a plain CMake link item on `rmxmedia` and can be swapped for `SDL2::SDL2`.
+
+**Direction of travel is dictated by A.I.R.'s CMake, not by preference.** With
+`BUILD_SDL_STATIC ON` it always builds its own copy, and the `OFF` branch only calls
+`pkg_check_modules(SDL2 ...)` on ARM/Linux, so there is no Windows path where A.I.R. adopts an
+external SDL. Making this project use `SDL2-static` is therefore the tractable direction;
+`rsdk_core` only uses SDL2's public API, so it should link against A.I.R.'s copy unchanged.
+That is 63 of the 66 link errors, and it is mechanical.
+
+### GLEW: not two libraries - A.I.R.'s copy is compiled into rmxmedia
+
+```
+_cmake/CMakeLists.txt:131   include_directories(.../rmxmedia/_glew)
+_cmake/CMakeLists.txt:217   ${WORKSPACE_DIR}/librmx/source/rmxmedia/_glew/*.c
+```
+
+`rmxmedia.lib` contains `glew.obj`. It cannot be dropped by changing link order, because the
+symbols are part of a library needed for everything else. Only two ways out:
+
+- Stop compiling `_glew/*.c` into `rmxmedia`. That is a patch to A.I.R.'s CMake, and it needs
+  a judgement about whether A.I.R.'s bundled GLEW is ABI- and header-compatible with vcpkg's
+  `glew32`.
+- Drop vcpkg's `glew32` and let `rmxmedia`'s bundled GLEW satisfy both engines, which requires
+  `rsdk_core` to have been compiled against matching GLEW headers.
+
+Worth knowing that `_cmake:284` already flags a GLEW versus ImGui OpenGL header conflict in
+A.I.R.'s own build, so this area has a history. This one needs a compatibility decision, not
+a flag.
+
+### The CRT mismatch is separate, and higher-risk than either
+
+```
+MSVCRT.lib(initializers.obj) : warning LNK4098:
+  defaultlib 'libcmt.lib' conflicts with use of other libs
+```
+
+A.I.R.'s libraries carry the static CRT (`/MT`, `libcmt.lib`) while this project uses the
+dynamic one. Mixing CRTs gives two heaps and two copies of CRT state; an allocation made in one
+engine and freed in the other corrupts memory quietly, with no link error to warn about it.
+
+**Fix this before SDL or GLEW**, because it is the only one of the three that can produce a
+subtle runtime failure rather than a build failure. Everything else fails loudly.
+
+### Recommended order
+
+1. **CRT** - runtime correctness, invisible if wrong
+2. **SDL** - 63 of 66 errors, mechanical
+3. **GLEW** - needs a compatibility judgement
+
+### What the next link will and will not tell us
+
+The collision link stopped at the first multiply-defined set, so it never reached an audio
+symbol. So the honest claim is that SDL and GLEW duplication is the whole of the *current*
+collision set - not that the audio-stack question is settled. A clean link after step 1 and 2
+may reveal more behind them.
+
 ## The AIR patch chain: true state, and why `--check` shows conflicts on a clean tree
 
 `apply_air_patches.py --check` against a genuinely pristine submodule:
