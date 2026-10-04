@@ -107,5 +107,18 @@
       "-\tinline uint32 getUnicode(size_t index)\t{ return toUnicode(getChar(index)); }",
       "-\tinline uint32 getUnicode(int index)\t\t{ return toUnicode(getChar(index)); }"
     ]
+  },
+  "0013-game-layer-as-library.patch": {
+    "why": "Compile Oxygen/sonic3air/source/sonic3air/*.cpp into a static library as well as the Sonic3AIR executable. That directory holds the only implementations of EngineDelegateInterface, GuiBase and AudioOutBase, and because they existed solely inside an executable there was nothing for a host to link against - a host embedding the engine had to reimplement the Sonic 3 front end by hand. main.cpp is excluded because it holds the tree's only main().",
+    "must_contain": [
+      "add_library(sonic3air_game STATIC",
+      "list(REMOVE_ITEM SONIC3AIR_GAME_SOURCES",
+      "target_link_libraries(sonic3air_game oxygen)",
+      "target_precompile_headers(sonic3air_game PRIVATE",
+      "if (NOT TARGET sonic3air_game)"
+    ],
+    "must_not_contain": [
+      "stdc++fs"
+    ]
   }
 }
