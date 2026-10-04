@@ -1339,6 +1339,100 @@ which will contend with this project's `${CMAKE_BINARY_DIR}/bin` for output loca
 `OxygenWrapper.cpp` still has to be written to actually call into `oxygen` - the define and the
 link are necessary but not sufficient.
 
+### Defect four: `USE_IMGUI=OFF` is invalid on Windows, and it is an upstream bug
+
+Patch 0004 cleared the `SDL/SDL.h` errors completely. The next failure was:
+
+```
+vendor/sonic3air/Oxygen/oxygenengine/source/oxygen/devmode/ImGuiDefinitions.h(21,10):
+  error C1083: Cannot open include file: 'imgui.h'
+```
+
+`ImGuiDefinitions.h:14` reads:
+
+```cpp
+#if defined(PLATFORM_WINDOWS) || (defined(PLATFORM_LINUX) && defined(USE_IMGUI)) || \
+    defined(PLATFORM_ANDROID) || defined(PLATFORM_MAC)
+    #define SUPPORT_IMGUI
+#endif
+```
+
+On Windows `SUPPORT_IMGUI` is defined **unconditionally** - `USE_IMGUI` is never consulted.
+A.I.R.'s CMake, however, guards both the imgui include directory and the `imgui` target
+behind `if (USE_IMGUI)`. So setting `USE_IMGUI=OFF` on Windows produces a build whose source
+demands a header the build has not made available.
+
+This is an inconsistency inside A.I.R. between its preprocessor condition and its own build
+option, and this project cannot configure around it. `Hybrid-RSDK-Main/CMakeLists.txt` had
+been forcing `USE_IMGUI OFF` "for production builds"; that force is removed, leaving A.I.R.'s
+default (ON). The cost is one imgui library that `build_externals_windows.bat` already
+produces anyway.
+
+**Four defects, and they share a shape.** Each is an option or path A.I.R. supports on Linux
+and that breaks on Windows, or in this host project specifically. None was hypothetical. The
+stale "only supported on Unix-like systems" comment was not documenting a hard limitation -
+it was four seams that nobody hit, because the integration had never once executed end to
+end.
+
+### Sonic CD's converter: the shape of the work, measured
+
+`scripts/cd_opcode_map.py` extracts both opcode tables from the engines' own source and
+reports what lines up. It exists because the two engines express opcodes completely
+differently:
+
+- **RSDKv3** (Sonic CD's format) declares sequential C enums, `enum ScrFunction` (134
+  unconditional members) and `enum ScrVariable` (228). A `.bin` stores *numbers*, and those
+  numbers mean whatever the declaration order says.
+- **RSDKv4** identifies opcodes by **name** - a `FunctionInfo("Equal", 2)` table of 153
+  entries, and a `variableNames[][0x20]` string table of 253.
+
+So a numeric shift is impossible. It needs an explicit v3-order to v4-name table, and the
+only trustworthy way to build one is to derive both halves from source.
+
+**Functions map well. Variables do not map at all.**
+
+```
+ScrFunction:                     117/134 map by name        (87.3%)
+ScrVariable (leaf match only):     5/228 map                ( 2.2%)
+```
+
+Two reasons, and the second is the expensive one:
+
+1. **Naming differs semantically, not just in case.** v3's `VAR_TEMPVALUE0` corresponds to
+   v4's `temp0`; `FUNC_SINCHANGE`/`FUNC_COSCHANGE` to `Sin`/`Cos`. Stripping the prefix and
+   title-casing is a starting point, not the mapping.
+2. **v4 variables carry scope and v3's do not.** 233 of v4's 253 variable names are
+   scope-qualified - `object.xPos`, `engine.xPos`, `stage.xPos`, and 15 more across `camera`,
+   `music`, `screen`, `keyPress`, `scene3D` and so on. v3's enum is flat, and the bytecode
+   does not record which scope an operand belongs to.
+
+**So the cost is not a mechanical remap.** It is roughly 228 hand-mapped variables, each
+needing a scope chosen deliberately, plus about 17 function decisions. The function side -
+which looked like the hard half - is nearly free; the variable side cannot be automated at
+all. Knowing that before writing the converter is worth more than the converter.
+
+**The 17 unmapped functions are not all losses.** Several are online features that should not
+be ported under this project's no-networking rule: `SETACHIEVEMENT`, `SETLEADERBOARD`,
+`LOADONLINEMENU`, `ENGINECALLBACK`, `LOADVIDEO`, `NEXTVIDEOFRAME`. Others look like renames
+(`ENDFUNCTION`, `PLAYSTAGESFX`, `LOADTEXTFONT`) or Sonic 1 player-object functions
+(`PLAYEROBJECTCOLLISION`, `BINDPLAYERTOOBJECT`, `DRAWPLAYERANIMATION`). Each needs a decision,
+not a lookup.
+
+**One hazard the script makes explicit.** Some enum members sit inside `#if` blocks -
+`FUNC_HAPTICEFFECT` and `VAR_ENGINEHAPTICSENABLED`, both under `RETRO_USE_HAPTICS`. A build
+with haptics enabled inserts a member and shifts every later value. Which numbering the CD
+`.bin` files actually use is therefore an empirical question about the bytes, not something
+to read off a header. The converter must confirm opcode width and the first few values
+against a real container before trusting any table derived from declaration order.
+
+**Two bugs this script had first, both the same mistake.** It initially looked for
+`enum ScriptVar` - the real name is `ScrVariable` - and reported `0 unconditional members`,
+which reads as "Sonic CD has no variables" rather than "the parser looked in the wrong
+place". It then compared those variables against the `FunctionInfo` *function* table and
+reported `0/228 mapped`, which again reads as a fact about the data rather than about the
+checker. Both were the checker being wrong. Third time this session, after the header-vs-
+whole-file hash and after the CD source-tree search.
+
 ### Three defects stood between `BUILD_SONIC3AIR=ON` and a working link
 
 Enabling the option exposed three separate faults, each of which alone would have stopped

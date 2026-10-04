@@ -522,7 +522,20 @@ if(BUILD_SONIC3AIR)
         set(USE_DISCORD OFF CACHE BOOL "Disable Discord integration" FORCE)
         set(BUILD_OXYGEN_SERVER OFF CACHE BOOL "Don't build Oxygen server" FORCE)
         set(BUILD_OXYGEN_ENGINEAPP OFF CACHE BOOL "Don't build standalone Oxygen app" FORCE)
-        set(USE_IMGUI OFF CACHE BOOL "Disable ImGui for production builds" FORCE)
+        # NB: USE_IMGUI must stay ON on Windows, whatever the size saving looks like.
+        #
+        # oxygen/devmode/ImGuiDefinitions.h:14 reads
+        #   #if defined(PLATFORM_WINDOWS) || (defined(PLATFORM_LINUX) && defined(USE_IMGUI)) || ...
+        # so on Windows SUPPORT_IMGUI is defined *unconditionally* - USE_IMGUI is never
+        # consulted. A.I.R.'s CMake, however, guards both the imgui include directory and
+        # the imgui target behind `if (USE_IMGUI)`. Forcing it OFF here therefore produced a
+        # build whose source demanded a header the build had not made available:
+        #   ImGuiDefinitions.h(21,10): error C1083: Cannot open include file: 'imgui.h'
+        #
+        # This is an upstream inconsistency between the preprocessor condition and the build
+        # option, not something this project can configure around. Leaving A.I.R.'s own
+        # default (ON) is correct and costs one imgui library that is already built by
+        # framework/external/build_externals_windows.bat anyway.
         
         message(STATUS "Sonic 3 AIR build configuration:")
         message(STATUS "  BUILD_SDL_STATIC = ON")
