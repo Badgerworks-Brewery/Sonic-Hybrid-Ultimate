@@ -1652,6 +1652,31 @@ _cmake/CMakeLists.txt:56-63
 `add_compile_options` only affect targets created *after* them, so `OxygenEngine` is built
 with different flags from every A.I.R. target, and A.I.R.'s headers do not survive that.
 
+#### Ruled out: SDL include shadowing, and /external:I
+
+Two hypotheses for the `StringImpl.h` failure above, both checked, neither the cause:
+
+```
+vcpkg_installed/x64-windows/include/SDL2   79 files, including SDL.h
+vcpkg_installed/x64-windows/include/SDL    ABSENT
+vendor/sonic3air/framework/include/sdl/    AIR's bundled copy
+```
+
+`rmxmedia_externals.h` asks for `<SDL2/SDL.h>` on GCC and `<SDL/SDL.h>` on MSVC.
+vcpkg supplies the first spelling and has no `SDL` directory at all, so the second can only
+resolve to A.I.R.'s bundled copy. **Nothing shadows anything** - the two layouts are
+complementary, not competing.
+
+And `/external:I`, which both `rmxbase.vcxproj` and `OxygenEngine.vcxproj` carry, marks
+vcpkg's headers external. `StringImpl.h` is A.I.R.'s own, not vcpkg's, so external-header
+treatment cannot be raising a diagnostic inside it.
+
+Both `LanguageStandard` values are `stdcpp17`. The remaining difference is not in the flags
+at all, which points at include *ordering*: A.I.R.'s own translation units include an
+umbrella header before `StringImpl.h` and the probe does not. The next thing to try is having
+`OxygenWrapper.cpp` include `rmxbase.h` first, as A.I.R.'s sources do, and only then
+`EngineMain.h`.
+
 **The fix is ordering, not flags**: declare `OxygenEngine` after the `add_subdirectory`, or
 re-apply A.I.R.'s compile options to it explicitly. Ordering is better because it stays
 correct as A.I.R. changes. This is the next thing to do, and it is expected to be the last
