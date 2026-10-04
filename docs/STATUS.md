@@ -493,6 +493,52 @@ Both of those say the same thing: stop reasoning about the format and look at th
 `MZS1.bin` word 121077 and 126301, with the tag byte and selector byte printed, will say
 in one look what three rounds of reading have not. That is the next step, and it is cheap.
 
+### The disagreement is in placement, not in operand widths
+
+Looking at the words rather than reasoning about them settled it, and not in the direction
+I expected. `scripts/dump_disagree.py` prints the bytes at each site next to what each
+side would make of them.
+
+The engine's selector switch (`Script.cpp:3646-3672`) is complete and short:
+
+```c
+switch (scriptCode[scriptCodePtr++]) {
+    case VARARR_NONE:       arrayVal = objectEntityPos; break;          // nothing more
+    case VARARR_ARRAY:      if (... == 1) ... else ...; break;          // flag + index
+    case VARARR_ENTNOPLUS1: if (... == 1) ... else ...; break;          // flag + index
+    case VARARR_ENTNOMINUS1:if (... == 1) ... else ...; break;          // flag + index
+    default: break;                                                        // nothing more
+}
+```
+
+So a `VAR` really is 3 words for `NONE` and for any unrecognised selector, and 5 for the
+three that read a flag and an index. The walker's model is right.
+
+Now the bytes at `MZS1.bin` container word 5079, which is global word 121077:
+
+```
+1  Equal
+6      operand 0 selector - matches no case, so default: nothing more
+29     operand 1 tag
+2      operand 1 constant
+0 ...
+```
+
+Run that through the engine's own code: selector 6 hits `default: break`, so operand 0
+costs 3 words and operand 1's tag byte is **29**. But the engine reported tags **[1, 2]**
+and **7** words. It cannot have executed these bytes - by its own source, this site is a
+3+2 = 5 word `Equal` whose second tag is 29.
+
+So the container the checker attributed the site to is not where the engine ran that code.
+The walker's `placement_base()` - derived from the sibling `GlobalCode.bin` word count -
+is wrong for this stage, and every disagreement in this stage is one contiguous region
+executed from a different offset than the checker assumes. That is why 227 sites disagree
+on *which opcode* they are: they are real code, read at the wrong offset.
+
+**This redirects the search.** It is not `Equal`, and it is not the per-tag width rules -
+both of which I chased. It is where a regular stage's words actually land, which is the
+one thing every previous "the walker is right about the format" conclusion assumed.
+
 ## Next steps, in order of value
 
 1. **Widen the oracle, now that it is trustworthy.** 4,157 distinct sites, 100% confirmed,
