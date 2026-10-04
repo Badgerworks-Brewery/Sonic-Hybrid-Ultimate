@@ -1425,6 +1425,52 @@ with haptics enabled inserts a member and shifts every later value. Which number
 to read off a header. The converter must confirm opcode width and the first few values
 against a real container before trusting any table derived from declaration order.
 
+#### The container format is not specified in this repo, as far as I can tell
+
+Checked, because the opcode work is worthless without knowing how a `.bin` is laid out:
+
+- `RSDKv3/RSDKv3/Script.hpp:4` - `#define SCRIPTDATA_COUNT (0x40000)`, and
+  `extern int scriptCode[SCRIPTDATA_COUNT]` at `:53`. So the in-memory representation is a
+  flat `int` array, 256K entries.
+- `RSDKv3/RSDKv3/Reader.cpp:54-78` is the **only** code in the whole decompilation that
+  mentions a `ByteCode` container. It does not parse one. It tests for the existence of
+  `Data/Scripts/ByteCode/GlobalCode.bin` (setting `BYTECODE_MOBILE`) and otherwise
+  `Data/Scripts/ByteCode/GS000.bin` (setting `BYTECODE_PC`), then returns.
+- No `fread` of a script container anywhere. The only `fRead` uses are `Ini.cpp:54` and the
+  `fread`/`SDL_RWread` macro definitions in `Reader.hpp:9-28`.
+- `BYTECODE_PC` and `BYTECODE_MOBILE` are **assigned in `Reader.cpp` and read nowhere.**
+
+What that implies: `RSDKv3-Decompilation` appears to contain the **text-script compiler**
+(`Script.cpp` compiles `.txt` into `scriptCode[]` at runtime - the `FUNC_*` dispatch and the
+`SCRIPTVAR_*` operand encoding I quoted earlier are all part of that compiler) plus a
+bytecode-mode *detector*, but **not** a bytecode container parser or interpreter.
+
+Sonic CD ships `GS000.bin`, so its containers are the `BYTECODE_PC` variant.
+
+**Stated with the uncertainty it deserves.** This is a negative result from searching one
+tree. A bytecode interpreter may exist in the Sonic CD RSDKv3 *mod* rather than in the
+engine decompilation - plausible, since "bytecode mode" reads like a distribution feature
+rather than an engine one, and the engine's own build happily compiles scripts from text.
+Before treating the container format as reverse-engineering work, the thing to check is
+whether a Sonic CD RSDKv3 mod source exists anywhere, because that would carry both the
+container format and the `.txt` scripts the bytecode was compiled from.
+
+**If it does not, the CD cost goes up.** The estimate in the section above - roughly 228
+hand-mapped variables and about 17 function decisions - assumed a container format to read.
+Without one, add deriving the layout from the bytes: header shape, `int` versus packed
+`uint16`, whether opcodes are 16- or 32-bit, and how operands are encoded. That is
+tractable but it is a separate piece of work, and it should not be folded silently into the
+"just write a converter" framing.
+
+**A note on how this was nearly got wrong.** The first search for `fread`/`LoadFile` in
+RSDKv3 returned *nothing*, which would have supported a much stronger claim. It returned
+nothing because `Get-ChildItem -Include "*.cpp" -File` without `-Recurse` matches no files -
+PowerShell requires `-Recurse` or a wildcard in the path for `-Include` to apply. The
+"no file reads at all" result was the checker silently finding zero files, not the codebase
+having none. Recomputed with `-Recurse`, `LoadFile` appears 10 times. This is the fourth
+instance of the same failure this session, and the cheapest to avoid: a search returning
+*zero* results is nearly always the query, not the corpus.
+
 **Two bugs this script had first, both the same mistake.** It initially looked for
 `enum ScriptVar` - the real name is `ScrVariable` - and reported `0 unconditional members`,
 which reads as "Sonic CD has no variables" rather than "the parser looked in the wrong
