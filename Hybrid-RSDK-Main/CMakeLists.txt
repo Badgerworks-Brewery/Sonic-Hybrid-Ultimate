@@ -577,6 +577,34 @@ if(BUILD_SONIC3AIR)
             target_link_libraries(OxygenEngine PRIVATE CURL::libcurl)
         endif()
 
+        # Link RSDKv4 and the Hybrid game layer into the same DLL as A.I.R.
+        #
+        # This is the coexistence test, and it is the whole point of the exercise: two complete
+        # engines, each with its own main(), renderer, audio device and a broad set of
+        # file-scope globals, in one binary. Until now OxygenEngine held A.I.R. alone and linked
+        # cleanly, which says nothing about whether the two can share a link.
+        #
+        # Expected collision modes, in the order I would expect them:
+        #   1. Two SDL copies. OxygenEngine already pulls A.I.R.'s SDL2-static.lib, while the
+        #      rest of this project links vcpkg's SDL2::SDL2 (Hybrid-RSDK-Main:find_package
+        #      (SDL2 CONFIG REQUIRED) + SDL2::SDL2 on rsdk_core). Both export the same SDL
+        #      symbols, so adding rsdk_core here should collide unless one is dropped.
+        #   2. Duplicate file-scope globals, if the two engines declare the same symbol.
+        #   3. Two OpenGL and/or audio stacks.
+        #
+        # Linking rsdk_core here is therefore expected to FAIL, and the failure list is the
+        # deliverable: it is the first real measurement of what coexistence costs. The
+        # alternative - putting A.I.R. inside the rsdkv4 executable instead - has the same
+        # collision set and additionally has to reconcile two main() symbols, so the DLL is
+        # the cheaper place to find out.
+        if(TARGET rsdk_core)
+            target_link_libraries(OxygenEngine PRIVATE rsdk_core sonic_hybrid)
+            message(STATUS "  OxygenEngine now links rsdk_core + sonic_hybrid + oxygen")
+            message(STATUS "  -> coexistence test active; expect SDL or global collisions")
+        else()
+            message(WARNING "rsdk_core not available - coexistence test NOT active")
+        endif()
+
         # A.I.R.'s static libraries carry embedded MSVC link directives:
         #   /DEFAULTLIB:libcurl.lib        (oxygen.lib)
         #   /DEFAULTLIB:zlib.lib          (rmxbase.lib)
