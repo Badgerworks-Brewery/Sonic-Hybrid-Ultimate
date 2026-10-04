@@ -824,6 +824,74 @@ This is a bigger obstacle than symbol collisions and it is not visible from link
 It is the actual reason the work is hard, and it was worth finding before writing any
 linker configuration.
 
+### Correction: Sonic CD is blocked on missing scripts, not on a missing compiler
+
+Every prior account of the Sonic CD problem - including this one - has described it as
+needing an RSDKv3-to-RSDKv4 bytecode compiler, on the grounds that all 70 CD stages lack
+`Bytecode/Zone<CC><A><T>.bin`. That reasoning treats the missing `.bin` as the problem to
+solve. It is not. **There is nothing in this repository to compile.**
+
+Measured, not inferred:
+
+```
+Data/            Animations 14   Bytecode 31   Data 1   Game 151
+                 Music 125   Palettes 44   SoundFX 202   Sprites 157   Stages 630
+
+Data/Stages/     70 folders named Zone<ZZ><N><T>   (CC MM PP QQ SS TT WW x acts A-D)
+                 each containing: 128x128Tiles.bin, 16x16Tiles.gif, Act1.bin,
+                 Backgrounds.bin, CollisionMasks.bin, StageConfig.bin
+
+Data/Scripts/    does not exist
+
+*.txt anywhere under Data/:
+                 DE_Help 9  EN_Help 9  ES_Help 9  FR_Help 9  IT_Help 9  JP_Help 9
+                 Game 4
+```
+
+So the situation is:
+
+- **CD stage data is fully present.** All 70 stages, with tiles, backgrounds, collision
+  masks, `Act1.bin` object layouts and `StageConfig.bin`. 630 files under `Data/Stages`.
+- **CD scripts are entirely absent.** There is no `Data/Scripts` tree at all. The only
+  script text in the merged pack is help text in seven languages, the menu, and four files
+  under `Game/`.
+- **CD bytecode is absent**, but that is a consequence of the previous point, not an
+  independent gap.
+
+Sonic 1 and Sonic 2 ship as compiled bytecode - 31 containers under `Data/Bytecode/` plus
+`Game/ObjectGameSplit.bin` - which is the route that was chosen deliberately. Sonic CD ships
+as neither script nor bytecode.
+
+**What this means for the work.** Writing a v3-to-v4 bytecode compiler would produce a
+compiler with no input. The actual missing artefact is the CD *script source* in RSDKv3
+form, which would then need porting to RSDKv4 syntax and compiling. That is a data
+acquisition problem first and a code problem second, and no amount of work on the compiler
+unblocks it.
+
+**Where the scripts might be.** In rough order of likelihood:
+
+1. The user's Sonic CD RSDKv3 mod, wherever it lives. This is the likely answer - the CD
+   stage data here came from *somewhere*, and a stage mod carries its scripts alongside.
+2. `Sonic CD.rsdk` in the reference folder. It is 78.7 MB of unidentified binary, and 78 MB
+   is a plausible size for CD's script set plus data. Untested, because its format is not
+   known.
+3. Reconstructed. Sonic CD's stage logic is largely ported from Sonic 1's with altered
+   layouts and the time-travel mechanic. Possible for stages that are near-copies, real
+   work for the special stages. Not a good plan, listed last because it is the one that
+   makes the timeline unbounded.
+
+**This raises a question for the project owner rather than answering one:** where did the CD
+stage data come from, and does the source it came from also have the scripts? If the answer
+is that only the data was ever taken, then the "all four games" goal cannot be met for CD
+without obtaining the script source, and that is worth knowing now rather than after a
+compiler is written.
+
+`Hybrid-RSDK-Main/RSDKV3` is vendored as a submodule
+(`RSDKModding/RSDKv3-Decompilation`, tag 1.3.3) and its `RSDKv3/Script.cpp` is 221 KB with
+the full v3 operand encoding and the `FUNC_*` dispatch - so the v3 *semantics* reference is
+available in-repo. That is necessary for the porting step and is not the bottleneck. What is
+missing is the scripts themselves.
+
 ### Correction: `SingleInstance` is not the obstacle I said it was
 
 The section above says `EngineMain` is a `SingleInstance<EngineMain>` and lists that among
