@@ -85,3 +85,7 @@ Thumbs.db
 # Python bytecode caches
 __pycache__/
 *.pyc
+# Keepalive supervisor runtime artefacts - liveness, not source.
+.keepalive-heartbeat
+.keepalive-heartbeat.tmp
+.keepalive.log
