@@ -52,8 +52,16 @@
 // error points at AIR's source, not at the include order that caused it.
 // NB: including rmxbase.h first does NOT help - tried, same two C3867 errors. Include order
 // is eliminated alongside compile flags, SDL shadowing and /external:I. See docs/STATUS.md.
-#include "rmxbase.h"
-
+// NB: rmxbase.h is deliberately NOT included.
+// Including rmxbase.h instantiates STRING::endsWith in rmxbase/memory/StringImpl.h, whose
+// body passes the member function str.data where a pointer is wanted (StringImpl.h:765).
+// str is std::basic_string_view<CHAR> with CHAR a template parameter, so the expression is
+// type-dependent and MSVC leaves it alone until instantiation. No A.I.R. translation unit
+// instantiates it - they reach what they need through narrower headers - which is why this
+// file, which included rmxbase.h, was the only place the diagnostic appeared:
+//   error C3867: std::basic_string_view<char,...>::data: non-standard syntax
+// Forward declaring the one symbol we reference keeps the probe minimal. docs/STATUS.md.
+#include "oxygen/simulation/EmulatorInterface.h"
 #include "oxygen/application/EngineMain.h"
 #include "sonic3air/EngineDelegate.h"
 
