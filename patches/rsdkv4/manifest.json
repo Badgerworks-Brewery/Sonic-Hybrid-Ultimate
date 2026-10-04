@@ -1,11 +1,13 @@
 {
   "0001-object-renumbering-and-heartbeats.patch": {
-    "why": "Capture the RSDKV4-Decompilation worktree's uncommitted edits: per-game object and function renumbering (typeBase/functionBase) so Sonic 1 and Sonic 2 can share one script table, a hashed rather than linear object-name lookup, and HEARTBEAT frame-loop instrumentation. These were edited in place in the submodule and existed nowhere in this repository, so a fresh clone built a different binary than the one every recorded measurement came from. The heartbeat sites are compiled out by default behind HYBRID_HEARTBEAT_LOG; the Audio.cpp change is unrelated to instrumentation and is a real fix - a bounded fill loop and a consecutive-empty-read counter in ProcessMusicStream, because a seek back to the loop point that yields no samples made ov_read spin forever at 100% CPU with no further log output. The heartbeat sites are compiled out by default behind HYBRID_HEARTBEAT_LOG; the Audio.cpp change is unrelated to instrumentation and is a real fix - a bounded fill loop and a consecutive-empty-read counter in ProcessMusicStream, because a seek back to the loop point that yields no samples made ov_read spin forever at 100% CPU with no further log output.",
+    "why": "Capture the RSDKV4-Decompilation worktree's uncommitted edits: per-game object and function renumbering (typeBase/functionBase) so Sonic 1 and Sonic 2 can share one script table, a hashed rather than linear object-name lookup, and HEARTBEAT frame-loop instrumentation. These were edited in place in the submodule and existed nowhere in this repository, so a fresh clone built a different binary than the one every recorded measurement came from. The heartbeat sites are compiled out by default behind HYBRID_HEARTBEAT_LOG; the Audio.cpp change is unrelated to instrumentation and is a real fix - a bounded fill loop and a consecutive-empty-read counter in ProcessMusicStream, because a seek back to the loop point that yields no samples made ov_read spin forever at 100% CPU with no further log output. The heartbeat sites are compiled out by default behind HYBRID_HEARTBEAT_LOG; the Audio.cpp change is unrelated to instrumentation and is a real fix - a bounded fill loop and a consecutive-empty-read counter in ProcessMusicStream, because a seek back to the loop point that yields no samples made ov_read spin forever at 100% CPU with no further log output. It also splits RetroEngine::Run()'s while body out into RunOneFrame(), because RSDKv4 otherwise has no per-frame entry point and cannot be stepped from inside A.I.R.'s frame loop. Run() keeps the vsync pacing and all teardown; the frame body returns `running`.",
     "must_contain": [
       "int typeBase;",
       "int functionBase;",
       "HEARTBEAT_LOG(",
-      "#include \"HeartbeatLog.h\""
+      "#include \"HeartbeatLog.h\"",
+      "bool RetroEngine::RunOneFrame()",
+      "RunOneFrame();"
     ],
     "must_not_contain": [
       "RSDKvB"

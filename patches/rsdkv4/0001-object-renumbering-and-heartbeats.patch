@@ -252,7 +252,7 @@ index 3160c12..51a0d76 100644
  extern Entity objectEntityList[ENTITY_COUNT * 2];
  extern int processObjectFlag[ENTITY_COUNT];
 diff --git a/RSDKv4/RetroEngine.cpp b/RSDKv4/RetroEngine.cpp
-index 29f393f..0560816 100644
+index 29f393f..c09207d 100644
 --- a/RSDKv4/RetroEngine.cpp
 +++ b/RSDKv4/RetroEngine.cpp
 @@ -1,3 +1,4 @@
@@ -274,18 +274,155 @@ index 29f393f..0560816 100644
                  ClearScriptData();
                  initialised = true;
                  running     = true;
-@@ -524,6 +529,7 @@ void RetroEngine::Init()
+@@ -522,82 +527,123 @@ void RetroEngine::Init()
+ #endif
+ }
  
- void RetroEngine::Run()
- {
+-void RetroEngine::Run()
+-{
+-    Engine.deltaTime = 0.0f;
+-
+-    unsigned long long targetFreq = SDL_GetPerformanceFrequency() / Engine.refreshRate;
+-    unsigned long long curTicks   = 0;
+-    unsigned long long prevTicks  = 0;
+-
+-    while (running) {
+-#if !RETRO_USE_ORIGINAL_CODE
+-        if (!vsync) {
+-            curTicks = SDL_GetPerformanceCounter();
+-            if (curTicks < prevTicks + targetFreq)
+-                continue;
+-            prevTicks = curTicks;
++    // [Sonic Hybrid Ultimate] One frame of RSDKv4, separated from the loop so this engine
++    // can be driven from inside another engine's frame loop.
++    //
++    // See patches/rsdkv4/0002-run-one-frame.patch for why this exists and why the vsync
++    // pacing stays in Run(). Everything this body touches is a local or a RetroEngine member
++    // - running, gameSpeed, masterPaused, frameStep, vsync, focusState - so splitting it needs
++    // no new state threaded through and changes no behaviour.
++    //
++    // Returns whether the engine is still running, so a caller driving frames itself can stop
++    // when the game asks to quit - the same value `running` would have held.
++    bool RetroEngine::RunOneFrame()
++    {
++    running = ProcessEvents();
++
++    // Diagnostic: the loop spins freely, so a stall further down leaves no
++    // trace. Report which stage of the frame the first real iteration
++    // reaches, and report the focus state that gates the rest of it.
++    {
++        static long long stage = 0;
++        if (stage == 0) {
++            HEARTBEAT_LOG("HEARTBEAT: past ProcessEvents; hasFocus=%d focusState=%d disableFocusPause=%d vsPlaying=%d",
++                     Engine.hasFocus, Engine.focusState, disableFocusPause, vsPlaying);
++            stage = 1;
+         }
++    }
+ 
+-        Engine.deltaTime = 1.0 / 60;
+-#endif
+-        running = ProcessEvents();
+-
+-        // Focus Checks
+-        if (!(disableFocusPause & 2)) {
+-            if (!Engine.hasFocus) {
+-                if (!(Engine.focusState & 1))
+-                    Engine.focusState = PauseSound() ? 3 : 1;
+-            }
+-            else if (Engine.focusState) {
+-                if ((Engine.focusState & 2))
+-                    ResumeSound();
+-                Engine.focusState = 0;
+-            }
++    // Focus Checks
++    if (!(disableFocusPause & 2)) {
++        if (!Engine.hasFocus) {
++            if (!(Engine.focusState & 1))
++                Engine.focusState = PauseSound() ? 3 : 1;
++        }
++        else if (Engine.focusState) {
++            if ((Engine.focusState & 2))
++                ResumeSound();
++            Engine.focusState = 0;
+         }
++    }
+ 
+-        if (!(Engine.focusState & 1) || vsPlaying) {
++    if (!(Engine.focusState & 1) || vsPlaying) {
+ #if !RETRO_USE_ORIGINAL_CODE
+-            for (int s = 0; s < gameSpeed; ++s) {
+-                ProcessInput();
++        for (int s = 0; s < gameSpeed; ++s) {
++            ProcessInput();
+ #endif
+ 
+ #if !RETRO_USE_ORIGINAL_CODE
+-                if (!masterPaused || frameStep) {
++            if (!masterPaused || frameStep) {
+ #endif
+-                    ProcessNativeObjects();
++                ProcessNativeObjects();
+ #if !RETRO_USE_ORIGINAL_CODE
+-                }
+-#endif
+             }
++#endif
++        }
+ 
+ #if !RETRO_USE_ORIGINAL_CODE
+-            if (!masterPaused || frameStep) {
++        if (!masterPaused || frameStep) {
+ #endif
+-                FlipScreen();
++            FlipScreen();
+ 
+ #if !RETRO_USE_ORIGINAL_CODE
+ #if RETRO_USING_OPENGL && RETRO_USING_SDL2
+-                SDL_GL_SwapWindow(Engine.window);
++            SDL_GL_SwapWindow(Engine.window);
+ #endif
+-                frameStep = false;
+-            }
++            frameStep = false;
++        }
+ #endif
+ 
+ #if RETRO_REV00
+-            Engine.message = MESSAGE_NONE;
++        Engine.message = MESSAGE_NONE;
+ #endif
+ 
+ #if RETRO_USE_HAPTICS
+-            int hapticID = GetHapticEffectNum();
+-            if (hapticID >= 0) {
+-                // playHaptics(hapticID);
+-            }
+-            else if (hapticID == HAPTIC_STOP) {
+-                // stopHaptics();
+-            }
++        int hapticID = GetHapticEffectNum();
++        if (hapticID >= 0) {
++            // playHaptics(hapticID);
++        }
++        else if (hapticID == HAPTIC_STOP) {
++            // stopHaptics();
++        }
+ #endif
++    }
++
++        return running;
++    }
++
++void RetroEngine::Run()
++{
 +    HEARTBEAT_LOG("HEARTBEAT: RetroEngine::Run entered");
-     Engine.deltaTime = 0.0f;
- 
-     unsigned long long targetFreq = SDL_GetPerformanceFrequency() / Engine.refreshRate;
-@@ -531,6 +537,17 @@ void RetroEngine::Run()
-     unsigned long long prevTicks  = 0;
- 
-     while (running) {
++    Engine.deltaTime = 0.0f;
++
++    unsigned long long targetFreq = SDL_GetPerformanceFrequency() / Engine.refreshRate;
++    unsigned long long curTicks   = 0;
++    unsigned long long prevTicks  = 0;
++
++    while (running) {
 +        // Diagnostic: this is the outermost frame loop. Logging a bounded number
 +        // of spins distinguishes "never entered the loop" from "entered it and
 +        // stalled inside", and bounds the cost when it is the latter.
@@ -297,28 +434,35 @@ index 29f393f..0560816 100644
 +                HEARTBEAT_LOG("HEARTBEAT: engine loop still spinning after 1,000,000 iterations - stalled before the frame did any work");
 +            ++spins;
 +        }
- #if !RETRO_USE_ORIGINAL_CODE
-         if (!vsync) {
-             curTicks = SDL_GetPerformanceCounter();
-@@ -543,6 +560,18 @@ void RetroEngine::Run()
- #endif
-         running = ProcessEvents();
- 
-+        // Diagnostic: the loop spins freely, so a stall further down leaves no
-+        // trace. Report which stage of the frame the first real iteration
-+        // reaches, and report the focus state that gates the rest of it.
-+        {
-+            static long long stage = 0;
-+            if (stage == 0) {
-+                HEARTBEAT_LOG("HEARTBEAT: past ProcessEvents; hasFocus=%d focusState=%d disableFocusPause=%d vsPlaying=%d",
-+                         Engine.hasFocus, Engine.focusState, disableFocusPause, vsPlaying);
-+                stage = 1;
-+            }
-+        }
++#if !RETRO_USE_ORIGINAL_CODE
++        if (!vsync) {
++            curTicks = SDL_GetPerformanceCounter();
++            if (curTicks < prevTicks + targetFreq)
++                continue;
++            prevTicks = curTicks;
+         }
 +
-         // Focus Checks
-         if (!(disableFocusPause & 2)) {
-             if (!Engine.hasFocus) {
++        Engine.deltaTime = 1.0 / 60;
++#endif
++        RunOneFrame();
+     }
+ 
+     ReleaseAudioDevice();
+diff --git a/RSDKv4/RetroEngine.hpp b/RSDKv4/RetroEngine.hpp
+index 803ae1f..7ab7b6b 100644
+--- a/RSDKv4/RetroEngine.hpp
++++ b/RSDKv4/RetroEngine.hpp
+@@ -427,6 +427,10 @@ public:
+ 
+     void Init();
+     void Run();
++    // [Sonic Hybrid Ultimate] Drives exactly one frame, so this engine can be stepped from
++    // inside another engine's frame loop. See RunOneFrame() in RetroEngine.cpp for why,
++    // and for why the vsync pacing stays in Run(). Returns whether still running.
++    bool RunOneFrame();
+ 
+     bool LoadGameConfig(const char *filepath);
+ #if RETRO_USE_MOD_LOADER
 diff --git a/RSDKv4/Scene.cpp b/RSDKv4/Scene.cpp
 index a450c82..c5e7277 100644
 --- a/RSDKv4/Scene.cpp

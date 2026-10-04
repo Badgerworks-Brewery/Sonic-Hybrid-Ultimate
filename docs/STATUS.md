@@ -2409,6 +2409,164 @@ script that reports "nothing to capture" is indistinguishable from a script that
 nothing, unless the path it inspected is asserted - which is why `REPO` now comes from the
 script's own location and the submodule's pinned SHA is printed on every run.
 
+## RetroEngine::RunOneFrame(): RSDKv4 can finally be stepped one frame at a time
+
+The split the dispatcher needed. `RetroEngine::Run()` was `while (running) { ...frame... }`, and
+because there was no per-frame entry point, RSDKv4 could not be driven from inside A.I.R.'s frame
+loop at all. Now:
+
+```cpp
+bool RetroEngine::RunOneFrame()   // ProcessEvents -> focus -> ProcessInput
+{                                 // -> ProcessNativeObjects -> FlipScreen -> SDL_GL_SwapWindow
+    ...
+    return running;
+}
+
+void RetroEngine::Run()
+{
+    ...setup...
+    while (running) {
+        ...vsync pacing...
+        RunOneFrame();
+    }
+    ...teardown...
+}
+```
+
+Verified structurally, not by inspection - 14 assertions on brace-delimited regions of the
+rewritten file:
+
+```
+RunOneFrame: lines 540..613      Run: lines 615..665      disjoint: True
+  frame has ProcessEvents / ProcessNativeObjects / FlipScreen / SDL_GL_SwapWindow   ok
+  frame has no while (running)                                                        ok
+  Run calls RunOneFrame                                                               ok
+  Run has no ProcessEvents / ProcessNativeObjects                                     ok
+  Run keeps prevTicks pacing, ReleaseAudioDevice, SDL_Quit                           ok
+  rsdk_core.lib builds, exit 0                                                       ok
+  OxygenEngine.dll 13,965,312 bytes, exit 0, both engines present                    ok
+```
+
+**Why the vsync pacing stays in `Run()`.** Pacing is the loop's policy, not a frame's content,
+and `prevTicks` is genuinely loop-carried state - moving it would mean either a static or a
+member needing reset on re-entry. A nested caller wants the frame body, not someone else's frame
+pacing, and will be driven by the outer engine's clock anyway.
+
+`Run()`'s observable behaviour is unchanged: it still paces, still loops, still tears down. A
+build that never calls `RunOneFrame()` cannot tell the difference.
+
+### I destroyed 689 lines of recorded work mid-task, and the patch brought it back
+
+Worth recording in full, because it is the fifth instance of this project and the recovery method
+is the lesson.
+
+The split script began with `git show HEAD:RSDKv4/RetroEngine.cpp` to start from pristine, on the
+reasonable theory that re-deriving from HEAD was safer than un-editing a mangled file. It is not:
+**HEAD does not contain the submodule's work at all.** It discarded 689 lines across seven other
+files and deleted `HeartbeatLog.h` outright, since that file was untracked and so absent from
+HEAD.
+
+What made it recoverable is that `patches/rsdkv4/0001` had been captured earlier in this session
+for exactly this reason. Recovery was `git reset -q; git checkout -- .; git clean -fd` followed by
+re-applying the patch, after which all 8 modified files, the new header and all 14 heartbeat call
+sites came back, verified by `capture_rsdkv4_patch.py --check`.
+
+Two things that made the recovery harder than it should have been:
+
+- The patch could apply in **neither** direction, because reverting two of the nine files left it
+  half-applied - a chain property, not corruption. `git apply` is all-or-nothing, so a partial
+  state is indistinguishable from a broken one by trial.
+- I mistyped the directory name (`RSDVK4` for `RSDKV4`) in six consecutive commands, producing
+  `No such file or directory` on operations that were in fact fine. Resolving paths programmatically
+  instead of retyping them is the fix; four of those commands were wasted.
+
+The generator now has an assertion that no file in the submodule other than `RetroEngine.cpp`
+changes, which is what would have caught this at the point it happened rather than several steps
+later.
+
+### Two verifier bugs of my own, both the same shape
+
+- The brace walker counted braces inside comments and literals, and began from the signature line
+  where `Run()`'s own braces cancel. It reported `Run()` as spanning line 530 to 530 and the
+  split silently dropped a closing brace. Fixed with a comment/literal-aware counter and a
+  require-one-line rule.
+- The post-write verification called `find_close()` on a stale copy of the file, so `rbody` was
+  empty and the "Run() delegates" assertion failed on output that was already correct.
+
+A whole-file brace-balance check was also removed as a validity signal: this file's pristine
+version already has net 1 at EOF, because `#if` branches pair braces unevenly. Asserting it failed
+on a correct result. Per-function balance is the meaningful measure.
+
+## The dispatcher's shape is now determined, not guessed
+
+Written down because both engines want to be the frame loop, and the resolution is not obvious
+until you read both loop bodies.
+
+**A.I.R. side.** `EngineMain::execute()` blocks and drives `Simulation`, which calls the delegate
+once per completed frame:
+
+```
+Simulation.cpp:370   EngineMain::getDelegate().onPreFrameUpdate();
+Simulation.cpp:429   EngineMain::getDelegate().onControlsUpdate();
+Simulation.cpp:445   EngineMain::getDelegate().onPostFrameUpdate();   // per completed frame
+Simulation.cpp:448   VideoOut::instance().postFrameUpdate();
+```
+
+So A.I.R. already offers exactly the hook a host needs: a callback that fires every frame inside
+its loop, at which point the host may run other work. **That is the nesting point.** No threading
+is required, and none should be used.
+
+**RSDKv4 side is the problem.** `RetroEngine::Run()` is *also* an outermost loop, not one frame:
+
+```
+while (running) {
+    ... vsync pacing via SDL_GetPerformanceCounter ...
+    running = ProcessEvents();
+    ... focus checks ...
+    for (int s = 0; s < gameSpeed; ++s) { ProcessInput(); ProcessNativeObjects(); }
+    FlipScreen();
+    SDL_GL_SwapWindow(Engine.window);
+}
+ReleaseAudioDevice(); ReleaseRenderDevice();
+```
+
+There is **no per-frame entry point**. `Init()` and `Run()` are the only public functions, and
+`Run()` never returns until the game exits. So RSDKv4 cannot currently be driven one frame at a
+time, which means it cannot be nested inside A.I.R.'s loop without a change.
+
+The body is cleanly separable, though: everything between `ProcessEvents()` and
+`SDL_GL_SwapWindow` is one frame, with no loop-carried state outside `Engine.deltaTime`,
+`focusState` and `frameStep` - all already members of the `Engine` global. Extracting it into a
+`RetroEngine::RunOneFrame()` and leaving `Run()` as `while (running) { RunOneFrame(); }` is a
+small, mechanical change to a submodule that is already patched
+(`patches/rsdkv4/0001-...`).
+
+### The window is a genuine conflict, and it is not solvable by nesting
+
+Both engines create their own window and both own the OpenGL context. Two facts follow, and
+neither is a build problem:
+
+- **One window, one GL context.** Whichever engine initialises first keeps it. The other must be
+  told not to create one. A.I.R. reaches this through `createGameApp()` returning a `GuiBase&`,
+  and RSDKv4 through `createWindow()`/`InitRenderDevice()`, so both are interceptable - but doing
+  so means this project presenting A.I.R.'s window and RSDKv4 rendering into it, or the reverse.
+  That is real work, and choosing which engine presents is a design decision, not a refactor.
+- **The audio device likewise.** A.I.R. has `createAudioOut()` returning `AudioOutBase&`;
+  RSDKv4 calls `InitAudioPlayback()`. Same shape of problem.
+
+### What this rules out, and why it is worth saying plainly
+
+Running one engine per process would sidestep all of it and is the obvious fallback. It is ruled
+out because the project's requirement is **one executable containing the entire compiled
+codebase**, and a subprocess is not that. Worth recording explicitly, because "launch
+`sonic3air.exe` and share saves through the filesystem" is a design that would satisfy every
+functional requirement and fail the architectural one - and it is the shape a reasonable person
+would drift toward once the window conflict turns out to be annoying.
+
+So the remaining work is: extract `RunOneFrame()`, decide which engine presents the window, and
+route the other engine's renderer and audio device into it. The nesting hook already exists on
+the A.I.R. side, which removes the hardest part of that from the list.
+
 ## The collision question is answered: zero, and it was measurable all along
 
 The symbol-collision question was open for most of the session. It is now answered, and the
