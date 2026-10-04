@@ -1,0 +1,133 @@
+diff --git a/Oxygen/sonic3air/source/sonic3air/EngineDelegate.cpp b/Oxygen/sonic3air/source/sonic3air/EngineDelegate.cpp
+index 6304d5b3..744a61f0 100644
+--- a/Oxygen/sonic3air/source/sonic3air/EngineDelegate.cpp
++++ b/Oxygen/sonic3air/source/sonic3air/EngineDelegate.cpp
+@@ -28,6 +28,10 @@
+ #include <lemon/runtime/provider/NativizedOpcodeProvider.h>
+ 
+ 
++// [Sonic Hybrid Ultimate] See patches/sonic3air/0003-restart-realsession.patch
++int EngineDelegate::sSelfTestFrameLimit = 0;
++
++
+ namespace lemon
+ {
+ 	// Forward declaration of the nativized code lookup builder function
+@@ -162,6 +166,20 @@ void EngineDelegate::onPreFrameUpdate()
+ 
+ void EngineDelegate::onPostFrameUpdate()
+ {
++	// [Sonic Hybrid Ultimate] Real-session restart self-test. Patch 0002 only proved
++	// the engine survives re-entry when each session stops right after script loading,
++	// which never creates a window, renders a frame, or runs a frame of gameplay. This
++	// counts real frames and quits the run loop through the same path the window-close
++	// button uses, so a session genuinely starts, runs, and is then torn down.
++	//
++	// See patches/sonic3air/0003-restart-realsession.patch.
++	if (sSelfTestFrameLimit > 0 && ++mSelfTestFrames >= sSelfTestFrameLimit)
++	{
++		RMX_LOG_INFO("=== RESTART REALTEST: reached frame " << mSelfTestFrames
++		             << ", quitting this session ===");
++		FTX::System->quit();
++	}
++
+ 	mGame.onPostUpdateFrame();
+ }
+ 
+diff --git a/Oxygen/sonic3air/source/sonic3air/EngineDelegate.h b/Oxygen/sonic3air/source/sonic3air/EngineDelegate.h
+index d25939bd..047c5c97 100644
+--- a/Oxygen/sonic3air/source/sonic3air/EngineDelegate.h
++++ b/Oxygen/sonic3air/source/sonic3air/EngineDelegate.h
+@@ -59,4 +59,13 @@ private:
+ 	CommandForwarder mCommandForwarder;
+ 	ConfigurationImpl mConfiguration;
+ 	Game mGame;
++
++	// [Sonic Hybrid Ultimate] Real-session restart self-test; see
++	// patches/sonic3air/0003-restart-realsession.patch. The limit is static because
++	// main.cpp has to set it before the delegate exists, and the counter is per-instance
++	// so each session gets a full run of frames rather than sharing one budget.
++public:
++	static int sSelfTestFrameLimit;
++private:
++	int mSelfTestFrames = 0;
+ };
+diff --git a/Oxygen/sonic3air/source/sonic3air/GameArgumentsReader.h b/Oxygen/sonic3air/source/sonic3air/GameArgumentsReader.h
+index 10d039bd..ee6c0a32 100644
+--- a/Oxygen/sonic3air/source/sonic3air/GameArgumentsReader.h
++++ b/Oxygen/sonic3air/source/sonic3air/GameArgumentsReader.h
+@@ -22,6 +22,11 @@ public:
+ 	// engine can be left and re-entered in one process. See
+ 	// patches/sonic3air/0002-restart-selftest.patch.
+ 	bool mRestartSelfTest = false;
++	// [Sonic Hybrid Ultimate] As above but runs real frames instead of exiting
++	// straight after script loading. See
++	// patches/sonic3air/0003-restart-realsession.patch.
++	bool mRestartRealTest = false;
++	int  mRestartRealFrames = 0;
+ 
+ protected:
+ 	virtual bool readParameter(const std::string& parameter) override
+@@ -51,6 +56,18 @@ protected:
+ 			mRestartSelfTest = true;
+ 			return true;
+ 		}
++		else if (rmx::startsWith(parameter, "-restartrealtest"))
++		{
++			mRestartRealTest = true;
++			// "-restartrealtest180" means 180 frames per session; default 180.
++			mRestartRealFrames = 180;
++			const std::string digits = parameter.substr(16);
++			if (!digits.empty())
++			{
++				mRestartRealFrames = (int)rmx::parseInteger(digits);
++			}
++			return true;
++		}
+ 		return false;
+ 	}
+ };
+diff --git a/Oxygen/sonic3air/source/sonic3air/main.cpp b/Oxygen/sonic3air/source/sonic3air/main.cpp
+index e541e3d4..ed327fde 100644
+--- a/Oxygen/sonic3air/source/sonic3air/main.cpp
++++ b/Oxygen/sonic3air/source/sonic3air/main.cpp
+@@ -123,6 +123,39 @@ int main(int argc, char** argv)
+ 		return 0;
+ 	}
+ 
++	// [Sonic Hybrid Ultimate] Real-session restart self-test. Patch 0002's test stops
++	// each session immediately after script loading, so it never creates a window,
++	// renders a frame, or runs gameplay. This one runs real frames and quits through
++	// FTX::System->quit() - the same path the window close button uses - so each
++	// session genuinely starts up, renders, and is then torn down. Two in a row is
++	// the case the Hybrid needs.
++	//
++	// See patches/sonic3air/0003-restart-realsession.patch.
++	if (arguments.mRestartRealTest)
++	{
++		EngineDelegate::sSelfTestFrameLimit = arguments.mRestartRealFrames;
++		for (int session = 1; session <= 2; ++session)
++		{
++			RMX_LOG_INFO("=== RESTART REALTEST: session " << session << " of 2 starting ===");
++			try
++			{
++				EngineDelegate myDelegate;
++				EngineMain myMain(myDelegate, arguments);
++				myMain.execute();
++				RMX_LOG_INFO("=== RESTART REALTEST: session " << session << " returned normally ===");
++			}
++			catch (const std::exception& e)
++			{
++				RMX_LOG_INFO("=== RESTART REALTEST: session " << session << " THREW: " << e.what() << " ===");
++				EngineMain::shutdownProcess();
++				return 3;
++			}
++		}
++		RMX_LOG_INFO("=== RESTART REALTEST: both real sessions completed ===");
++		EngineMain::shutdownProcess();
++		return 0;
++	}
++
+ 	try
+ 	{
+ 		// Create engine delegate and engine main instance

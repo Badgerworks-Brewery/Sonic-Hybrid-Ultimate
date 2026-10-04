@@ -1075,6 +1075,102 @@ window path is the one most likely to surprise: `createWindow()` is private to `
 and is called per session, so a second window has to be created after the first was
 destroyed, and that has not happened yet.
 
+### A real Sonic 3 session can be exited and restarted
+
+Patch 0002's test proved the *engine* survives re-entry, but each of its sessions stopped
+the instant scripts loaded - no window, no rendered frame, no gameplay. That is a real gap:
+most of what a session does was untested.
+
+`patches/sonic3air/0003-restart-realsession.patch` counts real frames in
+`EngineDelegate::onPostFrameUpdate()` and calls `FTX::System->quit()` at the limit, which is
+the same path the window-close button uses. `-restartrealtest180` runs two full sessions of
+180 frames each.
+
+```
+  31  Creating window...
+ 193  Ready to go
+ 195  RESTART REALTEST: reached frame 180, quitting this session
+ 199  --- SHUTDOWN ---
+ 203  RESTART REALTEST: session 1 returned normally
+ 205  RESTART REALTEST: session 2 of 2 starting
+ 267  Creating window...            <- second window, created fresh
+ 591  Ready to go
+ 595  RESTART REALTEST: reached frame 180, quitting this session
+ 603  --- SHUTDOWN ---
+ 611  RESTART REALTEST: session 2 returned normally
+ 615  RESTART REALTEST: both real sessions completed
+ 619  System shutdown
+exit code: 0
+```
+
+**The window is destroyed and a second one created.** That was flagged as the most likely
+thing to surprise, because `createWindow()` is private to `EngineMain` and runs per session.
+It works.
+
+The frame-limit message is checked deliberately. If it did not appear, both sessions would
+still have exited 0 and the test would have passed without exercising anything - which is
+the failure mode this whole exercise is guarding against.
+
+### Re-entering A.I.R. duplicates its log output
+
+Every line from session 2's window creation onward appears **twice**:
+
+```
+ 267  Creating window...
+ 269  Creating window...
+ 591  Ready to go
+ 593  Ready to go
+```
+
+There is no third session - `session 3` appears nowhere in the log, and the duplicate starts
+precisely where session 2 begins. Session 2 re-runs `oxygen::Logging::startup()` (called from
+`startupEngine()`), which registers a second logging sink, so everything after is emitted
+twice.
+
+Cosmetic, but it will mislead anyone reading these logs, and it cost real time here: an early
+count said three window creations and three shutdowns, which reads as three sessions until
+you check line numbers. Anyone counting log lines to answer "how many sessions ran" is now
+counting sinks, not sessions. Worth knowing before trusting any count from an A.I.R. log.
+
+The clean fix is to shut logging down at the end of a session rather than at process exit,
+which is the same split patch 0001 made for the other process globals. Not done yet - it is
+a behaviour change to log ordering during teardown and it is not on the critical path.
+
+### Three patches, each verified by round-trip
+
+```
+patches/sonic3air/0001-restartable-engine.patch    3,827 bytes   EngineMain.cpp/.h, main.cpp
+patches/sonic3air/0002-restart-selftest.patch      2,844 bytes   GameArgumentsReader.h, main.cpp
+patches/sonic3air/0003-restart-realsession.patch   5,135 bytes   EngineDelegate.cpp/.h,
+                                                                GameArgumentsReader.h, main.cpp
+```
+
+Verified by reverting the submodule to pristine and replaying: `6 files, 157 insertions,
+5 deletions`, and `apply_air_patches.py` run twice reports `skipped` the second time.
+
+**Patch 0003 was truncated twice before being fixed, both times identically.** To isolate a
+patch you must stage the baseline *first* and only then make the new edits. Staging
+afterwards puts the new edits into the index, and `git diff` then reports a patch containing
+only some of its files. 0003 first came out as 2 files instead of 4 - and it *applied
+cleanly*, because the missing hunks were not hunks, they were whole edits to `main.cpp` and
+`GameArgumentsReader.h` that had silently migrated into the index. A truncated patch is worse
+than a broken one: broken is loud, truncated is silent.
+
+Fixed by scripting the sequence (pristine, apply 0001+0002, stage, edit, diff) and asserting
+the resulting file set rather than trusting it. Two smaller things the script had to handle:
+the submodule files are CRLF, so LF anchors match nothing and rewriting the files to LF would
+turn a 20-line change into an unreviewable whole-file diff; and an anchor must match exactly
+once, not zero times.
+
+**`apply_air_patches.py --reverse 0001` now reverts a single patch.** The gap caused the
+manual `git apply` fiddling that caused the truncation, so it is fixed at the source rather
+than worked around. An unmatched patch name is now an error, not a silent no-op.
+
+**The failure message no longer guesses.** It used to say "the most likely cause is that the
+submodule has moved off the pinned SHA", which was wrong the one time it fired - the cause was
+a hand-edit outside the patch system. It now names the two things actually worth checking and
+defers to what `git apply` reported.
+
 ### Two gaps in the patch tooling, found by using it
 
 **`--reverse` reverts every patch, not one.** Reverting 0001 alone was wanted, to run the

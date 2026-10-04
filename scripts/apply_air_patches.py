@@ -21,9 +21,17 @@ Idempotent by construction: a patch that is already applied is detected and skip
 this is safe to run before every build and safe to run twice.
 
 Usage:
-    apply_air_patches.py            # apply anything not yet applied
-    apply_air_patches.py --check    # report status, change nothing
-    apply_air_patches.py --reverse  # undo every applied patch
+    apply_air_patches.py                    # apply anything not yet applied, in order
+    apply_air_patches.py --check            # report status, change nothing
+    apply_air_patches.py --reverse          # undo every applied patch
+    apply_air_patches.py --reverse 0001     # undo just that patch
+    apply_air_patches.py 0002 0003          # restrict to those patches, in that order
+
+Naming patches positionally exists because "--reverse reverts everything" is actively
+misleading during bisection: the obvious next step after a test fails is to revert only the
+patch under suspicion, and silently reverting unrelated ones produces a tree that is not
+the experiment anyone meant to run. Restricting by name is what makes reverting 0001 for a
+falsification run a one-line operation instead of a hand-rolled `git apply`.
 """
 import os
 import subprocess
@@ -70,6 +78,18 @@ def main():
     reverse = "--reverse" in args
     check_only = "--check" in args
 
+    # Bare arguments are patch name fragments, e.g. "0001" or "0003-restart". Matching is by
+    # substring so a short prefix is enough, and an unmatched name is an error rather than a
+    # silent no-op - a typo'd restriction that quietly applies everything would be worse than
+    # no restriction at all.
+    wanted = [a for a in args if not a.startswith("--")]
+    for name in wanted:
+        if not any(name in os.path.basename(p) for p in patch_files()):
+            print("FAIL: no patch matches %r" % name)
+            print("      available: %s"
+                  % ", ".join(os.path.basename(p) for p in patch_files()))
+            return 2
+
     if not os.path.isdir(SUBMODULE):
         print("FAIL: submodule not initialised at %s" % SUBMODULE)
         print("      run: git submodule update --init --recursive")
@@ -82,13 +102,16 @@ def main():
     pinned_sha = pinned.stdout.strip()
 
     files = patch_files()
+    if wanted:
+        files = [p for p in files if any(n in os.path.basename(p) for n in wanted)]
+    files.sort()
+
     print("submodule : %s" % os.path.relpath(SUBMODULE, REPO).replace("\\", "/"))
     print("pinned at : %s" % pinned_sha)
     if not files:
-        print("patches   : none found in %s"
-              % os.path.relpath(PATCH_DIR, REPO).replace("\\", "/"))
+        print("patches   : none selected")
         return 0
-    print("patches   : %d" % len(files))
+    print("patches   : %d selected" % len(files))
     print("")
 
     failures = 0
@@ -122,9 +145,12 @@ def main():
         return 1 if failures else 0
     if failures:
         print("")
-        print("%d patch(es) failed. The most likely cause is that the submodule has moved"
-              % failures)
-        print("off the pinned SHA and these patches were written against the old one.")
+        print("%d patch(es) failed. `git apply` reported the reason above." % failures)
+        print("Two causes seen in practice, worth checking in this order:")
+        print("  - the submodule has moved off the SHA these patches were written against;")
+        print("    check `git -C vendor/sonic3air rev-parse HEAD` against the pinned SHA above")
+        print("  - the worktree was edited outside this script, so the patch no longer matches;")
+        print("    check `git -C vendor/sonic3air status --short` for unexpected modifications")
         return 1
     return 0
 
