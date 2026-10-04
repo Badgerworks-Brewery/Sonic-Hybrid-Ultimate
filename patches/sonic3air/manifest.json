@@ -12,34 +12,65 @@
     "",
     "`must_not_contain` is the load-bearing half: it is what catches duplication."
   ],
-
   "0001-restartable-engine.patch": {
     "why": "Split EngineMain::shutdown() into per-session teardown plus shutdownProcess(), so the engine can be left and re-entered in one process.",
-    "must_contain": ["shutdownProcess", "FTX::JobManager->~JobManager()"],
-    "must_not_contain": ["framework/include", "stdc++fs"]
+    "must_contain": [
+      "shutdownProcess",
+      "FTX::JobManager->~JobManager()"
+    ],
+    "must_not_contain": [
+      "framework/include",
+      "stdc++fs"
+    ]
   },
-
   "0002-restart-selftest.patch": {
     "why": "Add -restartselftest: two EngineMain sessions back to back, exiting after script loading.",
-    "must_contain": ["mRestartSelfTest", "-restartselftest"],
-    "must_not_contain": ["sSelfTestFrameLimit", "restartrealtest"]
+    "must_contain": [
+      "mRestartSelfTest",
+      "-restartselftest"
+    ],
+    "must_not_contain": [
+      "sSelfTestFrameLimit",
+      "restartrealtest"
+    ]
   },
-
   "0003-restart-realsession.patch": {
     "why": "Add -restartrealtest: two sessions running real frames, quitting via FTX::System->quit().",
-    "must_contain": ["sSelfTestFrameLimit", "-restartrealtest"],
-    "must_not_contain": ["include_directories(${WORKSPACE_DIR}/framework/include)"]
+    "must_contain": [
+      "sSelfTestFrameLimit",
+      "-restartrealtest"
+    ],
+    "must_not_contain": [
+      "include_directories(${WORKSPACE_DIR}/framework/include)"
+    ]
   },
-
   "0004-sdl-include-path.patch": {
     "why": "Add A.I.R.'s bundled SDL include dir; MSVC needs <SDL/SDL.h>, which only framework/include provides.",
-    "must_contain": ["framework/include"],
-    "must_not_contain": ["stdc++fs"]
+    "must_contain": [
+      "framework/include"
+    ],
+    "must_not_contain": [
+      "stdc++fs"
+    ]
   },
-
   "0005-stdcxxfs-guard.patch": {
     "why": "Do not link stdc++fs under MSVC; it is a GCC/MinGW library and does not exist there.",
-    "must_contain": ["if (NOT MSVC)", "stdc++fs"],
-    "must_not_contain": ["framework/include"]
+    "must_contain": [
+      "if (NOT MSVC)",
+      "stdc++fs"
+    ],
+    "must_not_contain": [
+      "framework/include"
+    ]
+  },
+  "0010-stringtraits-decl-order.patch": {
+    "why": "Move the StringTraits declaration above StringTemplate and qualify the two getUnicode call sites. Pure reordering plus AIR's own qualification idiom; it also subsumes the removed 0009.",
+    "must_contain": [
+      "rmx::StringTraits<CHAR>::toUnicode",
+      "struct StringTraits"
+    ],
+    "must_not_contain": [
+      "return toUnicode(getChar"
+    ]
   }
 }

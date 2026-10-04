@@ -1,0 +1,53 @@
+diff --git a/librmx/source/rmxbase/memory/String.h b/librmx/source/rmxbase/memory/String.h
+index 27d0e78c..7fda0273 100644
+--- a/librmx/source/rmxbase/memory/String.h
++++ b/librmx/source/rmxbase/memory/String.h
+@@ -28,6 +28,23 @@ enum class UnicodeEncoding
+ };
+ 
+ 
++// [Sonic Hybrid Ultimate] Moved here from below.
++//
++// StringTraits was declared ~215 lines *after* StringTemplate, but StringTemplate calls
++// toUnicode() at lines 72-73. Those calls are unqualified, and the name is not visible at
++// template-definition time, so any consumer that instantiates them fails with
++//   error C3861: 'toUnicode': identifier not found
++// A.I.R. never instantiates them, which is why it builds. Pure reordering: no declaration,
++// signature or semantics altered. See patches/sonic3air/0010-stringtraits-decl-order.patch.
++namespace rmx
++{
++	template<typename CHAR>
++	struct StringTraits
++	{
++		static CHAR fromUnicode(uint32 code);
++		static uint32 toUnicode(CHAR ch);
++		static int buildFormatted(CHAR* dst, size_t dstSize, const CHAR* format, va_list argv);
++	};
+ // Template for concrete classes
+ template<typename CHAR, typename CLASS>
+ class StringTemplate
+@@ -69,8 +86,8 @@ public:
+ 	inline CHAR* accessData()				{ return mData; }
+ 	inline CHAR getChar(size_t index)		{ return (index < mLength) ? mData[index] : 0; }
+ 	inline CHAR getChar(int index)			{ return (index >= 0 && index < (int)mLength) ? mData[index] : 0; }
+-	inline uint32 getUnicode(size_t index)	{ return toUnicode(getChar(index)); }
+-	inline uint32 getUnicode(int index)		{ return toUnicode(getChar(index)); }
++	inline uint32 getUnicode(size_t index)	{ return rmx::StringTraits<CHAR>::toUnicode(getChar(index)); }
++	inline uint32 getUnicode(int index)		{ return rmx::StringTraits<CHAR>::toUnicode(getChar(index)); }
+ 
+ 	inline int length() const			{ return (int)mLength; }
+ 	inline bool empty() const			{ return (mLength == 0); }
+@@ -284,13 +301,4 @@ public:
+ 
+ 
+ 
+-namespace rmx
+-{
+-	template<typename CHAR>
+-	struct StringTraits
+-	{
+-		static CHAR fromUnicode(uint32 code);
+-		static uint32 toUnicode(CHAR ch);
+-		static int buildFormatted(CHAR* dst, size_t dstSize, const CHAR* format, va_list argv);
+-	};
+ }
