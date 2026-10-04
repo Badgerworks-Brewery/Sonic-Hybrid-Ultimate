@@ -45,6 +45,32 @@ endif()
 
 # Dependencies
 if(WIN32)
+# One SDL for the whole build.
+#
+# A.I.R. always builds its own SDL on Windows: its CMake does add_subdirectory() on the
+# vendored copy unconditionally, and the BUILD_SDL_STATIC=OFF branch only consults
+# pkg_check_modules on ARM/Linux. There is no Windows path where A.I.R. adopts an external
+# SDL, so when Sonic 3 is embedded both engines must agree on A.I.R.'s copy or CMake refuses
+# to generate at all:
+#
+#   The INTERFACE_SDL2_SHARED property of "SDL2-static" does not agree with the value of
+#   SDL2_SHARED already determined for "OxygenEngine".
+#
+# That is vcpkg's shared SDL2::SDL2 setting SDL2_SHARED ON while A.I.R.'s SDL2-static sets it
+# OFF, both propagating into OxygenEngine via rsdk_core and rmxmedia respectively. It is a
+# usage-requirement conflict rather than a duplicate-symbol one, so it surfaces at configure
+# time instead of as 63 LNK2005 errors - the same duplication, caught earlier and named more
+# clearly.
+#
+# Unifying on A.I.R.'s copy rather than the other way round, because rmxmedia was compiled
+# against A.I.R.'s SDL headers (2.30.12) and pairing those with vcpkg's newer library (2.32.10)
+# would put header/library skew inside a single engine. SDL2 is ABI-stable within a major
+# version, so compiling this project against the older headers is safe.
+if(BUILD_SONIC3AIR)
+    set(HYBRID_SDL2_TARGET SDL2-static)
+else()
+    set(HYBRID_SDL2_TARGET SDL2::SDL2)
+endif()
     find_package(SDL2 CONFIG REQUIRED)
     find_package(OpenGL REQUIRED)
     find_package(GLEW REQUIRED)
@@ -193,7 +219,7 @@ if(WIN32)
         ${THEORA_INCLUDE_DIR}
     )
     target_link_libraries(rsdk_core PUBLIC
-        SDL2::SDL2
+        ${HYBRID_SDL2_TARGET}
         SDL2::SDL2main
         ${OPENGL_LIBRARIES}
         GLEW::GLEW
@@ -255,7 +281,7 @@ if(RSDKV3_SOURCES)
             ${GLEW_INCLUDE_DIRS}
         )
         target_link_libraries(rsdkv3_core PUBLIC
-            SDL2::SDL2
+            ${HYBRID_SDL2_TARGET}
             SDL2::SDL2main
             ${OPENGL_LIBRARIES}
             GLEW::GLEW

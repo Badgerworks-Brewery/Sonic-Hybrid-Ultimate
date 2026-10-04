@@ -1986,6 +1986,83 @@ errors at link time. Same problem, detected a whole build phase earlier, with a 
 names the mechanism instead of listing 63 duplicate symbols. Not yet *solved* - the fix is
 still to unify on A.I.R.'s SDL - but the diagnosis loop just got shorter.
 
+### SDL unified: 66 collisions down to 3
+
+Configure was failing with
+
+```
+CMake Error: The INTERFACE_SDL2_SHARED property of "SDL2-static" does not agree with the
+value of SDL2_SHARED already determined for "OxygenEngine".
+```
+
+That is a usage-requirement conflict, not a duplicate symbol: vcpkg's shared `SDL2::SDL2` sets
+`SDL2_SHARED ON` while A.I.R.'s `SDL2-static` sets it `OFF`, and both propagate into
+`OxygenEngine` via `rsdk_core` and `rmxmedia` respectively. CMake's consistency check catches it
+at configure time, which is a whole build phase earlier than the 63 `LNK2005` errors it
+replaces - and it names the mechanism instead of listing 63 duplicate symbols.
+
+Unified behind one variable, set once:
+
+```cmake
+if(BUILD_SONIC3AIR)
+    set(HYBRID_SDL2_TARGET SDL2-static)
+else()
+    set(HYBRID_SDL2_TARGET SDL2::SDL2)
+endif()
+```
+
+used by both `rsdk_core` and `rsdkv3_core`.
+
+**Direction of travel is not a preference.** A.I.R. always builds its own SDL on Windows - its
+CMake does `add_subdirectory()` on the vendored copy unconditionally, and the
+`BUILD_SDL_STATIC=OFF` branch only consults `pkg_check_modules` on ARM/Linux. There is no
+Windows path where A.I.R. adopts an external SDL, so conforming this project to it is the only
+option that does not require patching A.I.R.
+
+**Versions differ**, which is why the direction matters more than usual:
+
+```
+vcpkg          2.32.10
+A.I.R. bundled 2.30.12
+```
+
+`rmxmedia` was compiled against 2.30.12 headers, so pairing those with vcpkg's 2.32.10 library
+would put header/library skew inside one engine. Going the other way - compiling this project
+against 2.30.12 - is safe, because SDL2 is ABI-stable within a major version.
+
+**Result: 66 link errors down to 3.**
+
+```
+x2  LNK2005  rmxmedia.lib(glew.obj)  glewGetErrorString, glewInit
+             already defined in glew32.lib(glew32.dll)
+x1  LNK1169  one or more multiply defined symbols
+```
+
+All 63 SDL collisions are gone. Only GLEW remains.
+
+### GLEW: the compatibility judgement, now resolved on evidence
+
+```
+vcpkg          GLEW 2.3.4
+A.I.R. bundled GLEW 2.3.4
+```
+
+Identical, so one GLEW can serve both engines and there is no ABI concern. That was the open
+question, and it is answered.
+
+What remains is *mechanical* in principle but *not* in the same way SDL was. A.I.R.'s GLEW is not
+a CMake target - `_cmake/CMakeLists.txt:217` globs
+`librmx/source/rmxmedia/_glew/*.c` straight into `rmxmedia`, so the symbols live inside a
+library needed for everything else and cannot be dropped by changing link order.
+
+The obstacle to just omitting `GLEW::GLEW`: `rsdk_core` is shared between `rsdkv4` (no A.I.R.)
+and `OxygenEngine` (with A.I.R.). Removing the GLEW link outright to fix `OxygenEngine` would
+leave `rsdkv4` without GLEW symbols, because the replacement symbols arrive via `rmxmedia`, which
+`rsdkv4` does not link. So this needs either a consumer-specific arrangement for the GLEW
+usage requirement, or a small patch to A.I.R.'s CMake to expose its bundled GLEW as a proper
+target that both engines can link. Both are real options; neither is a one-line change, which
+is why SDL is fixed and this is recorded rather than attempted.
+
 ### Recommended order
 
 1. **theora/theoradec debug-in-Release** - a pre-existing defect in this project's own build,
