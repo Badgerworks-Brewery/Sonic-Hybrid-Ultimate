@@ -558,6 +558,66 @@ reason to be wrong, suspect the checker first, and check whether the disagreemen
 contiguous region, is not what a mis-sized operand looks like; it is what a lost offset
 looks like.
 
+## Architectural decision: one executable containing the compiled code of every game
+
+Stated by the project owner, so it is recorded before any of it is built rather than
+rediscovered later:
+
+> one exe containing the entire compiled codebase
+
+That is the **linking** route, not the hosting route. It rules out the alternative I had
+been recommending - porting each game's data into RSDKv5U as separate `GameInfo`s - and it
+rules out running AIR as a subprocess. Sonic 1, Sonic CD, Sonic 2 and Sonic 3 A.I.R. must
+end up as compiled code inside `SonicHybridUltimate.exe`.
+
+**Why it is the hard option, stated once so it is not rediscovered as a surprise.** RSDKv4
+and Oxygen are both complete engines. Each has its own `main()`, renderer, audio device,
+input handling, and a broad set of file-scope globals. Linking them into one binary means
+resolving all of that:
+
+- two `main()` symbols - one must become a renamed entry point called from ours
+- two graphics backends, both wanting to own the window
+- two audio stacks, both wanting the output device
+- overlapping global symbol names, which is the tedious half and the part most likely to
+  produce silent breakage rather than a link error
+
+None of that is a reason to refuse. It is a reason to expect it to take real time, and to
+build it in an order where each step is verifiable on its own.
+
+**Consequences that follow, and are accepted:**
+
+1. **The build must stay offline-capable.** `build_all.ps1` re-bootstraps vcpkg over the
+   network and fails without it. Both engines have to build from what is already here.
+2. **`Hybrid-RSDK-Main/OxygenWrapper.cpp` stops being a stub reporter.** It is currently
+   the only thing in this codebase that names AIR, and it exists to say AIR is unavailable.
+   It becomes the seam where AIR is called, or it is deleted in favour of a real one.
+3. **Game data still never enters git.** Sonic 3's ROM is on this machine
+   (`school\N\Sonic_Knuckles_wSonic3.bin`, byte-identical to `rsdk-source-data\sonic3.bin`).
+   Linking AIR in does not change that; the ROM is unpacked into data at runtime and that
+   data stays untracked.
+
+**The order that works, and why it is this order:**
+
+1. Build AIR's externals (SDL, zlib, ogg-vorbis, curl, imgui) and then AIR itself, to a
+   standalone `sonic3air.exe`. Not a detour: it is the only proof the vendored 296 MB of
+   source compiles at all, and it gives a working Sonic 3 to diff against.
+2. Rebuild AIR as a static library with its `main()` renamed and its window/audio entry
+   points exposed. This is where the symbol collisions surface, one at a time, as link
+   errors rather than as a mystery at runtime.
+3. Link that into `rsdkv4.vcxproj` and have our `main()` be the one that runs.
+4. Resolve renderer and audio ownership, one subsystem at a time, verifying after each.
+
+Each step produces something runnable, which is the only way this stays debuggable. Doing
+it as one step produces a binary that neither game starts in.
+
+**State of the source, corrected.** `vendor/sonic3air` is a pinned submodule at `b584686f`
+(`v22.09.10.0-stable-933-gb584686f`), 11,563 files, 296 MB, with `framework`, `librmx` and
+`Oxygen`. `vendor/theoraplay` is present for the media backend. This was available the whole
+time and was missed: I read `Hybrid-RSDK-Main/Sonic 3 AIR Main`, an 8-file skeleton of
+leftovers (two SDL2 makefiles, one stray `DebugTracking.cpp`, three boost debug headers, an
+8 MB Discord `.dylib`), and reported from it that there was no AIR source and nothing to
+add as a submodule. Both claims were false. `.gitmodules` had the answer.
+
 ## Next steps, in order of value
 
 1. **Widen the oracle, now that it is trustworthy.** 4,157 distinct sites, 100% confirmed,
