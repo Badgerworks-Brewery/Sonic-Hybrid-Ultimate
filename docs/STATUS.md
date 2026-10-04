@@ -1652,6 +1652,62 @@ _cmake/CMakeLists.txt:56-63
 `add_compile_options` only affect targets created *after* them, so `OxygenEngine` is built
 with different flags from every A.I.R. target, and A.I.R.'s headers do not survive that.
 
+#### Release|x64 parsed properly: flags match after all, and the difference is includes
+
+The section below retracts "compile flags eliminated" on the grounds that the comparison had
+read the Debug condition block. Parsed properly - every `ItemDefinitionGroup` with its
+`Condition`, keyed on `Release|x64` - flags **do** match:
+
+```
+LanguageStandard    rmxbase stdcpp17        OxygenEngine stdcpp17
+AdditionalOptions   (none)                   (none)
+defines             WIN32 _WINDOWS NDEBUG    WIN32 _WINDOWS NDEBUG
+                    CMAKE_INTDIR="Release"    + OxygenEngine_EXPORTS
+```
+
+So that retraction was wrong in its conclusion, while being right that the original method was
+unsound. Both readings agreed, for the uninteresting reason that these targets differ very
+little at flag level. Recorded because "we differenced the wrong block and got the right
+answer" is not a result anyone should have to re-derive.
+
+**The real difference is the include list: 18 directories against 10.** `rmxbase` carries
+several that `OxygenEngine` does not:
+
+```
+build/_cmake/SDL/include                      <- the nonexistent one, from AIR's bug
+.../librmx/source/rmxmedia/_glew              <- bundled GLEW
+.../Oxygen/oxygenserver/source
+.../Oxygen/sonic3air/source/external
+.../framework/external/ogg-vorbis/libogg/include
+.../framework/external/ogg-vorbis/libvorbis/include
+.../framework/external/ogg-vorbis/libvorbis/lib
+.../framework/external/zlib/zlib/contrib/minizip
+```
+
+`OxygenEngine` instead picks up three the other lacks, all CMake-generated SDL exports from
+`build/sonic3air`: `SDL/include`, `SDL/include/SDL2`, `SDL/include-config-release/SDL2`.
+
+**The most promising lead in a while, and it is not about flags.** `StringImpl.h:765` is:
+
+```cpp
+TEMPLATE bool STRING::endsWith(StdStringView str) const
+{
+    return includesAt(str.data, (int)mLength - str.length());
+}
+```
+
+which passes the member *function* `str.data` where a pointer is wanted. It compiles in
+`rmxbase` and not here, and the plausible explanation is no longer anything about this
+project's build - it is that line 765 needs a declaration from an include directory only
+`rmxbase` has. `rmxmedia/_glew` is the likelier candidate of the two plausible ones, because
+`rmxbase.h` pulls rendering types through GLEW.
+
+**The fix is to link `rmxbase`, not to transcribe its includes.** `OxygenEngine` should get its
+include list from the library whose headers it is including, via
+`INTERFACE_INCLUDE_DIRECTORIES`. Hand-copying directories is how the current list got to be
+wrong, and it would drift again the moment AIR reorganises. Linking `rmxbase` makes the list
+correct by construction.
+
 #### Ruled out: SDL include shadowing, and /external:I
 
 Two hypotheses for the `StringImpl.h` failure above, both checked, neither the cause:
