@@ -1,16 +1,8 @@
 diff --git a/librmx/source/rmxbase/memory/String.h b/librmx/source/rmxbase/memory/String.h
-index a74aba75..c8a3b6d1 100644
+index 27d0e78c..c8a3b6d1 100644
 --- a/librmx/source/rmxbase/memory/String.h
 +++ b/librmx/source/rmxbase/memory/String.h
-@@ -97,7 +97,6 @@ public:
- 	void addHex(unsigned int value);
- 	void addFloat(float value, int precision = 0);
- 	void addDouble(double value, int precision = 0);
--	void addDouble(double value);
- 	void addData(void* inputdata, int bytes);
- 
- 	int parseInt() const;
-@@ -169,8 +168,8 @@ public:
+@@ -168,8 +168,8 @@ public:
  
  	CLASS& operator=(const CLASS& str)			{ copy(str); return (CLASS&)*this; }
  	CLASS& operator=(const CHAR* str)			{ copy(str); return (CLASS&)*this; }

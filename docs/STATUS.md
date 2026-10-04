@@ -1786,6 +1786,68 @@ thing between "A.I.R.'s headers compile in our target" and a real link.
 **Once that links, the collision count is finally knowable** - and it will be a real number
 rather than an assumption, which is the only reason any of this was worth doing carefully.
 
+## Reached the linker: every A.I.R. library compiles with all nine patches applied
+
+With 0001-0008 and 0011 all genuinely in place - restored, chain-correct, and verified to
+contain everything the replaced versions did - the `OxygenEngine` target compiles every A.I.R.
+library. `rmxbase`, `rmxmedia`, `rmxext_oggvorbis`, `lemonscript`, `oxygen_netcore` and
+`oxygen` all build, along with SDL2-static, imgui, zlibstatic, minizip and oggvorbis.
+
+That clears the entire compile-time phase of the integration. The `String.h` and
+`StringImpl.h` chain - six separate latent defects across two patches plus the removals - holds
+through A.I.R.'s own recompile, not just through ours.
+
+The remaining failure is at the **link**, and it is one library:
+
+```
+LINK : fatal error LNK1104: cannot open file 'libcurl.lib'
+    [build\Hybrid-RSDK-Main\OxygenEngine.vcxproj]
+```
+
+**This is the first time the integration has reached the linker at all**, so it is worth being
+precise about what it means and does not mean. It means A.I.R.'s headers compile inside this
+project's translation unit and every one of its libraries builds here. It does **not** yet mean
+the two engines coexist - that is the next link, and the answer to the symbol-collision question
+is still one step away rather than in hand.
+
+### Why curl specifically
+
+A.I.R.'s own CMake handles it at `_cmake/CMakeLists.txt:303-304`:
+
+```cmake
+find_package(CURL REQUIRED)
+target_link_libraries(oxygen CURL::libcurl)
+```
+
+So `oxygen` is built against curl, and any DLL linking `oxygen` must resolve curl's symbols
+too. `build/lib/Release/` contains **no** curl library, which confirms CMake did not build
+curl as part of this project - `find_package` located a prebuilt one instead. The prebuilt
+libraries that do exist are all under the vendored tree:
+
+```
+vendor/sonic3air/framework/lib/x64/curl/libcurl.lib    8,979,896
+vendor/sonic3air/framework/lib/x64d/curl/libcurl.lib   8,979,896
+vendor/sonic3air/framework/lib/x86/curl/libcurl.lib    8,691,136
+```
+
+built earlier by `framework/external/build_externals_windows.bat`. `find_package(CURL)`
+succeeded - otherwise configure would have failed - but the resulting `CURL::libcurl` location
+is not being passed through to the `OxygenEngine` link line.
+
+**The fix is to hand `CURL::libcurl` to the DLL explicitly**, so it inherits what `oxygen`
+already resolved rather than relying on `find_package` to rediscover it:
+
+```cmake
+if(TARGET CURL::libcurl)
+    target_link_libraries(OxygenEngine PRIVATE CURL::libcurl)
+endif()
+```
+
+If that is not enough, set `CURL_LIBRARY` and `CURL_INCLUDE_DIR` to the vendored
+`framework/lib/x64/curl` before the `add_subdirectory`, so `find_package` resolves to the copy
+this project actually built. The second is the more robust of the two, because it fixes the
+cause rather than propagating a resolution that is already fragile.
+
 ## The AIR patch chain: true state, and why `--check` shows conflicts on a clean tree
 
 `apply_air_patches.py --check` against a genuinely pristine submodule:
