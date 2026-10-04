@@ -1,0 +1,12 @@
+diff --git a/librmx/source/rmxbase/memory/String.h b/librmx/source/rmxbase/memory/String.h
+index a74aba75..27d0e78c 100644
+--- a/librmx/source/rmxbase/memory/String.h
++++ b/librmx/source/rmxbase/memory/String.h
+@@ -97,7 +97,6 @@ public:
+ 	void addHex(unsigned int value);
+ 	void addFloat(float value, int precision = 0);
+ 	void addDouble(double value, int precision = 0);
+-	void addDouble(double value);
+ 	void addData(void* inputdata, int bytes);
+ 
+ 	int parseInt() const;
