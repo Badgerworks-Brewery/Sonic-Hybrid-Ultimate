@@ -1,0 +1,41 @@
+diff --git a/librmx/source/rmxbase/memory/String.h b/librmx/source/rmxbase/memory/String.h
+index a74aba75..63b5f84e 100644
+--- a/librmx/source/rmxbase/memory/String.h
++++ b/librmx/source/rmxbase/memory/String.h
+@@ -69,8 +69,26 @@ public:
+ 	inline CHAR* accessData()				{ return mData; }
+ 	inline CHAR getChar(size_t index)		{ return (index < mLength) ? mData[index] : 0; }
+ 	inline CHAR getChar(int index)			{ return (index >= 0 && index < (int)mLength) ? mData[index] : 0; }
+-	inline uint32 getUnicode(size_t index)	{ return toUnicode(getChar(index)); }
+-	inline uint32 getUnicode(int index)		{ return toUnicode(getChar(index)); }
++	// [Sonic Hybrid Ultimate] Removed getUnicode(size_t) and getUnicode(int).
++	// Nothing in A.I.R. calls them - the only occurrences of the name anywhere in the
++	// vendored tree were these two definitions - and neither could compile once
++	// instantiated, because toUnicode is a member of StringTraits declared ~215 lines
++	// later, which unqualified lookup at template-definition time cannot see:
++	//   error C3861: 'toUnicode': identifier not found
++	// Deleting dead code that does not compile is smaller and safer than reordering a
++	// third-party header to accommodate it. Reinstating these needs the StringTraits
++	// call to be made dependent-safe, not merely qualified.
++	// See patches/sonic3air/0011-remove-dead-getunicode.patch.
++	// [Sonic Hybrid Ultimate] Removed getUnicode(size_t) and getUnicode(int).
++	// Nothing in A.I.R. calls them - the only occurrences of the name anywhere in the
++	// vendored tree were these two definitions - and neither could compile once
++	// instantiated, because toUnicode is a member of StringTraits declared ~215 lines
++	// later, which unqualified lookup at template-definition time cannot see:
++	//   error C3861: 'toUnicode': identifier not found
++	// Deleting dead code that does not compile is smaller and safer than reordering a
++	// third-party header to accommodate it. Reinstating these needs the StringTraits
++	// call to be made dependent-safe, not merely qualified.
++	// See patches/sonic3air/0011-remove-dead-getunicode.patch.
+ 
+ 	inline int length() const			{ return (int)mLength; }
+ 	inline bool empty() const			{ return (mLength == 0); }
+@@ -97,7 +115,6 @@ public:
+ 	void addHex(unsigned int value);
+ 	void addFloat(float value, int precision = 0);
+ 	void addDouble(double value, int precision = 0);
+-	void addDouble(double value);
+ 	void addData(void* inputdata, int bytes);
+ 
+ 	int parseInt() const;

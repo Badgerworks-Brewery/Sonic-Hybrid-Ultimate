@@ -104,17 +104,26 @@ def patch_files():
 
 
 def already_applied(path):
-    """True when the patch is present in the worktree.
+    """Tri-state: True applied, False not applied, None "cannot tell - do not guess".
 
-    `git apply --reverse --check` succeeds exactly when the patch's additions are already
-    in the file, which is the test for "already applied". It fails both for "not applied"
-    and for "does not apply cleanly", so a separate forward check disambiguates.
+    `git apply --reverse --check` succeeding is the only trustworthy evidence that a patch is
+    already present. If it fails, `git apply --check` decides: succeeding means not applied,
+    and failing means neither - which is a conflict, not a fact about the worktree.
+
+    The earlier version of this function treated a failing forward check as "already applied".
+    That is backwards, and it cost two patches silently: 0008 and 0011 both reported
+    `skipped (already applied)` while their changes were absent, because 0007 and 0008 touch
+    the same file and 0008's context no longer matched once 0007 was in place. A patch that
+    cannot be applied must fail loudly. Reporting it as applied is the one outcome that hides
+    the problem, and it is precisely the failure this whole patch mechanism exists to prevent.
     """
     rev = git("apply", "--reverse", "--check", path)
     if rev.returncode == 0:
         return True
     fwd = git("apply", "--check", path)
-    return fwd.returncode != 0 and "already exists" not in fwd.stderr
+    if fwd.returncode == 0:
+        return False
+    return None
 
 
 def main():
@@ -159,9 +168,20 @@ def main():
     print("")
 
     failures = 0
+    conflicts = 0
     for path in files:
         name = os.path.basename(path)
         applied = already_applied(path)
+
+        if applied is None:
+            # Neither direction applies. Say so and fail, rather than guessing - see the
+            # docstring on already_applied() for why this branch exists at all.
+            print("  %-46s CONFLICT" % name)
+            print("      applies neither forwards nor in reverse: the worktree does not match")
+            print("      this patch and is not the state it expects. Usually another patch")
+            print("      touching the same file is applied or missing.")
+            conflicts += 1
+            continue
 
         if check_only:
             state = "applied" if applied else "NOT applied"
@@ -186,7 +206,16 @@ def main():
             print("  %-46s %s" % (name, "reverted" if reverse else "applied"))
 
     if check_only:
-        return 1 if failures else 0
+        return 1 if (failures or conflicts) else 0
+    if conflicts:
+        print("")
+        print("%d patch(es) CONFLICT: neither direction applies. These were previously being"
+              % conflicts)
+        print("reported as 'skipped (already applied)', which is how two patches went missing")
+        print("from the worktree while every run looked green. Resolve the overlap - usually")
+        print("regenerate the later patch with the earlier ones applied as a staged baseline -")
+        print("rather than assuming they are present.")
+        return 1
     if failures:
         print("")
         print("%d patch(es) failed. `git apply` reported the reason above." % failures)
