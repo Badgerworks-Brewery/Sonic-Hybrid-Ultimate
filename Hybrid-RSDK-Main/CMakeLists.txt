@@ -51,10 +51,34 @@ if(WIN32)
     find_package(Vorbis REQUIRED)
     find_package(tinyxml2 CONFIG REQUIRED)
     # Team Forever requires ogg and theora for video playback
-    # vcpkg provides these but without CMake config files, so we find them manually
-    find_library(OGG_LIBRARY NAMES ogg libogg REQUIRED)
-    find_library(THEORA_LIBRARY NAMES theora libtheora REQUIRED)
-    find_library(THEORADEC_LIBRARY NAMES theoradec libtheoradec REQUIRED)
+    #
+    # NB: these are found with find_library, which is NOT triplet-aware. It searches a plain
+    # PATH and is free to return vcpkg's *debug* tree even for a Release build, which is
+    # exactly what it did - CMakeCache held
+    #   THEORA_LIBRARY:FILEPATH=.../vcpkg_installed/x64-windows/debug/lib/theora.lib
+    # while VCPKG_TARGET_TRIPLET was x64-windows. A Release build was therefore linking debug
+    # theora/theoradec, mixing debug and release CRT in one binary, which is the failure mode
+    # that has no link error to warn about it. It only surfaced as warning LNK4098 once
+    # OxygenEngine linked this target alongside A.I.R. and the warning appeared in context.
+    #
+    # GLEW and Vorbis above use find_package and resolve correctly, because config mode is
+    # triplet-aware. So constrain the library search to the release tree explicitly, rather
+    # than trusting the ambient PATH order.
+    set(_hybrid_vcpkg_libdir
+        "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/lib")
+    if(NOT EXISTS "${_hybrid_vcpkg_libdir}")
+        message(WARNING
+            "Expected vcpkg release libs at ${_hybrid_vcpkg_libdir}. If find_library falls back
+            "to a default search it may pick a debug library; check THEORA_LIBRARY in the
+            "CMake cache for '/debug/' before trusting a Release build.")
+    endif()
+    find_library(OGG_LIBRARY NAMES ogg libogg
+        HINTS "${_hybrid_vcpkg_libdir}" NO_DEFAULT_PATH REQUIRED)
+    find_library(THEORA_LIBRARY NAMES theora libtheora
+        HINTS "${_hybrid_vcpkg_libdir}" NO_DEFAULT_PATH REQUIRED)
+    find_library(THEORADEC_LIBRARY NAMES theoradec libtheoradec
+        HINTS "${_hybrid_vcpkg_libdir}" NO_DEFAULT_PATH REQUIRED)
+    # Headers are shared between debug and release for a triplet, so these are left unconstrained.
     find_path(OGG_INCLUDE_DIR ogg/ogg.h REQUIRED)
     find_path(THEORA_INCLUDE_DIR theora/theora.h REQUIRED)
 else()

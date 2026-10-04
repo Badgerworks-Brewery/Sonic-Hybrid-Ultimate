@@ -1892,25 +1892,109 @@ Worth knowing that `_cmake:284` already flags a GLEW versus ImGui OpenGL header 
 A.I.R.'s own build, so this area has a history. This one needs a compatibility decision, not
 a flag.
 
-### The CRT mismatch is separate, and higher-risk than either
+### The LNK4098 warning was a misdiagnosis: both sides use the same CRT
+
+An earlier version of this section claimed A.I.R. built against the static CRT while this
+project used the dynamic one, and called that the most dangerous of the three problems. **That
+was wrong, and it was checked after being written rather than before.**
+
+Verified by dumping the CRT directives from every library in the link:
 
 ```
-MSVCRT.lib(initializers.obj) : warning LNK4098:
-  defaultlib 'libcmt.lib' conflicts with use of other libs
+imgui.lib           MSVCRT          oxygen.lib          msvcprt MSVCRT
+lemonscript.lib     msvcprt MSVCRT  oxygen_netcore.lib  msvcprt MSVCRT
+minizip.lib         MSVCRT          rmxbase.lib         msvcprt MSVCRT
+oggvorbis.lib       MSVCRT          rmxext_oggvorbis.lib msvcprt MSVCRT
+oxygen.lib          msvcprt MSVCRT  rmxmedia.lib        msvcprt MSVCRT
+rsdk_core.lib       msvcprt MSVCRT  rsdkv3_core.lib     msvcprt MSVCRT
+sonic_hybrid.lib    msvcprt MSVCRT  SDL2-static.lib     MSVCRT
+zlibstatic.lib      MSVCRT
 ```
 
-A.I.R.'s libraries carry the static CRT (`/MT`, `libcmt.lib`) while this project uses the
-dynamic one. Mixing CRTs gives two heaps and two copies of CRT state; an allocation made in one
-engine and freed in the other corrupts memory quietly, with no link error to warn about it.
+Every library on both sides carries `msvcprt` + `MSVCRT` - the **dynamic** CRT, /MD. **No
+library in the link carries `libcmt.lib`.** Neither `Hybrid-RSDK-Main/CMakeLists.txt` nor
+A.I.R.'s `_cmake/CMakeLists.txt` sets `MSVC_RUNTIME_LIBRARY` at all, so both use the same
+default. There is no CRT mismatch here, and the warning is not evidence of one.
 
-**Fix this before SDL or GLEW**, because it is the only one of the three that can produce a
-subtle runtime failure rather than a build failure. Everything else fails loudly.
+The mistake was reading `warning LNK4098: defaultlib 'libcmt.lib' conflicts` and inferring
+"static CRT somewhere" rather than dumping the directives and finding out. The same failure
+shape as the rest of this session: a plausible mechanism inferred from a message, in place of
+the measurement that would have answered it.
+
+### What the warning actually was: debug vcpkg libraries in a Release link
+
+```
+vcpkg_installed\x64-windows\debug\lib\theora.lib
+vcpkg_installed\x64-windows\debug\lib\theoradec.lib
+```
+
+Both appear in the **Release** `AdditionalDependencies`, sitting among correctly-Release
+entries (`ogg.lib`, `vorbis.lib`, `SDL2.lib`, `glew32.lib`). Release copies of both also exist
+under `vcpkg_installed\x64-windows\lib\`, so the debug tree is being reached when it need
+not be.
+
+The cause is two mechanisms racing at `Hybrid-RSDK-Main/CMakeLists.txt`:
+
+```cmake
+find_library(THEORA_LIBRARY NAMES theora libtheora REQUIRED)      # :56
+find_library(THEORADEC_LIBRARY NAMES theoradec libtheoradec REQUIRED)  # :57
+pkg_check_modules(THEORA REQUIRED theora theoradec)              # :68
+```
+
+`find_library` populates `${THEORA_LIBRARY}` / `${THEORADEC_LIBRARY}`, which are consumed at
+`:180-181`, while `pkg_check_modules` populates `${THEORA_LIBRARIES}`, consumed at `:200`.
+Whichever resolution won produced the debug path. Worth noting the comment at `:53` - "Team
+Forever requires ogg and theora for video playback" - so this was added deliberately.
+
+**This is a pre-existing defect in this project's own RSDKv4 build, not an A.I.R. integration
+problem.** Nothing in the hybrid linked both paths until today, so a Release build has
+presumably been linking debug theora/theoradec - and debug/release CRT mixing - without a
+failing build to reveal it. The `LNK4098` I attributed to A.I.R. was evidence of it.
+
+That also revises the priority order below: this is not a runtime-correctness landmine
+introduced by embedding A.I.R., it is a latent Release-configuration bug that the embedding
+work made visible.
+
+### Fixed and verified: debug theora in a Release build
+
+`find_library` results are cached, so clearing them was part of the fix - otherwise the
+previously-found debug path would simply have been reused.
+
+```
+before   THEORA_LIBRARY:FILEPATH=.../vcpkg_installed/x64-windows/debug/lib/theora.lib
+after    THEORA_LIBRARY:FILEPATH=.../vcpkg_installed/x64-windows/lib/theora.lib
+         THEORADEC_LIBRARY:FILEPATH=.../vcpkg_installed/x64-windows/lib/theoradec.lib
+
+Release link, vcpkg entries with /debug/:  0   (was 2)
+```
+
+Verified by dumping the CRT directives of every library in the link first: all carry
+`msvcprt` + `MSVCRT`, so both sides are /MD dynamic and there is no `libcmt.lib` anywhere.
+The fix is constrained with `HINTS "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/lib"
+NO_DEFAULT_PATH`, matching how `GLEW` and `Vorbis` already resolve correctly through
+`find_package` in config mode. Headers are left unconstrained because vcpkg shares one
+`include/` tree between debug and release for a triplet.
+
+### A side effect worth having: SDL duplication now fails at configure time
+
+```
+CMake Error: The INTERFACE_SDL2_SHARED property of "SDL2-static" does not exist.
+```
+
+That is the SDL collision, caught during configure rather than surfacing as 63 `LNK2005`
+errors at link time. Same problem, detected a whole build phase earlier, with a message that
+names the mechanism instead of listing 63 duplicate symbols. Not yet *solved* - the fix is
+still to unify on A.I.R.'s SDL - but the diagnosis loop just got shorter.
 
 ### Recommended order
 
-1. **CRT** - runtime correctness, invisible if wrong
-2. **SDL** - 63 of 66 errors, mechanical
-3. **GLEW** - needs a compatibility judgement
+1. **theora/theoradec debug-in-Release** - a pre-existing defect in this project's own build,
+   now visible. One of the two discovery mechanisms at `CMakeLists.txt:56-68` is resolving into
+   the debug tree; decide which one should own this and drop the other.
+2. **SDL** - 63 of 66 errors, mechanical, direction fixed by A.I.R.'s CMake
+3. **GLEW** - needs a compatibility judgement, not a flag
+
+The CRT is no longer on the list, because there is nothing to fix.
 
 ### What the next link will and will not tell us
 
