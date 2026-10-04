@@ -523,30 +523,53 @@ if(BUILD_SONIC3AIR)
         
         # Link Sonic 3 AIR libraries to OxygenEngine wrapper
         # This enables embedded mode instead of external process launching
-        if(TARGET sonic3air)
-            target_link_libraries(OxygenEngine PRIVATE sonic3air)
+        #
+        # Two corrections to what was here before, both of which made this a no-op:
+        #
+        #  - The target is `oxygen`, not `sonic3air`. A.I.R.'s CMakeLists defines the
+        #    executable as `Sonic3AIR` (its Visual Studio project is `sonic3air.vcxproj`,
+        #    which is where the lowercase name came from). CMake target names are
+        #    case-sensitive, so `if(TARGET sonic3air)` was never true and this block only
+        #    ever printed its warning. Setting BUILD_SONIC3AIR=ON silently did nothing.
+        #
+        #  - `oxygen` is a library and `Sonic3AIR` is an executable. Linking an .exe into
+        #    a .dll is not something MSVC will do, so even with the name corrected the
+        #    original line could not have linked. `Sonic3AIR` itself does
+        #    `target_link_libraries(Sonic3AIR oxygen)`, which is the relationship to copy:
+        #    take the engine library, not the game front-end.
+        if(TARGET oxygen)
+            target_link_libraries(OxygenEngine PRIVATE oxygen)
             target_compile_definitions(OxygenEngine PRIVATE OXYGEN_EMBEDDED_MODE)
-            message(STATUS "✓ OxygenEngine will use embedded Sonic 3 AIR")
+            message(STATUS "✓ OxygenEngine will use embedded Sonic 3 AIR (linked 'oxygen')")
         else()
-            message(WARNING "sonic3air target not found after adding subdirectory")
+            message(WARNING
+                "A.I.R. 'oxygen' target not found after add_subdirectory. Available Oxygen "
+                "targets would be: oxygen, oxygen_netcore, lemonscript. Sonic 3 stays in "
+                "stub mode until this resolves - check that "
+                "${SONIC3AIR_CMAKE_DIR} configured without disabling the engine.")
         endif()
         
         # Copy Sonic 3 AIR executable and data files to distribution
-        if(TARGET sonic3air)
-            add_custom_command(TARGET sonic3air POST_BUILD
+        #
+        # Only when not embedding. When OxygenEngine links `oxygen` directly there is no
+        # separate Sonic 3 process to ship, and the exe is built anyway by A.I.R.'s own
+        # solution. Guarded on the same condition as the link above so the two cannot
+        # disagree.
+        if(TARGET Sonic3AIR AND NOT TARGET oxygen)
+            add_custom_command(TARGET Sonic3AIR POST_BUILD
                 COMMAND ${CMAKE_COMMAND} -E echo "Copying Sonic 3 AIR executable..."
                 COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                    $<TARGET_FILE:sonic3air>
+                    $<TARGET_FILE:Sonic3AIR>
                     ${CMAKE_BINARY_DIR}/bin/
                 COMMENT "Copying Sonic 3 AIR executable to bin directory"
             )
             
             # Copy to Custom Client directory for dev builds
-            add_custom_command(TARGET sonic3air POST_BUILD
+            add_custom_command(TARGET Sonic3AIR POST_BUILD
                 COMMAND ${CMAKE_COMMAND} -E make_directory 
                     ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net8.0-windows/win-x64/
                 COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                    $<TARGET_FILE:sonic3air>
+                    $<TARGET_FILE:Sonic3AIR>
                     ${CMAKE_CURRENT_SOURCE_DIR}/../Custom-Client/bin/$<CONFIG>/net8.0-windows/win-x64/
                 COMMENT "Copying Sonic 3 AIR to Custom Client directory"
             )

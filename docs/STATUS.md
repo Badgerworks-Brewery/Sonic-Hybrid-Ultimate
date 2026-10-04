@@ -1283,6 +1283,68 @@ above both engines, and `EngineDelegateInterface` is already the interface that 
 carry that decision. RSDKv4's `main()` currently does `Engine.Init(); Engine.Run();` with
 no dispatch, so the dispatcher is new code, not a modification.
 
+## The existing Sonic 3 integration was a no-op, and it was broken two ways
+
+`Hybrid-RSDK-Main/CMakeLists.txt` already contained Sonic 3 A.I.R. integration - a
+`BUILD_SONIC3AIR` option that `add_subdirectory`s A.I.R.'s own CMake and links it into the
+`OxygenEngine` wrapper with `OXYGEN_EMBEDDED_MODE`. This was found only after building A.I.R.
+by hand for days. It should have been the first thing looked at, and the option being `OFF`
+on Windows with a comment saying A.I.R. "is currently only supported on Unix-like systems"
+made it look like a known limitation rather than a wiring bug. It builds fine on Windows; that
+comment is stale.
+
+**Bug 1: the target name never existed.** The integration asked for `sonic3air`:
+
+```cmake
+if(TARGET sonic3air)
+    target_link_libraries(OxygenEngine PRIVATE sonic3air)
+    target_compile_definitions(OxygenEngine PRIVATE OXYGEN_EMBEDDED_MODE)
+else()
+    message(WARNING "sonic3air target not found after adding subdirectory")
+endif()
+```
+
+A.I.R.'s `_cmake/CMakeLists.txt` defines these targets:
+
+```
+oggvorbis  minizip  imgui  rmxbase  rmxmedia  rmxext_oggvorbis
+lemonscript  oxygen_netcore  oxygen        <- libraries
+OxygenApp  OxygenServer  discord_game_sdk_source  Sonic3AIR   <- executables
+```
+
+The executable is **`Sonic3AIR`**. The lowercase name came from A.I.R.'s *Visual Studio*
+project, `sonic3air.vcxproj`. CMake target names are case-sensitive, so `if(TARGET sonic3air)`
+was never true. Setting `BUILD_SONIC3AIR=ON` printed that warning and did nothing else: no
+link, no `OXYGEN_EMBEDDED_MODE`, no exe copy. Silent, and warning-shaped so it reads as
+informational.
+
+**Bug 2: wrong kind of target even with the right name.** `Sonic3AIR` is an *executable*, and
+linking an `.exe` into a `.dll` is not something MSVC will do. The engine is the **`oxygen`**
+library, and `Sonic3AIR` itself does `target_link_libraries(Sonic3AIR oxygen)` - that line is
+the relationship to copy. So the fix links `oxygen`, not the game front-end.
+
+Both corrected, plus the two `POST_BUILD` copy blocks retargeted from `sonic3air` to
+`Sonic3AIR` and now guarded on `NOT TARGET oxygen`, since when the engine is embedded there is
+no separate Sonic 3 process to ship and the two decisions cannot disagree.
+
+Verified: `cmake -S . -B build` configures clean, exit 0, with `BUILD_SONIC3AIR` still `OFF`
+so nothing else changed. Configure output also confirms `RSDKv3 sources found - building
+rsdkv3_core`, so the RSDKv3 engine the CD converter needs is already a build target.
+
+**What this does not do.** `BUILD_SONIC3AIR` is still `OFF` by default on Windows, and turning
+it on is untested - A.I.R.'s CMake has never been configured through this project's build
+tree, only built standalone via its own Visual Studio solution. Two things to watch when it is
+switched on: A.I.R.'s CMake does `set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${WORKSPACE_DIR}/sonic3air")`,
+which will contend with this project's `${CMAKE_BINARY_DIR}/bin` for output location, and
+`OxygenWrapper.cpp` still has to be written to actually call into `oxygen` - the define and the
+link are necessary but not sufficient.
+
+**The lesson, which is the fourth instance of it.** A feature directory named after the
+feature (`Sonic 3 AIR Main`, `sonic-hybrid/Data/`, the `BUILD_SONIC3AIR` comment) was read
+instead of the one the build uses (`vendor/sonic3air`, `rsdk-source-data/`, the actual CMake
+target names). Each time the answer was confidently wrong in the same direction, and each time
+the correct answer was sitting in a directory I had already listed.
+
 ## Next steps, in order of value
 
 1. **Widen the oracle, now that it is trustworthy.** 4,157 distinct sites, 100% confirmed,
