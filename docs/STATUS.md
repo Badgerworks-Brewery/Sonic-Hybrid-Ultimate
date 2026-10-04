@@ -459,6 +459,40 @@ For scale: the first sweep of Sonic 1's same 19 stages managed 120,462 instructi
 froze at 190 distinct sites per stage. The ceiling was never the bytecode - it was the
 cost of writing the trace, one line per operand tag instead of one per instruction.
 
+### Narrowed: it is the `SCRIPTVAR_VAR` width, and the formulas both check out
+
+Working the numbers rather than guessing. The walker's rules (`rsdkv4_walk.py:112`) are:
+
+| operand | words |
+|---|---|
+| `VAR` + `VARARR_NONE` | 3 - tag, selector, variable index |
+| `VAR` + `VARARR_ARRAY` / `ENTNOPLUS1` / `ENTNOMINUS1` | 5 - plus flag and index |
+| `INTCONST` | 2 |
+| `STRCONST` | `3 + len // 4` |
+
+and the engine's fetch loop (`Script.cpp:3639-3668`) consumes exactly those words.
+`ARRAY_KINDS = (1, 2, 3)` in the walker also matches
+`enum ScriptVarArrTypes { NONE = 0, ARRAY = 1, ENTNOPLUS1 = 2, ENTNOMINUS1 = 3 }`, and the
+engine does read a flag and an index word for all three of 1, 2 and 3.
+
+So the arithmetic is right on both sides, and the reported widths still differ:
+
+```
+tags [1,2]   walker 5 = 3 + 2      engine 7 = 5 + 2
+tags [1,1]   walker 8 = 3 + 5      engine 7
+```
+
+Two things follow. First, for `[1,2]` the engine took the five-word branch on operand 0
+and the walker took the three-word branch - but they read the same tag byte and so must
+read the same selector byte, which rules out the obvious explanation. Second, `7` is not
+expressible as a sum of two `VAR` widths at all (3+3, 3+5, 5+5, 5+3 = 6, 8 or 10), so the
+second case is not a mis-sized `VAR` either - something else about that instruction is
+being read differently.
+
+Both of those say the same thing: stop reasoning about the format and look at the words.
+`MZS1.bin` word 121077 and 126301, with the tag byte and selector byte printed, will say
+in one look what three rounds of reading have not. That is the next step, and it is cheap.
+
 ## Next steps, in order of value
 
 1. **Widen the oracle, now that it is trustworthy.** 4,157 distinct sites, 100% confirmed,
