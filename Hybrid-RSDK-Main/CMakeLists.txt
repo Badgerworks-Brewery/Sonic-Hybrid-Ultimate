@@ -586,7 +586,12 @@ if(BUILD_SONIC3AIR)
                 ${SONIC3AIR_ROOT}/framework/include
             )
 
-            target_compile_definitions(OxygenEngine PRIVATE OXYGEN_EMBEDDED_MODE)
+            # NB: OXYGEN_EMBEDDED_MODE is deliberately NOT defined. It is a macro this project
+            # invented for the old external-process stub and A.I.R. has no knowledge of it, so
+            # it should be inert - but it is the one remaining difference between this target
+            # and A.I.R.'s own, and StringImpl.h(765) fails here with C3867 while compiling
+            # fine in A.I.R.'s targets. Testing it by absence is cheaper than another
+            # hypothesis. See docs/STATUS.md.
             message(STATUS "✓ OxygenEngine will use embedded Sonic 3 AIR (linked 'oxygen')")
         else()
             message(WARNING
