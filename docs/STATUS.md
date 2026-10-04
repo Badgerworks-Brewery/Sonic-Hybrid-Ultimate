@@ -2192,19 +2192,237 @@ duplicated patch, and a mis-detected patch.
   so that should no longer recur.
 - Only then does the symbol-collision question get its first real answer.
 
+## The RSDKv4 submodule had 689 lines of uncommitted work that existed nowhere in this repository
+
+Found while committing the collision fix, and worth its own section because it is the most
+consequential recording failure in the project so far.
+
+`Hybrid-RSDK-Main/RSDKV4-Decompilation` had been edited in place since the object-renumbering
+work began. Nothing recorded it. A fresh clone would have built a **different binary** than the
+one every measurement in this document was taken from - and would have failed to build at all,
+once the heartbeats began including a header that did not exist there.
+
+```
+RSDKv4/Audio.cpp       |  23 +++
+RSDKv4/Object.cpp      |  87 +++++-
+RSDKv4/Object.hpp      |  15 ++
+RSDKv4/RetroEngine.cpp |  28 +++
+RSDKv4/Scene.cpp       |  76 +++++
+RSDKv4/Script.cpp      | 406 +++++++++++++++++++++++++++++++++++++++++++++----
+RSDKv4/Script.hpp      |  80 ++++++
+RSDKv4/main.cpp        |   3 +
+8 files changed, 689 insertions(+), 29 deletions(-)
+```
+
+**Why `git status` did not say so.** The submodule pointer matched the index exactly -
+`HEAD` and index both `f5f1e87e`. Git therefore showed only a lowercase `m`, meaning
+"modified content", not a new commit. Those are different statements: the index being correct and
+the worktree being edited are both true at once, and only the second one matters for what gets
+compiled.
+
+**What is in it.** `typeBase`/`functionBase` per object, so Sonic 1 and Sonic 2 can share one
+`scriptFunctionList` without their type numbers colliding - Sonic 1 and Sonic 2 both call type 4
+"Stage Setup" and mean different objects. A hashed object-name lookup replacing a linear scan,
+because the two games share 33 object names. And frame-loop HEARTBEAT instrumentation.
+
+**`Audio.cpp` is not instrumentation, and nearly got swept up with it.** It is a real fix:
+`ProcessMusicStream` had two unbounded loops. A seek back to the loop point that yields no
+samples makes `ov_read` return 0 forever, and topping the stream up when nothing drains it
+spins at 100% CPU - both visible only as a pegged core with no further log output and no frame
+ever completing. Both are now bounded. Worth stating plainly: it would have been easy to write
+"40 debug lines, removing them", and that would have deleted a hang fix.
+
+### The heartbeat prints are now compiled out by default
+
+`RSDKv4/HeartbeatLog.h` defines `HEARTBEAT_LOG`, gated on `HYBRID_HEARTBEAT_LOG` (CMake option,
+default `OFF`). 14 call sites across four files, all verified in **both** directions against the
+binary rather than the exit code:
+
+```
+                            DLL bytes    "HEARTBEAT: RetroEngine::Run entered"
+HYBRID_HEARTBEAT_LOG=ON     12,438,016    present
+HYBRID_HEARTBEAT_LOG=OFF    12,436,480    absent
+```
+
+Every marker is a bare logging call on its own line, never wrapped around a branch, so the gate
+cannot change behaviour. That is the property that makes it safe to have in the engine at all,
+and it is why the option exists rather than the prints being deleted: they are the only thing
+distinguishing "the frame loop never started" from "stalled mid-stage" from "ran and never
+finished", and `probe_stages.py` depends on that.
+
+### `scripts/capture_rsdkv4_patch.py`, and the untracked-file hole it nearly missed
+
+Captured as `patches/rsdkv4/0001-object-renumbering-and-heartbeats.patch`, same mechanism and
+same reason as AIR: a submodule records only a SHA, so a worktree edit cannot be committed to
+the parent repository.
+
+The first version captured modified files only. `git diff` describes **tracked** files, so the
+new `HeartbeatLog.h` was silently absent - while four other files in the patch did
+`#include "HeartbeatLog.h"`. The patch would have applied cleanly to a fresh clone and then
+failed to compile. Fixed with `git add -N` intent-to-add, with `git reset` afterwards so the
+submodule pointer is never disturbed.
+
+**The check that would have caught it** is in the script now: apply the patch to a throwaway
+clone and compare against the live worktree. Reverse-applying is not enough - it succeeds even
+when a file is missing from the patch entirely, which is exactly the failure it was meant to
+detect.
+
+```
+applies to a pristine checkout: yes
+patched clone content-identical to the worktree for all 9 files: yes
+```
+
+Compared with **line endings normalised**, and that is itself a finding: `core.autocrlf` means a
+file stored with 6,727 CRLF pairs comes out of the clone as LF, differing by 83 bytes on content
+that is identical. A byte-for-byte comparison reports a false failure here, which would have
+"justified" editing a patch that was already correct.
+
+### One more measurement-scope error, for the record
+
+The first capture script reported the submodule worktree **clean** while it was in fact edited
+by 689 lines. Cause: it lived in a temp directory and derived the repository path from
+`__file__`, so it inspected the temp directory. There was no submodule there to be dirty. A
+script that reports "nothing to capture" is indistinguishable from a script that captured
+nothing, unless the path it inspected is asserted - which is why `REPO` now comes from the
+script's own location and the submodule's pinned SHA is printed on every run.
+
+## The collision question is answered: zero, and it was measurable all along
+
+The symbol-collision question was open for most of the session. It is now answered, and the
+answer is that **RSDKv4 and A.I.R. have no colliding symbols of their own.** Every collision
+encountered was a third-party library both sides vendor.
+
+```
+OxygenEngine.dll:    12,438,016 bytes
+build exit:          0
+errors:              0
+unresolved externals (LNK2019/LNK2001):  0
+```
+
+Verified inside the DLL rather than inferred from the exit code:
+
+```
+librmx              7   AIR
+vorbis              2   AIR (via AIR's combined oggvorbis)
+GLEW_             858   AIR's glew target
+CollisionMasks.bin   1   RSDKv4
+Backgrounds.bin      1   RSDKv4
+Bytecode\           1   RSDKv4
+bonusStages          1   RSDKv4
+```
+
+Both engines' code is physically present in one binary. Not "the link succeeded" - the bytes
+are there.
+
+### The measurement that made it real: `/WHOLEARCHIVE`
+
+The first coexistence link exited 0 and was **completely hollow**. `rsdk_core` is a static
+library, and `OxygenWrapper.cpp` references no RSDKv4 symbol, so the linker pulled in none of
+it. The evidence was that the DLL came out at **3,286,016 bytes both with and without
+`rsdk_core` on the link line** - byte for byte identical.
+
+This is the same failure as the earlier 16,384-byte DLL that contained no A.I.R. A green
+`target_link_libraries` line is a statement of intent, not of outcome.
+
+Fixed with `/WHOLEARCHIVE`, which forces every object in whether or not anything calls it:
+
+```cmake
+add_library(rsdk_core_whole INTERFACE)
+target_link_libraries(rsdk_core_whole INTERFACE
+    "-WHOLEARCHIVE:$<TARGET_FILE:rsdk_core>"
+    "-NOWHOLEARCHIVE"
+)
+```
+
+`/OPT:REF` then stripped the unreferenced code back out, so the output file still showed no
+RSDKv4 - which is correct behaviour and still not evidence. `/OPT:NOREF /OPT:NOICF` is now
+unconditional for `OxygenEngine`, because a target that exists only to answer "can these two
+engines share one link" cannot also make that answer depend on dead-code elimination.
+
+**Three near-misses in one line of work, all the same shape:** a passing exit code, a clean
+error list, and a plausible file size, each describing something other than the worktree.
+
+### The four duplication layers, in the order they appeared
+
+| Layer | Collision | Fix |
+|---|---|---|
+| 1 | 63 SDL symbols: `SDL2-static.lib` vs vcpkg `SDL2.dll` | `HYBRID_SDL2_TARGET` |
+| 2 | 2 GLEW symbols: `rmxmedia.lib(glew.obj)` vs `glew32.lib` | patch 0012, `HYBRID_GLEW_TARGET` |
+| 3 | 14 ogg symbols: `oggvorbis.lib` vs vcpkg `ogg.lib` | `HYBRID_OGG_TARGET` / `HYBRID_VORBIS_TARGETS` |
+| 4 | 1 x `LNK1169` | the summary line; goes away with 3 |
+
+66 errors to zero, and the last three layers only became visible once `/WHOLEARCHIVE` made the
+link real. **The audio stack was never actually reached** during the earlier work - every
+earlier count stopped at the first multiply-defined set, so "SDL and GLEW are the whole
+collision set" was never a settled conclusion, only where measurement happened to stop.
+
+### GLEW was the one that needed a patch, because it was not really two libraries
+
+`_cmake/CMakeLists.txt:216-217` globbed `_glew/*.c` straight into `rmxmedia`. So the GLEW
+symbols were *inside* a library everything else needs, and no amount of link ordering could
+drop them. Patch `0012` splits them into a real target:
+
+```cmake
+add_library(glew ${GLEW_SOURCES})
+target_link_libraries(rmxmedia glew)
+```
+
+No compatibility judgement was needed after all, contrary to what this document previously
+said: both copies are GLEW 2.3.4 and both declare `GLEWAPI` as plain `extern` rather than
+`dllimport`, so there is no ABI or calling-convention mismatch to reconcile. Only a duplicate
+to avoid.
+
+### ogg/vorbis was the same shape as SDL
+
+A.I.R. bundles one combined static `oggvorbis` containing both codecs; this project links
+vcpkg's separate `ogg.lib`, `vorbis.lib` and `vorbisfile.lib`. Same symbols, so same
+duplication. `HYBRID_VORBIS_TARGETS` is deliberately **empty** when A.I.R. is on - linking
+vcpkg's vorbis on top of AIR's combined `oggvorbis` would be the duplication, not the fix.
+
+### Why deciding per-build rather than per-consumer is what actually works
+
+All three of SDL, GLEW and ogg are unified with `if(BUILD_SONIC3AIR)` at the top of the
+project's CMakeLists, consumed through a variable by `rsdk_core` and `rsdkv3_core`.
+
+Picking the winner inside each consumer would mean `rsdk_core` hardcoding "use A.I.R.'s SDL"
+- a library that would then be unbuildable without A.I.R. Choosing once, at build
+configuration, keeps each engine's code ignorant of which copy it got. `rsdk_core` links one
+target, `rsdkv4` gets vcpkg's, `OxygenEngine` gets A.I.R.'s, and no engine knows or cares.
+
+### What is now settled, and what the surviving open items actually are
+
+Settled: the two engines share a link. No `RetroEngine`/`EngineMain` symbol collides, no
+unresolved externals in either direction, one CRT (`/MD` both sides), and third-party
+duplication is resolved by target choice.
+
+**Not settled.** Coexistence at link time is not coexistence at run time. Two engines in one
+binary both want the window, the audio device and the main loop, and nothing has yet arbitrated
+that. `OxygenWrapper.cpp` is still a probe, not a wrapper: no `EngineDelegateInterface`
+implementation and no dispatcher above both engines. That is the next thing to build, and it is
+a design problem rather than a build problem.
+
 ## Next steps, in order of value
 
-1. **Widen the oracle, now that it is trustworthy.** 4,157 distinct sites, 100% confirmed,
+1. **Replace `OxygenWrapper.cpp`'s probe with a real wrapper**, plus a dispatcher above both
+   engines. Both engines now link into one binary and neither symbol-collides with the other;
+   what does not yet exist is anything deciding which one owns the window, the audio device
+   and the main loop. `OxygenWrapper.cpp` currently implements the pure-virtual set by
+   reinterpreting `this`, which is honest about being a probe but is not runnable.
+2. **Widen the oracle, now that it is trustworthy.** 4,157 distinct sites, 100% confirmed,
    zero gaps - on five stages and only what executes in 30 seconds of headless play. The
    static linear walk over every range in every container still agrees on only 81%, and
    branches needing player input or a boss trigger are still unexercised.
-2. Build the RSDKv3 → RSDKv4 bytecode compiler for Sonic CD. It is the only game whose
-   stages are still inert, and the decompiler that reads the format is finished.
-3. Widen the oracle once it is trustworthy. It covers only what the engine *executes* in
-   a 9-second headless run, so branches needing player input or a boss trigger stay
-   unverified regardless.
-4. Sonic 3, once someone supplies the ROM and `sonic3air.exe`.
-5. *No longer on the list, deliberately:* rewriting Sonic 1's baked operands in the
+3. Build the RSDKv3 → RSDKv4 bytecode compiler for Sonic CD. It is the only game whose stages
+   are still inert. Functions map 87.3% by name automatically; ~228 variables do not, because
+   v4's 253 names are scope-qualified across 17 scopes while v3's table is a flat enum. The
+   container format itself is still un-reverse-engineered - `RSDKv3-Decompilation` appears to
+   hold only the text-script compiler and a bytecode-mode *detector*, not a parser.
+4. Decide whether `BUILD_SONIC3AIR` becomes the default on Windows. It is still `OFF` there
+   and only enabled manually.
+5. Sonic 3 run-time, once the wrapper exists - the ROM is already in place and verified
+   (0x400000 bytes, whole-file Murmur2-64 `0x344983ffcfeff8cb`), and A.I.R. already reaches
+   "Ready to go" and survives a full restart in both directions.
+6. *No longer on the list, deliberately:* rewriting Sonic 1's baked operands in the
    bytecode. Doing it in the engine, from two numbers the pack already knows, is
    verifiable where a bytecode rewrite would mean trusting a decoder over compiled data
    across code that has never been seen run.

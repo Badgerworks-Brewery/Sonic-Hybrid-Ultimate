@@ -1,0 +1,14 @@
+{
+  "0001-object-renumbering-and-heartbeats.patch": {
+    "why": "Capture the RSDKV4-Decompilation worktree's uncommitted edits: per-game object and function renumbering (typeBase/functionBase) so Sonic 1 and Sonic 2 can share one script table, a hashed rather than linear object-name lookup, and HEARTBEAT frame-loop instrumentation. These were edited in place in the submodule and existed nowhere in this repository, so a fresh clone built a different binary than the one every recorded measurement came from. The heartbeat sites are compiled out by default behind HYBRID_HEARTBEAT_LOG; the Audio.cpp change is unrelated to instrumentation and is a real fix - a bounded fill loop and a consecutive-empty-read counter in ProcessMusicStream, because a seek back to the loop point that yields no samples made ov_read spin forever at 100% CPU with no further log output. The heartbeat sites are compiled out by default behind HYBRID_HEARTBEAT_LOG; the Audio.cpp change is unrelated to instrumentation and is a real fix - a bounded fill loop and a consecutive-empty-read counter in ProcessMusicStream, because a seek back to the loop point that yields no samples made ov_read spin forever at 100% CPU with no further log output.",
+    "must_contain": [
+      "int typeBase;",
+      "int functionBase;",
+      "HEARTBEAT_LOG(",
+      "#include \"HeartbeatLog.h\""
+    ],
+    "must_not_contain": [
+      "RSDKvB"
+    ]
+  }
+}

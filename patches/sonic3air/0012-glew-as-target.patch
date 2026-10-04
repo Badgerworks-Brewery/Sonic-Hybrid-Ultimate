@@ -1,0 +1,36 @@
+diff --git a/Oxygen/sonic3air/build/_cmake/CMakeLists.txt b/Oxygen/sonic3air/build/_cmake/CMakeLists.txt
+index a5d90b80..0fd6dff4 100644
+--- a/Oxygen/sonic3air/build/_cmake/CMakeLists.txt
++++ b/Oxygen/sonic3air/build/_cmake/CMakeLists.txt
+@@ -213,11 +213,29 @@ target_link_libraries(rmxbase zlibstatic)
+ 
+ # rmxmedia
+ 
+-file(GLOB_RECURSE RMXMEDIA_SOURCES ${WORKSPACE_DIR}/librmx/source/rmxmedia/*.cpp
+-								   ${WORKSPACE_DIR}/librmx/source/rmxmedia/_glew/*.c)
++# [Sonic Hybrid Ultimate] The bundled GLEW gets its own target instead of being globbed into
++# rmxmedia.
++#
++# It used to be compiled straight into rmxmedia, which put the GLEW symbols inside a library
++# every other target needs. A host that links its own GLEW - this project uses vcpkg's
++# glew32 - therefore cannot drop this copy by changing link order, and linking both is a hard
++# error:
++#
++#   rmxmedia.lib(glew.obj) : error LNK2005: glewInit already defined in glew32.lib(glew32.dll)
++#
++# Giving it a target makes exactly one copy linkable by either engine. Both copies are GLEW
++# 2.3.4 and both declare GLEWAPI as plain extern rather than dllimport, so there is no ABI or
++# calling-convention mismatch to reconcile - only a duplicate to avoid.
++file(GLOB_RECURSE RMXMEDIA_SOURCES ${WORKSPACE_DIR}/librmx/source/rmxmedia/*.cpp)
++file(GLOB GLEW_SOURCES ${WORKSPACE_DIR}/librmx/source/rmxmedia/_glew/*.c)
++
++add_library(glew ${GLEW_SOURCES})
++target_include_directories(glew PUBLIC ${WORKSPACE_DIR}/librmx/source/rmxmedia/_glew)
+ 
+ add_library(rmxmedia ${RMXMEDIA_SOURCES})
+ 
++target_link_libraries(rmxmedia glew)
++
+ target_link_libraries(rmxmedia rmxbase)
+ if (BUILD_SDL_STATIC)
+ 	target_link_libraries(rmxmedia SDL2-static)

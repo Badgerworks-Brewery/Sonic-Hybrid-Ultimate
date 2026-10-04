@@ -27,6 +27,28 @@ Usage:
     apply_air_patches.py --reverse 0001     # undo just that patch
     apply_air_patches.py 0002 0003          # restrict to those patches, in that order
 
+WHAT --CHECK DOES AND DOES NOT MEAN
+
+--check exits non-zero whenever any patch is CONFLICT, which makes it a sound gate on a
+*pristine* tree and a misleading one on a *fully applied* tree. Patches here are a chain per
+file, not a set: 0001, 0002 and 0003 all edit sonic3air/source/sonic3air/main.cpp, so once all
+three are applied, 0002 can no longer reverse-apply cleanly - its hunk sits inside a region
+0001 and 0003 have since rewritten. already_applied() tests forward and reverse, finds neither,
+and correctly reports a hard CONFLICT.
+
+That is the script working, not a defect: the patches genuinely are not independently
+reversible. But it means `--check` on an applied tree describes the chain's coupling, not the
+worktree's health, and treating it as a gate there produces a red result for a tree that is
+exactly as intended.
+
+The gate that means something is apply-from-pristine:
+
+    git -C vendor/sonic3air reset -q && git -C vendor/sonic3air checkout -- .
+    apply_air_patches.py          # must exit 0 with every patch 'applied'
+
+The reset matters. `git checkout -- .` reverts the worktree from the *index* and does not touch
+the index, so a previously staged baseline survives it and "reverted" means nothing.
+
 Naming patches positionally exists because "--reverse reverts everything" is actively
 misleading during bisection: the obvious next step after a test fails is to revert only the
 patch under suspicion, and silently reverting unrelated ones produces a tree that is not

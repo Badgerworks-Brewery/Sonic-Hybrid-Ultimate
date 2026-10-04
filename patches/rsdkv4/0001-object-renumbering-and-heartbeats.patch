@@ -1,0 +1,1089 @@
+diff --git a/RSDKv4/Audio.cpp b/RSDKv4/Audio.cpp
+index 8cfa77c..cc6c7e5 100644
+--- a/RSDKv4/Audio.cpp
++++ b/RSDKv4/Audio.cpp
+@@ -209,7 +209,25 @@ void ProcessMusicStream(Sint32 *stream, size_t bytes_wanted)
+         case MUSIC_READY:
+         case MUSIC_PLAYING: {
+ #if RETRO_USING_SDL2
++            // A seek back to the loop point is supposed to restart the stream.
++            // If it does not actually produce samples, ov_read keeps returning 0
++            // and this loop spins forever - which shows up only as the engine
++            // pegging a core with no further log output, and no frame ever
++            // completes. Count consecutive empty reads and give up instead, so
++            // the failure is reported rather than silent.
++            int emptyReads = 0;
++            int fills = 0;
+             while (musicStatus == MUSIC_PLAYING && streamInfoPtr->stream && SDL_AudioStreamAvailable(streamInfoPtr->stream) < bytes_wanted) {
++                // This loop tops the stream up to `bytes_wanted`. It terminates
++                // when the audio device drains the stream so enough space exists.
++                // If nothing ever drains it - a suspended or dummy audio device -
++                // SDL_AudioStreamAvailable never grows, reads keep succeeding, and
++                // this spins forever at 100% CPU with no output. Bound the work:
++                // a real callback only ever needs a handful of reads.
++                if (++fills > 512) {
++                    PrintLog("WARNING: music stream would not drain after %d reads; giving up on filling it", fills);
++                    break;
++                }
+                 // We need more samples: get some
+                 long bytes_read = ov_read(&streamInfoPtr->vorbisFile, (char *)streamInfoPtr->buffer, sizeof(streamInfoPtr->buffer), 0, 2, 1,
+                                           &streamInfoPtr->vorbBitstream);
+@@ -218,6 +236,11 @@ void ProcessMusicStream(Sint32 *stream, size_t bytes_wanted)
+                     // We've reached the end of the file
+                     if (streamInfoPtr->trackLoop) {
+                         ov_pcm_seek(&streamInfoPtr->vorbisFile, streamInfoPtr->loopPoint);
++                        if (++emptyReads > 4) {
++                            PrintLog("WARNING: music stream produced no samples after seeking to its loop point; stopping playback");
++                            musicStatus = MUSIC_STOPPED;
++                            break;
++                        }
+                         continue;
+                     }
+                     else {
+diff --git a/RSDKv4/HeartbeatLog.h b/RSDKv4/HeartbeatLog.h
+new file mode 100644
+index 0000000..a2c0dd6
+--- /dev/null
++++ b/RSDKv4/HeartbeatLog.h
+@@ -0,0 +1,45 @@
++// Heartbeat instrumentation for the stage probes.
++//
++// WHY THIS EXISTS
++//
++// `scripts/probe_stages.py` drives the engine headlessly and needs to distinguish three
++// outcomes that all look identical from the outside: the frame loop never started, the frame
++// loop started and stalled mid-stage, or the frame loop ran and the stage simply never
++// finished. Without a marker at each phase boundary, all three produce an empty log and the
++// probe cannot say which one happened.
++//
++// This header exists so those markers are switchable rather than permanent. Every site is
++// wrapped in HYBRID_HEARTBEAT_LOG, which is off by default, so a release build carries no
++// per-frame logging cost and a debug run can be told to emit it. The 40-odd call sites across
++// RetroEngine.cpp, Scene.cpp, Object.cpp, Audio.cpp and main.cpp are deliberately not given
++// per-site configuration: the value of the markers is that they are all present or all absent,
++// because a half-instrumented engine produces logs that lie by omission.
++//
++// The one thing this must not do is change control flow. Every marker is a bare logging call
++// on its own line, never wrapped around a branch, so enabling or disabling HYBRID_HEARTBEAT_LOG
++// cannot alter behaviour. That is why the gate is a macro around a statement and not a runtime
++// flag inside the frame loop.
++
++#ifndef RSDKV4_HEARTBEAT_LOG_H
++#define RSDKV4_HEARTBEAT_LOG_H
++
++// Enabled by passing -DHYBRID_HEARTBEAT_LOG=1 (see Hybrid-RSDK-Main/CMakeLists.txt), or by
++// defining it before this header is included. Off by default.
++#ifndef HYBRID_HEARTBEAT_LOG
++#define HYBRID_HEARTBEAT_LOG 0
++#endif
++
++#if HYBRID_HEARTBEAT_LOG
++
++// Spelled out rather than aliased to PrintLog so that a reader grepping for "HEARTBEAT" finds
++// every marker in the source, including the ones this expands to. The gate itself is the only
++// place the logging call is named.
++#define HEARTBEAT_LOG(...) PrintLog(__VA_ARGS__)
++
++#else
++
++#define HEARTBEAT_LOG(...) ((void)0)
++
++#endif
++
++#endif // RSDKV4_HEARTBEAT_LOG_H
+\ No newline at end of file
+diff --git a/RSDKv4/Object.cpp b/RSDKv4/Object.cpp
+index 7ddf148..da47a5c 100644
+--- a/RSDKv4/Object.cpp
++++ b/RSDKv4/Object.cpp
+@@ -1,3 +1,4 @@
++#include "HeartbeatLog.h"
+ #include "RetroEngine.hpp"
+ 
+ // Native Objects
+@@ -25,6 +26,12 @@ TypeGroupList objectTypeGroupList[TYPEGROUP_COUNT];
+ 
+ char typeNames[OBJECT_COUNT][0x40];
+ 
++// Startup loop progress. Defined here because ProcessStartupObjects and ProcessObjects
++// both live in this file but the frame loop must be able to tell, on its own, whether
++// the startup loop ever finished. See Object.hpp for why that is not optional.
++int startupObjectsCompleted = 0;
++int startupObjectsReached    = -1;
++
+ int OBJECT_BORDER_X1 = 0x80;
+ int OBJECT_BORDER_X2 = SCREEN_XSIZE + 0x80;
+ int OBJECT_BORDER_X3 = 0x20;
+@@ -40,6 +47,8 @@ int playerListPos = 0;
+ void ProcessStartupObjects()
+ {
+     scriptFrameCount = 0;
++    startupObjectsReached = 0;
++    startupObjectsCompleted = 0;
+     ClearAnimationData();
+     scriptEng.arrayPosition[8] = TEMPENTITY_START;
+     OBJECT_BORDER_X1           = 0x80;
+@@ -61,16 +70,89 @@ void ProcessStartupObjects()
+         scriptInfo->spriteSheetID   = 0;
+         entity->type                = i;
+ 
+-        if (scriptCode[scriptInfo->eventStartup.scriptCodePtr] > 0)
++        if (scriptCode[scriptInfo->eventStartup.scriptCodePtr] > 0) {
++            // Its own switch, deliberately NOT RSDK_TRACE_ALL. The per-instruction
++            // trace writes a handful of log lines for every opcode executed, which
++            // slows the startup loop so much that it is still running when the probe's
++            // timeout kills the process - which looks exactly like the loop dying part
++            // way through and is not. Measuring how far the loop gets must not be
++            // something that changes how far it gets.
++            static const bool startupTrace = getenv("RSDK_TRACE_STARTUP") != nullptr;
++            if (startupTrace)
++                PrintLog("STARTING type %d '%s' startup @%d", i, typeNames[i],
++                         scriptInfo->eventStartup.scriptCodePtr);
+             ProcessScript(scriptInfo->eventStartup.scriptCodePtr, scriptInfo->eventStartup.jumpTablePtr, EVENT_SETUP);
++        }
++        startupObjectsReached = i;
+         scriptInfo->frameCount = scriptFrameCount - scriptInfo->frameListOffset;
+     }
+     entity->type  = 0;
+     curObjectType = 0;
++    startupObjectsCompleted = 1;
+ }
+ 
+ void ProcessObjects()
+ {
++    // A startup loop that stopped early is the failure mode that cost this project two
++    // rounds of confident wrong answers, because nothing reported it. Once the frame
++    // loop is turning, say so plainly, and say how far the startup loop got - it is
++    // expected to have finished long before the first frame.
++    static bool startupReported = false;
++    if (!startupReported && startupObjectsReached >= 0) {
++        startupReported = true;
++        PrintLog("STARTUP %s after reaching type %d of %d",
++                 startupObjectsCompleted ? "completed" : "DID NOT COMPLETE",
++                 startupObjectsReached, OBJECT_COUNT - 1);
++    }
++
++    // Heartbeat: confirm the frame loop is actually turning. A run that stalls
++    // before the first frame otherwise looks identical to one that is merely
++    // slow, and there is no other way to tell from outside the process.
++    {
++        static long long frames = 0;
++        ++frames;
++        if (frames <= 20 || frames % 300 == 0) {
++            // Count what is actually alive. "The frame counter advanced" is not
++            // the same as "the stage is running": a stage whose bytecode was
++            // never loaded still turns frames, with an empty entity list and a
++            // player frozen at the origin. Reporting the live count and the
++            // player's position makes that visible without a window.
++            int live = 0;
++            for (int i = 0; i < ENTITY_COUNT; ++i) {
++                if (objectEntityList[i].type || objectEntityList[i].xpos || objectEntityList[i].ypos)
++                    ++live;
++            }
++            const Entity *p = (playerListPos >= 0 && playerListPos < ENTITY_COUNT)
++                                  ? &objectEntityList[playerListPos]
++                                  : nullptr;
++            HEARTBEAT_LOG("HEARTBEAT: ProcessObjects frame %lld, gameMode %d, "
++                     "%d live entities, player type %d at %d,%d speed %d",
++                     frames, Engine.gameMode, live,
++                     p ? (int)p->type : -1, p ? (p->xpos >> 16) : -1,
++                     p ? (p->ypos >> 16) : -1, p ? (p->speed >> 16) : -1);
++
++            // Once per run, say which object types are actually alive. A stage
++            // can load, spawn a few hundred static objects and still be missing
++            // the player, and "how many entities" cannot tell you that - only
++            // the list of types can.
++            if (frames == 300) {
++                static bool listed = false;
++                if (!listed) {
++                    listed = true;
++                    HEARTBEAT_LOG("HEARTBEAT: live object types at frame 300:");
++                    for (int t = 1; t < OBJECT_COUNT; ++t) {
++                        int n = 0;
++                        for (int i = 0; i < ENTITY_COUNT; ++i) {
++                            if (objectEntityList[i].type == t)
++                                ++n;
++                        }
++                        if (n)
++                            PrintLog("  type %d: %d alive", t, n);
++                    }
++                }
++            }
++        }
++    }
+     for (int i = 0; i < DRAWLAYER_COUNT; ++i) drawListEntries[i].listSize = 0;
+ 
+     for (objectEntityPos = 0; objectEntityPos < ENTITY_COUNT; ++objectEntityPos) {
+@@ -337,6 +419,10 @@ void Process2PObjects()
+ 
+ void SetObjectTypeName(const char *objectName, int objectID)
+ {
++    // Remember which game owns this type, so a script looking the name up later
++    // finds its own game's copy rather than whichever registered first.
++    objectTypeGame[objectID] = currentObjectGame;
++
+     int objPos  = 0;
+     int typePos = 0;
+     while (objectName[objPos]) {
+diff --git a/RSDKv4/Object.hpp b/RSDKv4/Object.hpp
+index 3160c12..51a0d76 100644
+--- a/RSDKv4/Object.hpp
++++ b/RSDKv4/Object.hpp
+@@ -124,6 +124,21 @@ extern NativeEntity objectEntityBackupS[NATIVEENTITY_COUNT];
+ 
+ // Game Objects
+ extern int objectEntityPos;
++
++// Whether the startup loop reached the end, and how far it got.
++//
++// This exists because that loop failing is silent and catastrophic in a way nothing
++// else reported. It runs the eventStartup of every one of the 256 object types; if it
++// stops early - a bad function index unwinding the frame, say - then every type after
++// that point silently never runs its startup, while the stage still loads, still places
++// its objects and still turns frames. It looks healthy from outside the process.
++//
++// That is not hypothetical: it is how "stage-local scripts never execute" survived two
++// rounds of investigation here, and the intermediate readings were confidently wrong
++// twice before the real cause turned out to be the measurement itself. The frame loop
++// must not be able to look healthy without saying whether this completed.
++extern int startupObjectsCompleted;
++extern int startupObjectsReached;
+ extern int curObjectType;
+ extern Entity objectEntityList[ENTITY_COUNT * 2];
+ extern int processObjectFlag[ENTITY_COUNT];
+diff --git a/RSDKv4/RetroEngine.cpp b/RSDKv4/RetroEngine.cpp
+index 29f393f..0560816 100644
+--- a/RSDKv4/RetroEngine.cpp
++++ b/RSDKv4/RetroEngine.cpp
+@@ -1,3 +1,4 @@
++#include "HeartbeatLog.h"
+ #include "RetroEngine.hpp"
+ 
+ #if !RETRO_USE_ORIGINAL_CODE
+@@ -339,9 +340,13 @@ void RetroEngine::Init()
+     SaveGame *saveGame = (SaveGame *)saveRAM;
+ 
+     if (LoadGameConfig("Data/Game/GameConfig.bin")) {
++        HEARTBEAT_LOG("HEARTBEAT: config loaded; calling InitRenderDevice()");
+         if (InitRenderDevice()) {
++            HEARTBEAT_LOG("HEARTBEAT: render up; calling InitAudioPlayback()");
+             if (InitAudioPlayback()) {
++                HEARTBEAT_LOG("HEARTBEAT: audio up; calling InitFirstStage()");
+                 InitFirstStage();
++                HEARTBEAT_LOG("HEARTBEAT: InitFirstStage returned");
+                 ClearScriptData();
+                 initialised = true;
+                 running     = true;
+@@ -524,6 +529,7 @@ void RetroEngine::Init()
+ 
+ void RetroEngine::Run()
+ {
++    HEARTBEAT_LOG("HEARTBEAT: RetroEngine::Run entered");
+     Engine.deltaTime = 0.0f;
+ 
+     unsigned long long targetFreq = SDL_GetPerformanceFrequency() / Engine.refreshRate;
+@@ -531,6 +537,17 @@ void RetroEngine::Run()
+     unsigned long long prevTicks  = 0;
+ 
+     while (running) {
++        // Diagnostic: this is the outermost frame loop. Logging a bounded number
++        // of spins distinguishes "never entered the loop" from "entered it and
++        // stalled inside", and bounds the cost when it is the latter.
++        {
++            static long long spins = 0;
++            if (spins < 5)
++                HEARTBEAT_LOG("HEARTBEAT: engine loop spin %lld", spins);
++            else if (spins == 1000000)
++                HEARTBEAT_LOG("HEARTBEAT: engine loop still spinning after 1,000,000 iterations - stalled before the frame did any work");
++            ++spins;
++        }
+ #if !RETRO_USE_ORIGINAL_CODE
+         if (!vsync) {
+             curTicks = SDL_GetPerformanceCounter();
+@@ -543,6 +560,18 @@ void RetroEngine::Run()
+ #endif
+         running = ProcessEvents();
+ 
++        // Diagnostic: the loop spins freely, so a stall further down leaves no
++        // trace. Report which stage of the frame the first real iteration
++        // reaches, and report the focus state that gates the rest of it.
++        {
++            static long long stage = 0;
++            if (stage == 0) {
++                HEARTBEAT_LOG("HEARTBEAT: past ProcessEvents; hasFocus=%d focusState=%d disableFocusPause=%d vsPlaying=%d",
++                         Engine.hasFocus, Engine.focusState, disableFocusPause, vsPlaying);
++                stage = 1;
++            }
++        }
++
+         // Focus Checks
+         if (!(disableFocusPause & 2)) {
+             if (!Engine.hasFocus) {
+diff --git a/RSDKv4/Scene.cpp b/RSDKv4/Scene.cpp
+index a450c82..c5e7277 100644
+--- a/RSDKv4/Scene.cpp
++++ b/RSDKv4/Scene.cpp
+@@ -1,3 +1,4 @@
++#include "HeartbeatLog.h"
+ #include "RetroEngine.hpp"
+ 
+ int stageListCount[STAGELIST_MAX];
+@@ -129,6 +130,16 @@ void ProcessStage(void)
+     debugHitboxCount = 0;
+ #endif
+ 
++    // Diagnostic: ProcessStage is the per-frame stage update. If it never runs,
++    // the engine is stuck before the game loop reaches the stage, and nothing
++    // downstream (ProcessObjects, object scripts) can be at fault.
++    {
++        static long long stageFrames = 0;
++        ++stageFrames;
++        if (stageFrames <= 5 || stageFrames % 300 == 0)
++            HEARTBEAT_LOG("HEARTBEAT: ProcessStage call %lld, stageMode %d", stageFrames, stageMode);
++    }
++
+     switch (stageMode) {
+         case STAGEMODE_LOAD: // Startup
+             SetActivePalette(0, 0, 256);
+@@ -647,6 +658,7 @@ void LoadStageFiles(void)
+ 
+             byte globalObjectCount = 0;
+             FileRead(&globalObjectCount, 1);
++            objectTypeGlobalCount = globalObjectCount;
+             for (byte i = 0; i < globalObjectCount; ++i) {
+                 FileRead(&fileBuffer2, 1);
+                 FileRead(strBuffer, fileBuffer2);
+@@ -654,6 +666,41 @@ void LoadStageFiles(void)
+                 SetObjectTypeName(strBuffer, scriptID + i);
+             }
+ 
++            // Two games in one pack share 33 object names, so the global table has
++            // to say which game owns each type. The merged config lists Sonic 2's
++            // globals first, then Sonic 1's, and this file states where the split
++            // is. Absent or malformed means "one game", which restores the
++            // original behaviour rather than guessing.
++            objectTypeSplit = -1;
++            {
++                FileInfo splitInfo;
++                GetFileInfo(&splitInfo);
++                CloseFile();
++                if (LoadFile("Data/Game/ObjectGameSplit.bin", &splitInfo)) {
++                    byte split = 0;
++                    FileRead(&split, 1);
++                    // Second byte: where game 1's function table starts. Needed
++                    // because `CallFunction`'s operand indexes the shared table, and
++                    // Sonic 1's functions were compiled against its own numbering.
++                    byte functionBase = 0;
++                    FileRead(&functionBase, 1);
++                    if (split > 0 && split <= globalObjectCount) {
++                        objectTypeSplit           = split;
++                        objectTypeBaseForGame1    = split;
++                        scriptFunctionBaseForGame1 = functionBase;
++                        for (int i = 0; i < OBJECT_COUNT; ++i) {
++                            objectTypeGame[i] = i < split ? 0 : 1;
++                        }
++                        PrintLog("Object numbering scoped to one game: types 0..%d "
++                                 "are game 0, %d..%d are game 1; game 1's type "
++                                 "constants shift by %d and its functions by %d",
++                                 split - 1, split, globalObjectCount - 1, split,
++                                 functionBase);
++                    }
++                }
++                SetFileInfo(&splitInfo);
++            }
++
+ #if RETRO_USE_MOD_LOADER && RETRO_USE_COMPILER
+             for (byte i = 0; i < modObjCount && loadGlobalScripts; ++i) {
+                 SetObjectTypeName(modTypeNames[i], globalObjectCount + i + 1);
+@@ -753,6 +800,20 @@ void LoadStageFiles(void)
+ 
+             byte stageObjectCount = 0;
+             FileRead(&stageObjectCount, 1);
++            // A stage's own objects belong to the game that stage came from, which
++            // the pack states by suffixing the stage folder: "...S1" is Sonic 1,
++            // "...S2" is Sonic 2. Folders with neither keep the current game,
++            // which is what a single-game pack wants.
++            {
++                const char *folder = stageList[activeStageList][stageListPosition].folder;
++                size_t flen        = strlen(folder);
++                if (flen >= 2 && folder[flen - 2] == 'S' && folder[flen - 1] == '1')
++                    currentObjectGame = 1;
++                else if (flen >= 2 && folder[flen - 2] == 'S' && folder[flen - 1] == '2')
++                    currentObjectGame = 0;
++                PrintLog("Stage folder '%s' selects game %d for object names",
++                         folder, currentObjectGame);
++            }
+             for (byte i = 0; i < stageObjectCount; ++i) {
+                 FileRead(&fileBuffer2, 1);
+                 FileRead(strBuffer, fileBuffer2);
+@@ -943,6 +1004,22 @@ void LoadActLayout()
+             FileRead(fileBuffer, 1);
+             object->type = fileBuffer[0];
+ 
++            // No renumbering here, deliberately. An Act layout's type indices are
++            // already destination-table indices by the time they reach this file: the
++            // packer resolves each one against the source game's object names and
++            // writes the destination index, so a Sonic 1 layout that said 1 comes out
++            // as 40 and one that said 72 comes out as 111.
++            //
++            // This file was previously shifted a second time, and again a third time,
++            // by two separate attempts to "fix" it. Both were the bug. Sonic 1's
++            // layout types ended up at 150, past the 114 types that exist, so a third
++            // of Green Hill's 305 objects were entities whose type matched no script
++            // and therefore never ran. scripts/inspect_act.py compares the stock and
++            // packed bytes so a double shift cannot come back unnoticed.
++            if (object->type >= loadedScriptTypeCount)
++                PrintLog("WARNING: act layout names type %d, past the %d loaded "
++                         "types", object->type, loadedScriptTypeCount);
++
+ #if RETRO_USE_MOD_LOADER
+             if (loadGlobalScripts && offsetCount && object->type > globalObjCount)
+                 object->type += offsetCount; // offset it by our mod count
+diff --git a/RSDKv4/Script.cpp b/RSDKv4/Script.cpp
+index 71e569f..6ad9702 100644
+--- a/RSDKv4/Script.cpp
++++ b/RSDKv4/Script.cpp
+@@ -1,3 +1,4 @@
++#include <set>
+ #include "RetroEngine.hpp"
+ #include <cmath>
+ 
+@@ -525,6 +526,16 @@ const FunctionInfo functions[] = {
+ #endif
+     FunctionInfo("GetTextInfo", 5),
+ #if !RETRO_REV02
++    // Not compiled. This entry and its handler both sit inside `#if !RETRO_REV02`,
++    // and RSDK_REVISION is 3 (RetroEngine.hpp:225), so RETRO_REV02 is true and both
++    // are excluded. Seven is the right number for the handler that does exist
++    // (`DrawBitmapText(menu, operands[1] .. operands[6])`), which is why it is
++    // written here unchanged.
++    //
++    // A version of this file "fixed" the count to 3 on the strength of a bytecode
++    // walk that appeared to align better. It was aligning better only because
++    // scripts/rsdkv4_opcodes.py was wrongly including DrawText in the table at all,
++    // shifting every opcode after it by one. Read the guard, not the statistic.
+     FunctionInfo("DrawText", 7),
+ #endif
+     FunctionInfo("GetVersionNumber", 2),
+@@ -1065,6 +1076,43 @@ enum ScrFunc {
+ };
+ 
+ ObjectScript objectScriptList[OBJECT_COUNT];
++int objectTypeGame[OBJECT_COUNT];
++int objectTypeSplit      = -1;
++int objectTypeGlobalCount = 0;
++int currentObjectGame    = 0;
++int objectTypeBaseForGame1     = 0;
++int scriptFunctionBaseForGame1 = 0;
++int stageTypeBase              = 0;
++int loadedFunctionCount        = 0;
++int loadedScriptTypeCount      = 0;
++
++// Resolving an object name is a linear scan over every registered type. With one
++// game that is unambiguous; with two it is not, because Sonic 1 and Sonic 2 share
++// 33 names and a merged pack registers all of them. So the scan is limited to the
++// running game's types whenever a pack has told us where the split is.
++int FindObjectTypeByName(const char *name)
++{
++    if (objectTypeSplit < 0) {
++        for (int o = 0; o < OBJECT_COUNT; ++o) {
++            if (StrComp(name, typeNames[o]))
++                return o;
++        }
++        return OBJECT_COUNT;
++    }
++
++    // Every type is filtered, stage objects included. A stage's own objects are
++    // registered into the same slots as whichever stage loaded last and are
++    // tagged with that stage's game by SetObjectTypeName, so they need no
++    // special case - and exempting them is how Sonic 2's "Splats" and "Checkered
++    // Ball" ended up reachable from a Sonic 1 stage.
++    for (int o = 0; o < OBJECT_COUNT; ++o) {
++        if (objectTypeGame[o] != currentObjectGame)
++            continue;
++        if (StrComp(name, typeNames[o]))
++            return o;
++    }
++    return OBJECT_COUNT;
++}
+ ScriptFunction scriptFunctionList[FUNCTION_COUNT];
+ #if RETRO_USE_COMPILER
+ int scriptFunctionCount = 0;
+@@ -1796,13 +1844,10 @@ void ConvertFunctionText(char *text)
+                 funcName[0] = '0';
+                 funcName[1] = 0;
+ 
+-                int o = 0;
+-                for (; o < OBJECT_COUNT; ++o) {
+-                    if (StrComp(arrayStr, typeNames[o])) {
+-                        funcName[0] = 0;
+-                        AppendIntegerToString(funcName, o);
+-                        break;
+-                    }
++                int o = FindObjectTypeByName(arrayStr);
++                if (o != OBJECT_COUNT) {
++                    funcName[0] = 0;
++                    AppendIntegerToString(funcName, o);
+                 }
+ 
+                 if (o == OBJECT_COUNT)
+@@ -2106,13 +2151,10 @@ void CheckCaseNumber(char *text)
+             caseValue[0] = '0';
+             caseValue[1] = 0;
+ 
+-            int o = 0;
+-            for (; o < OBJECT_COUNT; ++o) {
+-                if (StrComp(arrayStr, typeNames[o])) {
+-                    caseValue[0] = 0;
+-                    AppendIntegerToString(caseValue, o);
+-                    break;
+-                }
++            int o = FindObjectTypeByName(arrayStr);
++            if (o != OBJECT_COUNT) {
++                caseValue[0] = 0;
++                AppendIntegerToString(caseValue, o);
+             }
+ 
+             if (o == OBJECT_COUNT)
+@@ -2312,13 +2354,10 @@ bool ReadSwitchCase(char *text)
+                 caseValue[0] = '0';
+                 caseValue[1] = 0;
+ 
+-                int o = 0;
+-                for (; o < OBJECT_COUNT; ++o) {
+-                    if (StrComp(arrayStr, typeNames[o])) {
+-                        caseValue[0] = 0;
+-                        AppendIntegerToString(caseValue, o);
+-                        break;
+-                    }
++                int o = FindObjectTypeByName(arrayStr);
++                if (o != OBJECT_COUNT) {
++                    caseValue[0] = 0;
++                    AppendIntegerToString(caseValue, o);
+                 }
+ 
+                 if (o == OBJECT_COUNT)
+@@ -3094,6 +3133,13 @@ void LoadBytecode(int stageListID, int scriptID)
+         int *scriptCodePtr = &scriptCode[scriptCodePos];
+         int *jumpTablePtr  = &jumpTable[jumpTablePos];
+ 
++        // Where this container's words will actually land in the global scriptCode
++        // array. Recorded because every tool that maps engine-reported word indices back
++        // to a container has to know it, and it is not 0 in general: presentation
++        // containers load before the globals, so the globals start after them.
++        const int placementBase    = scriptCodePos;
++        const int jumpPlacementBase = jumpTablePos;
++
+         FileRead(&fileBuffer, 1);
+         int scriptCodeSize = fileBuffer;
+         FileRead(&fileBuffer, 1);
+@@ -3251,8 +3297,22 @@ void LoadBytecode(int stageListID, int scriptID)
+         FileRead(&fileBuffer, 1);
+         functionCount |= fileBuffer << 8;
+ 
++        // Which slot each function goes in. GlobalCode.bin owns slots 0..N-1; a
++        // stage's own table is *appended*, because a stage file's operands are
++        // file-local and its table begins with verbatim copies of its game's global
++        // functions. Writing a stage's functions over slot 0 the way the original
++        // engine does - last writer wins - means whichever stage loaded last
++        // silently replaced the functions every global object calls.
++        const bool loadingGlobals = (stageListID == 4);
++        const int functionBase    = loadingGlobals ? 0 : loadedFunctionCount;
++        if (!loadingGlobals && loadedFunctionCount + functionCount > FUNCTION_COUNT) {
++            PrintLog("WARNING: %d stage functions would overflow the %d-entry "
++                     "function table", loadedFunctionCount + functionCount,
++                     FUNCTION_COUNT);
++        }
++
+         for (int f = 0; f < functionCount; ++f) {
+-            ScriptFunction *function = &scriptFunctionList[f];
++            ScriptFunction *function = &scriptFunctionList[functionBase + f];
+ 
+             FileRead(&fileBuffer, 1);
+             function->ptr.scriptCodePtr = fileBuffer;
+@@ -3265,7 +3325,7 @@ void LoadBytecode(int stageListID, int scriptID)
+         }
+ 
+         for (int f = 0; f < functionCount; ++f) {
+-            ScriptFunction *function = &scriptFunctionList[f];
++            ScriptFunction *function = &scriptFunctionList[functionBase + f];
+ 
+             FileRead(&fileBuffer, 1);
+             function->ptr.jumpTablePtr = fileBuffer;
+@@ -3276,6 +3336,80 @@ void LoadBytecode(int stageListID, int scriptID)
+             FileRead(&fileBuffer, 1);
+             function->ptr.jumpTablePtr |= fileBuffer << 24;
+         }
++        loadedFunctionCount = functionBase + functionCount;
++        if (scriptID + scriptCount > loadedScriptTypeCount)
++            loadedScriptTypeCount = scriptID + scriptCount;
++
++        PrintLog("PLACE %s: code starts at word %d, jump words at %d, types %d..%d, "
++                 "functions at %d", scriptPath, placementBase, jumpPlacementBase,
++                 scriptID, scriptID + scriptCount - 1, functionBase);
++
++        // Now that every slot is known, give each object the numbering its own game
++        // was compiled against. Globals: game 0 keeps its numbers, game 1 shifts by
++        // whatever the pack said. Stage objects: the shift derived in Script.hpp,
++        // which also feeds the Act layout loader. Functions come from the appended
++        // block above, so a stage's own functions do not overwrite the globals' the
++        // way a flat slot index would.
++        //
++        // scriptID is where this container's types start, so for a stage the globals
++        // end one below it. Everything here is derived from those two numbers rather
++        // than hard-coded, because the shift differs per game (see stageTypeBase).
++        const int globalTotal   = loadingGlobals ? 0 : scriptID - 1;
++        const int thisGameCount = currentObjectGame ? globalTotal - objectTypeSplit
++                                                    : objectTypeSplit;
++        if (!loadingGlobals)
++            stageTypeBase = globalTotal - thisGameCount;
++
++        // RSDK_NO_FUNCTION_BASE=1 leaves every functionBase at 0, which is the stock
++        // behaviour: a Sonic 1 script calling function N reaches Sonic 2's N. That is
++        // wrong, and it is also the only way to tell whether the per-object base is
++        // what stops ProcessStartupObjects partway through Sonic 1's globals - the loop
++        // dies at about type 55, and Sonic 1 is the only game with a non-zero base.
++        const bool noFunctionBase = getenv("RSDK_NO_FUNCTION_BASE") != nullptr;
++
++        for (int s = 0; s < scriptCount; ++s) {
++            ObjectScript *script = &objectScriptList[scriptID + s];
++            if (loadingGlobals) {
++                const bool isGameOne = objectTypeSplit >= 0
++                                       && (scriptID + s) >= objectTypeSplit;
++                script->typeBase     = isGameOne ? objectTypeBaseForGame1 : 0;
++                script->functionBase = (isGameOne && !noFunctionBase)
++                                           ? scriptFunctionBaseForGame1 : 0;
++            }
++            else {
++                script->typeBase     = stageTypeBase;
++                script->functionBase = noFunctionBase ? 0 : functionBase;
++
++                // First few stage scripts, with the absolute word index their code
++                // landed at. This is the number every tool mapping engine-reported
++                // indices back to a container needs, and it is the one that decides
++                // whether stage code can be found at all.
++                for (int s = 0; s < scriptCount && s < 3; ++s) {
++                    // Once per container load. This printed on every script before,
++                    // which buried the one line that matters - the placement base.
++                    static bool dumped = false;
++                    if (!dumped) {
++                        PrintLog("STAGESCRIPT type %d '%s': update @%d (container "
++                                 "word %d), draw @%d, startup @%d "
++                                 "[startup word reads %d, update word reads %d]",
++                                 scriptID + s, typeNames[scriptID + s],
++                                 script->eventUpdate.scriptCodePtr,
++                                 script->eventUpdate.scriptCodePtr - placementBase,
++                                 script->eventDraw.scriptCodePtr,
++                                 script->eventStartup.scriptCodePtr,
++                                 script->eventStartup.scriptCodePtr
++                                     < SCRIPTCODE_COUNT
++                                     ? scriptCode[script->eventStartup.scriptCodePtr]
++                                     : -1,
++                                 script->eventUpdate.scriptCodePtr < SCRIPTCODE_COUNT
++                                     ? scriptCode[script->eventUpdate.scriptCodePtr]
++                                     : -1);
++                        if (s == scriptCount - 1 || s == 2)
++                            dumped = true;
++                    }
++                }
++            }
++        }
+ 
+         CloseFile();
+     }
+@@ -3338,6 +3472,20 @@ void ClearScriptData()
+         scriptFunctionList[f].ptr.jumpTablePtr  = JUMPTABLE_COUNT - 1;
+     }
+ 
++    // Dump the compiled opcode table so an external tool can diff it against
++    // its own derivation. scripts/rsdkv4_opcodes.py reads this same source and
++    // evaluates the #if guards itself, and the two have now disagreed twice in
++    // ways that cost real time: once over `!` and once over RSDK_REVISION. The
++    // engine is the authority, so it states its own table rather than leaving a
++    // Python reimplementation to be trusted.
++    for (int t = 0; t < 151; ++t)
++        PrintLog("OPTABLE %d %s %d", t, functions[t].name, functions[t].opcodeSize);
++    // And the operand tag encoding, for the same reason. What a tag means is not
++    // written down anywhere a tool can check, and a one-off error there silently
++    // shifts every operand in every file.
++    PrintLog("TAGINFO VAR=%d INTCONST=%d STRCONST=%d NONE=%d ARRAY=%d ENTNOPLUS1=%d ENTNOMINUS1=%d",
++             SCRIPTVAR_VAR, SCRIPTVAR_INTCONST, SCRIPTVAR_STRCONST, VARARR_NONE,
++             VARARR_ARRAY, VARARR_ENTNOPLUS1, VARARR_ENTNOMINUS1);
+     SetObjectTypeName("Blank Object", OBJ_TYPE_BLANKOBJECT);
+ }
+ 
+@@ -3349,16 +3497,159 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
+     functionStackPos  = 0;
+     foreachStackPos   = 0;
+ 
++    // A single script call must terminate. No legitimate object needs anything
++    // like this many instructions for one call, so exceeding it means a loop
++    // whose condition never changes. That otherwise shows up only as the engine
++    // sitting at 100% CPU with no output at all, so name the object and bail
++    // rather than hang - a runaway loop must never be a silent failure.
++    int instructions = 0;
++    const int kInstructionBudget = 5000000;
++    // Tracing controls for the oracle scripts/oracle_check.py compares a bytecode
++    // walker against. Function scope, not block scope, because the operand tags
++    // are read after the diagnostic block that turns tracing on.
++    static const bool traceAll = getenv("RSDK_TRACE_ALL") != nullptr;
++
++    // Which script entry points are actually entered. Every traced word has so far
++    // fallen inside GlobalCode's range, so either stage code is never reached or it is
++    // reached under a different pointer than the one LoadBytecode stored. Both look
++    // identical from outside the process, so record the entry points themselves.
++    if (traceAll) {
++        static std::set<int> seenEntry;
++        if (seenEntry.insert(scriptCodeStart).second && seenEntry.size() <= 64)
++            PrintLog("ENTER script entry @%d (event %d)", scriptCodeStart,
++                     scriptEvent);
++    }
++
++    // Tags exactly as the engine reads them, so a tool can be checked against the
++    // real encoding rather than an inferred one.
++    static int oracleRawTags[0x10] = {0};
++
++    // Which word each instruction was at, bucketed, so a runaway can be located.
++    // Sizing this to cover the whole scriptCode array: a 256-byte table silently
++    // ignored every word past 255, which made the report useless.
++    static int runawaySpend[SCRIPTCODE_COUNT];
++    bool runawayTrack = getenv("RSDK_TRACE_SPEND") != nullptr;
++
+     while (running) {
+-        int opcode           = scriptCode[scriptCodePtr++];
++        if (++instructions > kInstructionBudget) {
++            int type = -1;
++            if (objectEntityPos >= 0 && objectEntityPos < ENTITY_COUNT)
++                type = objectEntityList[objectEntityPos].type;
++            PrintLog("WARNING: runaway script: object type %d, event %d, over %d instructions in one call",
++                     type, scriptEvent, kInstructionBudget);
++            // Report where it spent its time, so the loop can be located rather
++            // than guessed at. Without this a runaway is just "it hung".
++            {
++                int topWord = -1, topCount = 0;
++                for (int w = 0; w < SCRIPTCODE_COUNT; ++w) {
++                    if (runawaySpend[w] > topCount) {
++                        topCount = runawaySpend[w];
++                        topWord  = w;
++                    }
++                }
++                PrintLog("RUNAWAY HOTTEST: word %d executed %d times", topWord, topCount);
++                for (int w = 0; w < SCRIPTCODE_COUNT; ++w) {
++                    if (runawaySpend[w] > topCount / 5 && runawaySpend[w] > 0) {
++                        int op = scriptCode[w];
++                        PrintLog("  word %d: %d times, opcode %s", w, runawaySpend[w],
++                                 (op >= 0 && op < 151) ? functions[op].name : "BAD");
++                    }
++                }
++            }
++            running = false;
++            break;
++        }
++        if (instructions % 1000000 == 0 && instructions > 0) {
++            // Sample the program counter: whichever word dominates is inside the
++            // loop that never exits.
++            PrintLog("RUNAWAY AT: type %d event %d word %d (%s), temp %d,%d,%d checkResult %d",
++                     objectEntityPos >= 0 && objectEntityPos < ENTITY_COUNT
++                         ? objectEntityList[objectEntityPos].type : -1,
++                     scriptEvent, scriptCodePtr - 1,
++                     (scriptCodePtr - 1 >= 0 && scriptCodePtr - 1 < 153) ? functions[scriptCode[scriptCodePtr - 1]].name : "?",
++                     scriptEng.temp[0], scriptEng.temp[1], scriptEng.temp[2], scriptEng.checkResult);
++        }
++
++        // Where this instruction begins, so the trace can name it.
++//
++// scriptCodeOffset is set once per ProcessScript call and never updated per instruction,
++// so it is the *script's* entry point, not this instruction's. Using it as the reported
++// word index made every instruction after the first in a script report the same address,
++// and the operand count came out as the distance travelled so far rather than the words
++// this instruction occupied. That is a bug in the trace, not in the bytecode or in the
++// walker, and it is the whole of the disagreement the oracle found.
++const int instructionStart = scriptCodePtr;
++
++    int opcode = scriptCode[scriptCodePtr++];
++        if (runawayTrack && scriptCodePtr - 1 < (int)sizeof(runawaySpend))
++            ++runawaySpend[scriptCodePtr - 1];
++        // functions[] holds 151 entries: the source declares 153, but two sit
++        // inside #if !RETRO_REV00 and are not compiled in. Reading one of those
++        // slots would return a default-constructed FunctionInfo with no name,
++        // which is why an out-of-range opcode is reported rather than followed.
++        if (opcode < 0 || opcode >= 151) {
++            PrintLog("WARNING: script read opcode %d at word %d, outside the "
++                     "151-entry opcode table; bailing out of this script",
++                     opcode, scriptCodePtr - 1);
++            running = false;
++            break;
++        }
+         int opcodeSize       = functions[opcode].opcodeSize;
+         int scriptCodeOffset = scriptCodePtr;
+ 
++        // Diagnostic: report the opcodes each script executes, so a stage that
++        // stalls can be traced from outside the process. Without this a stall is
++        // indistinguishable from a slow load.
++        {
++            // Trace only a bounded window, and only once per script, so a normal
++            // long loop does not consume the whole budget before the interesting
++            // script runs.
++            static int traceWindow = 0;
++            static int traceBudget = 400;
++            static int lastTraced = -1;
++            // RSDK_TRACE_ALL lifts the window so a whole linear pass over a
++            // script is logged. That is the oracle the bytecode walker is
++            // checked against: the engine's decoding is authoritative by
++            // construction, so comparing the two word by word localises a wrong
++            // operand width instead of guessing at one from a desync count,
++            // which has already produced two convincing wrong answers.
++            if (traceAll) {
++                // Every instruction, with no cap. The cap this replaced was a
++                // silent one: the opcode line stopped after 300 instructions while
++                // the word-count line below kept logging all 7000-odd, so the
++                // checker read 300 of them and reported an identical 142 confirmed
++                // sites from five completely different stages. Tracing is opt-in via
++                // RSDK_TRACE_ALL, so log size is the caller's choice.
++            }
++            else {
++            const int key = objectEntityPos * 8 + scriptEvent;
++            if (key != lastTraced) {
++                lastTraced = key;
++                traceWindow = 40;
++                if (traceBudget > 0)
++                    traceBudget -= traceWindow;
++            }
++            if (traceWindow > 0 && traceBudget > 0) {
++                --traceWindow;
++                PrintLog("TRACE: type %d ev %d: %s @%d (%d,%d,%d,%d)",
++                         objectEntityPos >= 0 && objectEntityPos < ENTITY_COUNT
++                             ? objectEntityList[objectEntityPos].type : -1,
++                         scriptEvent, functions[opcode].name, scriptCodePtr - 1,
++                         opcodeSize > 0 ? scriptEng.operands[0] : 0,
++                         opcodeSize > 1 ? scriptEng.operands[1] : 0,
++                         opcodeSize > 2 ? scriptEng.operands[2] : 0,
++                         opcodeSize > 3 ? scriptEng.operands[3] : 0);
++            }
++            }
++        }
++
+         scriptText[0] = '\0';
+ 
+         // Get Values
+         for (int i = 0; i < opcodeSize; ++i) {
+             int opcodeType = scriptCode[scriptCodePtr++];
++            if (traceAll && i < 0x10)
++                oracleRawTags[i] = opcodeType;
+ 
+             if (opcodeType == SCRIPTVAR_VAR) {
+                 int arrayVal = 0;
+@@ -4186,6 +4477,38 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
+             }
+         }
+ 
++        if (traceAll) {
++            // Words this instruction actually occupied, and the tags it read,
++            // straight from the engine. Everything else in this project has been
++            // inference dressed up as measurement; this is the measurement.
++            // One line per instruction, not one line per tag. PrintLog reopens the log
++            // for every call, so the multi-line form cost two to seventeen opens per
++            // opcode, and that was slow enough that a traced run could not finish the
++            // startup loop inside a 30-second window. The visible symptom was coverage
++            // frozen at exactly 190 distinct sites for sixteen of nineteen stages - the
++            // engine never getting past the globals, because the trace was measuring a
++            // run that had not happened yet. Same data, one I/O.
++            char tagBuf[0x80];
++            int  tagLen = 0;
++            for (int t = 0; t < opcodeSize && t < 0x10; ++t) {
++                if (tagLen)
++                    tagBuf[tagLen++] = ',';
++                const int tag = oracleRawTags[t];
++                if (tag >= 10) {
++                    if (tagLen + 2 >= (int)sizeof(tagBuf))
++                        break;
++                    tagBuf[tagLen++] = (char)('0' + tag / 10);
++                }
++                if (tagLen + 1 >= (int)sizeof(tagBuf))
++                    break;
++                tagBuf[tagLen++] = (char)('0' + tag % 10);
++            }
++            tagBuf[tagLen] = 0;
++            PrintLog("ORACLE %s @%d consumed=%d tags=%s",
++                     functions[opcode].name, instructionStart,
++                     scriptCodePtr - instructionStart - 1, tagBuf);
++        }
++
+         ObjectScript *scriptInfo = &objectScriptList[objectEntityList[objectEntityPos].type];
+         Entity *entity           = &objectEntityList[objectEntityPos];
+         SpriteFrame *spriteFrame = nullptr;
+@@ -4943,7 +5266,15 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
+                 opcodeSize     = 0;
+                 Entity *newEnt = &objectEntityList[scriptEng.operands[0]];
+                 memset(newEnt, 0, sizeof(Entity));
+-                newEnt->type               = scriptEng.operands[1];
++                newEnt->type               = scriptEng.operands[1] + scriptInfo->typeBase;
++                if (newEnt->type >= loadedScriptTypeCount) {
++                    PrintLog("WARNING: ResetObjectEntity slot %d: raw %d + base %d "
++                             "= %d, past the %d loaded types; caller type %d (%s)",
++                             scriptEng.operands[0], scriptEng.operands[1],
++                             scriptInfo->typeBase, newEnt->type, loadedScriptTypeCount,
++                             objectEntityList[objectEntityPos].type,
++                             typeNames[objectEntityList[objectEntityPos].type]);
++                }
+                 newEnt->propertyValue      = scriptEng.operands[2];
+                 newEnt->xpos               = scriptEng.operands[3];
+                 newEnt->ypos               = scriptEng.operands[4];
+@@ -4989,7 +5320,14 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
+                     scriptEng.arrayPosition[8] = TEMPENTITY_START;
+                 Entity *temp = &objectEntityList[scriptEng.arrayPosition[8]];
+                 memset(temp, 0, sizeof(Entity));
+-                temp->type               = scriptEng.operands[0];
++                temp->type               = scriptEng.operands[0] + scriptInfo->typeBase;
++            if (temp->type >= loadedScriptTypeCount) {
++                PrintLog("WARNING: CreateTempObject: raw %d + base %d = %d, past the "
++                         "%d loaded types; caller type %d (%s)",
++                         scriptEng.operands[0], scriptInfo->typeBase, temp->type,
++                         loadedScriptTypeCount, objectEntityList[objectEntityPos].type,
++                         typeNames[objectEntityList[objectEntityPos].type]);
++            }
+                 temp->propertyValue      = scriptEng.operands[1];
+                 temp->xpos               = scriptEng.operands[2];
+                 temp->ypos               = scriptEng.operands[3];
+@@ -5209,8 +5547,20 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptEvent)
+                 functionStack[functionStackPos++] = scriptCodePtr;
+                 functionStack[functionStackPos++] = jumpTableStart;
+                 functionStack[functionStackPos++] = scriptCodeStart;
+-                scriptCodeStart                   = scriptFunctionList[scriptEng.operands[0]].ptr.scriptCodePtr;
+-                jumpTableStart                    = scriptFunctionList[scriptEng.operands[0]].ptr.jumpTablePtr;
++                // The operand is an index into whatever function table the *caller's
++                // game* was compiled against, and both games' tables now share one
++                // array with Sonic 2's first. Adding the caller's base is what keeps
++                // a Sonic 1 script calling "its" function N out of Sonic 2's N.
++                const int functionIndex = scriptInfo->functionBase + scriptEng.operands[0];
++                if (functionIndex < 0 || functionIndex >= FUNCTION_COUNT) {
++                    PrintLog("WARNING: CallFunction %d resolves to slot %d, outside "
++                             "the %d-entry function table", scriptEng.operands[0],
++                             functionIndex, FUNCTION_COUNT);
++                    running = false;
++                    break;
++                }
++                scriptCodeStart                   = scriptFunctionList[functionIndex].ptr.scriptCodePtr;
++                jumpTableStart                    = scriptFunctionList[functionIndex].ptr.jumpTablePtr;
+                 scriptCodePtr                     = scriptCodeStart;
+                 break;
+             }
+diff --git a/RSDKv4/Script.hpp b/RSDKv4/Script.hpp
+index b845880..940cfa6 100644
+--- a/RSDKv4/Script.hpp
++++ b/RSDKv4/Script.hpp
+@@ -33,6 +33,26 @@ struct ObjectScript {
+     ScriptPtr eventStartup;
+     int frameListOffset;
+     AnimationFile *animFile;
++
++    // Where this type's numbers were before the two games shared one table.
++    //
++    // Sonic 1 and Sonic 2 each number their objects from 1, and they number them
++    // differently: in Sonic 1 "Stage Setup" is type 4, and in Sonic 2 type 4 is
++    // also "Stage Setup" but a different object with different code. Once both
++    // games' globals live in one table those numbers collide, and a number baked
++    // into a script - which is what `TypeName[...]` compiles to - names whichever
++    // game got that slot first.
++    //
++    // Rather than rewrite those constants in the bytecode, which is a bulk edit to
++    // compiled data, each type carries the offset its game's numbering needs and
++    // the two opcodes that create an object add it. Rewriting the bytecode would
++    // also mean trusting a decoder over code that cannot be inspected; two numbers
++    // the pack already knows are easier to verify and cannot go stale.
++    int typeBase;
++
++    // The same problem for named functions: `CallFunction`'s operand is an index
++    // into one shared `scriptFunctionList`, and Sonic 2's are listed first.
++    int functionBase;
+ };
+ 
+ struct ScriptEngine {
+@@ -45,6 +65,66 @@ struct ScriptEngine {
+ enum ScriptSubs { EVENT_MAIN = 0, EVENT_DRAW = 1, EVENT_SETUP = 2 };
+ 
+ extern ObjectScript objectScriptList[OBJECT_COUNT];
++
++// Object-name lookup is a linear scan over the whole table, which is fine for one
++// game and wrong for two. Sonic 1 and Sonic 2 share 33 object names - "Player
++// Object", "Stage Setup", "Ring", "Monitor", "Star Post" and so on - so in a merged
++// pack a script asking for "Stage Setup" gets whichever game registered that name
++// first, and a Sonic 1 stage silently ends up running Sonic 2's Stage Setup.
++//
++// Scoping the scan needs to know which game each object type belongs to and which
++// game is running. `objectTypeSplit` is the number of *global* object types
++// belonging to game 0; game 0 owns types [0, split) and game 1 the rest, which is
++// how the merged config lists them. Stage objects take their game from the stage
++// folder's S1/S2 suffix instead, because only one stage's objects are registered
++// at a time and their names never collide across games.
++//
++// A negative split disables the scoping entirely and restores the original
++// single-game behaviour, so a pack that does not opt in behaves exactly as before.
++extern int objectTypeGame[OBJECT_COUNT];
++extern int objectTypeSplit;         // < 0 disables scoping
++extern int objectTypeGlobalCount;   // globals occupy types [1, this]; stage objects follow
++extern int currentObjectGame;       // 0 or 1
++
++// Where game 1's numbering starts: type constants were baked against each game's
++// own table, and Sonic 1's objects all moved up by objectTypeSplit when the two
++// games were merged. Read from ObjectGameSplit.bin; both are 0 for a single-game
++// pack, which leaves every number untouched.
++extern int objectTypeBaseForGame1;
++extern int scriptFunctionBaseForGame1;
++
++// Where a *stage's* own script object types start in the merged table, minus where
++// they started in their own game. Needed by the two opcodes that create an object,
++// because a stage's script bakes its own stage-local types as indices too:
++//
++//     stage type T  ->  T + (globalTotal - thatGame'sGlobalCount)
++//
++// A stage's types begin at globalCount + 1 in their own game and at globalTotal + 1
++// in the merged table, so the offset is the difference between those two starts. It
++// is not simply objectTypeSplit, because the two games have different numbers of
++// globals: for Sonic 1 it works out to 39 and for Sonic 2 to 38.
++//
++// Act *layout* files deliberately do not use this. The packer already resolves their
++// type indices by object name against the destination table, so they are already
++// destination indices; shifting them again was one of the two bugs that pushed Green
++// Hill's types past the end of the table.
++extern int stageTypeBase;
++
++// How many functions are loaded so far, which is where the next container's
++// function table starts. A stage's own functions are appended rather than
++// overwriting the globals', so a stage's scripts - whose operands are file-local,
++// and which repeat their game's global functions first - keep resolving correctly.
++extern int loadedFunctionCount;
++
++// The highest script type loaded so far. Globals fill [1, N] and a stage appends
++// after them, so this is where a script's types stop being real. Nothing enforces
++// it: an operand naming a type past this end creates an entity whose type matches
++// no script and which therefore never runs.
++extern int loadedScriptTypeCount;
++
++// Returns the object type whose registered name matches, preferring the running
++// game's, or OBJECT_COUNT if there is none.
++int FindObjectTypeByName(const char *name);
+ extern ScriptFunction scriptFunctionList[FUNCTION_COUNT];
+ 
+ extern int scriptCode[SCRIPTCODE_COUNT];
+diff --git a/RSDKv4/main.cpp b/RSDKv4/main.cpp
+index 9a16d9b..756c4eb 100644
+--- a/RSDKv4/main.cpp
++++ b/RSDKv4/main.cpp
+@@ -1,3 +1,4 @@
++#include "HeartbeatLog.h"
+ #include "RetroEngine.hpp"
+ 
+ #if !RETRO_USE_ORIGINAL_CODE
+@@ -55,8 +56,11 @@ int main(int argc, char *argv[])
+ #endif
+ 
+     SDL_SetHint(SDL_HINT_WINRT_HANDLE_BACK_BUTTON, "1");
++    HEARTBEAT_LOG("HEARTBEAT: calling Engine.Init()");
+     Engine.Init();
++    HEARTBEAT_LOG("HEARTBEAT: Engine.Init() returned; calling Engine.Run()");
+     Engine.Run();
++    HEARTBEAT_LOG("HEARTBEAT: Engine.Run() returned");
+ 
+ #if !RETRO_USE_ORIGINAL_CODE
+     if (Engine.consoleEnabled) {

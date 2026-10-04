@@ -63,14 +63,49 @@
       "framework/include"
     ]
   },
-  "0010-stringtraits-decl-order.patch": {
-    "why": "Move the StringTraits declaration above StringTemplate and qualify the two getUnicode call sites. Pure reordering plus AIR's own qualification idiom; it also subsumes the removed 0009.",
+  "0012-glew-as-target.patch": {
+    "why": "Give A.I.R.'s bundled GLEW its own CMake target instead of globbing it into rmxmedia, so a host linking its own GLEW has exactly one copy to link.",
     "must_contain": [
-      "rmx::StringTraits<CHAR>::toUnicode",
-      "struct StringTraits"
+      "add_library(glew ",
+      "target_link_libraries(rmxmedia glew)"
     ],
     "must_not_contain": [
-      "return toUnicode(getChar"
+      "stdc++fs"
+    ]
+  },
+  "0006-endswith-data-call.patch": {
+    "why": "StringImpl.h passed str.data - a char* member - to includesAt, which takes a String. AIR's String has no such member, and its const char* is a call, not a field. Rewrite so it needs neither.",
+    "must_contain": [
+      "+\treturn includesAt(str.data(), (int)mLength - str.length());"
+    ],
+    "must_not_contain": [
+      "-\treturn includesAt(str.data, (int)mLength - str.length());"
+    ]
+  },
+  "0007-adddouble-duplicate-decl.patch": {
+    "why": "addDouble was declared twice in String.h with different bodies. A TU that includes the header sees a duplicate declaration, which MSVC rejects.",
+    "must_contain": [
+      "-\tvoid addDouble(double value);"
+    ],
+    "must_not_contain": []
+  },
+  "0008-operator-assign-dependent-cast.patch": {
+    "why": "operator= on a template-dependent return type did `return *this;`, which needs a conversion to CLASS& that is only valid in a non-template context. Every implicit use was a compile error.",
+    "must_contain": [
+      "+\tCLASS& operator=(const StdString& str)\t\t{ copy(str); return (CLASS&)*this; }"
+    ],
+    "must_not_contain": [
+      "-\tCLASS& operator=(const StdString& str)\t\t{ copy(str); return *this; }"
+    ]
+  },
+  "0011-remove-dead-getunicode.patch": {
+    "why": "getUnicode(size_t) and getUnicode(int) were declared and defined but never called and never instantiated by AIR. As written they do not compile - toUnicode is a member of StringTraits declared ~215 lines later, invisible to unqualified lookup at template-definition time - so any host TU that instantiated them failed on AIR's code rather than its own.",
+    "must_contain": [
+      "+\t// [Sonic Hybrid Ultimate] Removed getUnicode(size_t) and getUnicode(int)."
+    ],
+    "must_not_contain": [
+      "-\tinline uint32 getUnicode(size_t index)\t{ return toUnicode(getChar(index)); }",
+      "-\tinline uint32 getUnicode(int index)\t\t{ return toUnicode(getChar(index)); }"
     ]
   }
 }

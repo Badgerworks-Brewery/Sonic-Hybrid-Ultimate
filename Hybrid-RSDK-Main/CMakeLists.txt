@@ -71,6 +71,44 @@ if(BUILD_SONIC3AIR)
 else()
     set(HYBRID_SDL2_TARGET SDL2::SDL2)
 endif()
+
+# Same reasoning for GLEW. A.I.R. used to compile its bundled GLEW straight into rmxmedia,
+# so the symbols sat inside a library every other target needs and could not be dropped by
+# changing link order - see patches/sonic3air/0012. Patch 0012 gives it a real target, so
+# exactly one copy can be linked.
+#
+# Both copies are GLEW 2.3.4 and both declare GLEWAPI as plain extern rather than dllimport,
+# so choosing either is ABI-neutral. Deciding per-build rather than per-consumer is what
+# resolves the sharing problem: rsdk_core links one GLEW target, rsdkv4 gets vcpcg's,
+# OxygenEngine gets A.I.R.'s, and neither engine needs to know which is which.
+if(BUILD_SONIC3AIR)
+    set(HYBRID_GLEW_TARGET glew)
+else()
+    set(HYBRID_GLEW_TARGET GLEW::GLEW)
+endif()
+
+# Same again for ogg/vorbis. A.I.R. bundles a single combined static `oggvorbis`, while this
+# project links vcpcg's shared ogg.lib, vorbis.lib and vorbisfile.lib. Both provide the same
+# symbols, so with /WHOLEARCHIVE forcing all of rsdk_core in the overlap finally became
+# visible - 14 duplicate ogg symbols, and more behind them.
+#
+# Worth noting what the same run proved negatively: there were ZERO unresolved externals
+# (no LNK2019, no LNK2001). Every symbol RSDKv4 needs is satisfied. The two engines' code
+# resolves against each other completely; what conflicts is only third-party libraries that
+# both happen to vendor.
+if(BUILD_SONIC3AIR)
+    set(HYBRID_OGG_TARGET oggvorbis)
+else()
+    set(HYBRID_OGG_TARGET "${OGG_LIBRARY}")
+endif()
+
+if(NOT BUILD_SONIC3AIR)
+    set(HYBRID_VORBIS_TARGETS "${VORBIS_LIBRARIES}")
+else()
+    # A.I.R.'s oggvorbis already contains vorbis, so linking vcpcg's vorbis on top of it is
+    # the duplication rather than the fix. Link oggvorbis alone.
+    set(HYBRID_VORBIS_TARGETS "")
+endif()
     find_package(SDL2 CONFIG REQUIRED)
     find_package(OpenGL REQUIRED)
     find_package(GLEW REQUIRED)
@@ -197,6 +235,10 @@ list(APPEND RSDKV4_SOURCES
 )
 
 # RSDK V4 Core library
+if(HYBRID_HEARTBEAT_LOG)
+    add_compile_definitions(rsdk_core PRIVATE HYBRID_HEARTBEAT_LOG=1)
+endif()
+
 add_library(rsdk_core STATIC ${RSDKV4_SOURCES})
 
 # Add -fPIC for shared library compatibility
@@ -222,11 +264,11 @@ if(WIN32)
         ${HYBRID_SDL2_TARGET}
         SDL2::SDL2main
         ${OPENGL_LIBRARIES}
-        GLEW::GLEW
-        Vorbis::vorbis
-        Vorbis::vorbisfile
+        ${HYBRID_GLEW_TARGET}
+        ${HYBRID_VORBIS_TARGETS}
+        ${HYBRID_VORBIS_TARGETS}
         tinyxml2::tinyxml2
-        ${OGG_LIBRARY}
+        ${HYBRID_OGG_TARGET}
         ${THEORA_LIBRARY}
         ${THEORADEC_LIBRARY}
     )
@@ -244,7 +286,7 @@ else()
         ${SDL2_LIBRARIES}
         ${OPENGL_LIBRARIES}
         ${GLEW_LIBRARIES}
-        ${VORBIS_LIBRARIES}
+        ${HYBRID_VORBIS_TARGETS}
         ${TINYXML2_LIBRARIES}
         ${OGG_LIBRARIES}
         ${THEORA_LIBRARIES}
@@ -284,9 +326,9 @@ if(RSDKV3_SOURCES)
             ${HYBRID_SDL2_TARGET}
             SDL2::SDL2main
             ${OPENGL_LIBRARIES}
-            GLEW::GLEW
-            Vorbis::vorbis
-            Vorbis::vorbisfile
+            ${HYBRID_GLEW_TARGET}
+            ${HYBRID_VORBIS_TARGETS}
+            ${HYBRID_VORBIS_TARGETS}
         )
     else()
         target_include_directories(rsdkv3_core PUBLIC
@@ -299,7 +341,7 @@ if(RSDKV3_SOURCES)
             ${SDL2_LIBRARIES}
             ${OPENGL_LIBRARIES}
             ${GLEW_LIBRARIES}
-            ${VORBIS_LIBRARIES}
+            ${HYBRID_VORBIS_TARGETS}
         )
     endif()
 endif()
@@ -572,6 +614,18 @@ if(BUILD_SONIC3AIR)
         set(USE_DISCORD OFF CACHE BOOL "Disable Discord integration" FORCE)
         set(BUILD_OXYGEN_SERVER OFF CACHE BOOL "Don't build Oxygen server" FORCE)
         set(BUILD_OXYGEN_ENGINEAPP OFF CACHE BOOL "Don't build standalone Oxygen app" FORCE)
+
+        # Frame-loop heartbeat logging, for scripts/probe_stages.py.
+        #
+        # Off by default. On, it prints a marker at each engine phase boundary and every N
+        # frames, which is the only way to tell a stalled frame loop from a slow one during a
+        # headless probe - without it, "never started", "stalled mid-stage" and "ran but never
+        # finished" all produce an empty log and are indistinguishable.
+        #
+        # It cannot change behaviour: every marker is a bare logging call, never wrapped around
+        # a branch. See RSDKV4-Decompilation/RSDKv4/HeartbeatLog.h. The definition itself is
+        # applied to rsdk_core further up, where the target is created.
+        option(HYBRID_HEARTBEAT_LOG "Emit frame-loop heartbeat markers (probe diagnostics)" OFF)
         # NB: USE_IMGUI must stay ON on Windows, whatever the size saving looks like.
         #
         # oxygen/devmode/ImGuiDefinitions.h:14 reads
@@ -648,8 +702,35 @@ if(BUILD_SONIC3AIR)
         # collision set and additionally has to reconcile two main() symbols, so the DLL is
         # the cheaper place to find out.
         if(TARGET rsdk_core)
-            target_link_libraries(OxygenEngine PRIVATE rsdk_core sonic_hybrid)
-            message(STATUS "  OxygenEngine now links rsdk_core + sonic_hybrid + oxygen")
+            # /WHOLEARCHIVE, not a plain link.
+            #
+            # With a plain link the coexistence test is hollow: rsdk_core is a static library
+            # and nothing in OxygenWrapper.cpp references an RSDKv4 symbol, so the linker
+            # pulls in none of it. That is exactly what happened - the DLL came out at
+            # 3,286,016 bytes both with and without rsdk_core on the link line, byte for
+            # byte, and dumpbin found no RSDKv4 symbols in it. Same trap as the earlier
+            # 16,384-byte 'successful' DLL that contained none of A.I.R.
+            #
+            # /WHOLEARCHIVE forces every object in, which is what makes this a real test of
+            # whether two engines can share a link rather than a test of whether the linker
+            # can avoid the question.
+            add_library(rsdk_core_whole INTERFACE)
+            target_link_libraries(rsdk_core_whole INTERFACE
+                "-WHOLEARCHIVE:$<TARGET_FILE:rsdk_core>"
+                "-NOWHOLEARCHIVE"
+            )
+            target_link_libraries(OxygenEngine PRIVATE rsdk_core_whole sonic_hybrid)
+            # TEMPORARY diagnostic: /WHOLEARCHIVE forces the linker to *resolve* every
+            # rsdk_core object, but Release keeps /OPT:REF and then strips code nothing calls.
+            # Turning REF off makes the retained bytes visible so the coexistence test can be
+            # checked against the output file instead of taken on trust from the exit code.
+            # Always on for this target, not a flag worth exposing. OxygenEngine exists
+            # only to answer 'can these two engines share one link', and a green exit
+            # code cannot answer that - the earlier plain-link build exited 0 while
+            # rsdk_core contributed nothing at all. With REF off, the retained bytes
+            # are checkable against the output file.
+            target_link_options(OxygenEngine PRIVATE /OPT:NOREF /OPT:NOICF)
+            message(STATUS "  OxygenEngine: rsdk_core (WHOLEARCHIVE) + sonic_hybrid + oxygen")
             message(STATUS "  -> coexistence test active; expect SDL or global collisions")
         else()
             message(WARNING "rsdk_core not available - coexistence test NOT active")
