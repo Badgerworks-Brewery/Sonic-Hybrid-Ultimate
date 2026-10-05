@@ -35,9 +35,10 @@
   "0004-sdl-include-path.patch": {
     "why": "rmxmedia_externals.h asks for <SDL/SDL.h> on MSVC (GCC and Linux take the <SDL2/SDL.h> branch), and nothing provided that spelling - every rmxmedia translation unit failed with C1083. The line that used to be here, include_directories(SDL/include), is a no-op because 'SDL' is the add_subdirectory binary directory name, not a source path. TWO include directories are needed: the SDL2 source include dir for SDL.h, and SDL's generated include-config-<config>/SDL2 for SDL_config.h. Adding only the first finds SDL.h and then fails 195x with C1189.",
     "must_contain": [
-      "+file(GLOB SDL_GENERATED_CONFIG_DIRS",
+      "+file(GLOB AIR_SDL_GENERATED_CONFIG_DIRS",
       "+\tinclude_directories(${WORKSPACE_DIR}/framework/external/sdl/SDL2/include)",
-      "+\tinclude_directories(${SDL_GENERATED_CONFIG_DIRS})"
+      "+\ttarget_include_directories(rmxmedia PUBLIC",
+      "+\t${AIR_SDL_GENERATED_CONFIG_DIRS}"
     ],
     "must_not_contain": [
       "+\tinclude_directories(SDL/include)",
@@ -58,7 +59,8 @@
     "why": "Give A.I.R.'s bundled GLEW its own CMake target instead of globbing it into rmxmedia, so a host linking its own GLEW has exactly one copy to link.",
     "must_contain": [
       "add_library(glew ",
-      "target_link_libraries(rmxmedia glew)"
+      "target_link_libraries(rmxmedia glew)",
+      "+target_include_directories(glew PUBLIC"
     ],
     "must_not_contain": [
       "stdc++fs"
@@ -99,7 +101,7 @@
       "list(REMOVE_ITEM SONIC3AIR_GAME_SOURCES",
       "target_link_libraries(sonic3air_game oxygen)",
       "target_precompile_headers(sonic3air_game PRIVATE",
-      "if (NOT TARGET sonic3air_game)"
+      "+target_include_directories(sonic3air_game PUBLIC"
     ],
     "must_not_contain": [
       "stdc++fs"

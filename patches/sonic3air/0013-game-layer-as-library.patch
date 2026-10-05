@@ -1,51 +1,59 @@
 diff --git a/Oxygen/sonic3air/build/_cmake/CMakeLists.txt b/Oxygen/sonic3air/build/_cmake/CMakeLists.txt
-index 0fd6dff4..eac9c9f9 100644
 --- a/Oxygen/sonic3air/build/_cmake/CMakeLists.txt
 +++ b/Oxygen/sonic3air/build/_cmake/CMakeLists.txt
-@@ -389,6 +389,46 @@ endif()
+@@ -459,6 +459,55 @@ endif()
  
- # Sonic3AIR
  
-+# [Sonic Hybrid Ultimate] The Sonic 3 game layer becomes a library, not just executable sources.
+ 
++# [Sonic Hybrid Ultimate] The Sonic 3 game layer becomes a library, not just executable
++# sources.
 +#
-+# A.I.R. compiles Oxygen/sonic3air/source/sonic3air/*.cpp into exactly one target, the Sonic3AIR
-+# executable. But that directory is where EngineDelegate, GameApp and AudioOut live - the
-+# implementations of EngineDelegateInterface, GuiBase and AudioOutBase. Because they only ever
-+# existed inside an executable, there is nothing a host program can link against: the interfaces
-+# are declared in oxygen's headers and implemented nowhere reusable. A host embedding the engine
-+# had to reimplement the whole Sonic 3 front end by hand.
++# A.I.R. compiles Oxygen/sonic3air/source/sonic3air/*.cpp into exactly one target, the
++# Sonic3AIR executable. But that directory is where EngineDelegate, GameApp and AudioOut live
++# - the implementations of EngineDelegateInterface, GuiBase and AudioOutBase. Because they
++# only ever existed inside an executable, there was nothing a host program could link
++# against: the interfaces are declared in oxygen's headers and implemented nowhere reusable.
++# A host embedding the engine had to reimplement the whole Sonic 3 front end by hand.
 +#
-+# So the same sources are compiled twice over: once into the static library below, so a host can
-+# link A.I.R.'s real delegate, and once into the executable, unchanged, so A.I.R. still builds
-+# standalone. Two compilations rather than one is the deliberate cost - CMake cannot put an
-+# executable's objects in a library, and there is no way to get the delegate without relinking.
++# So the same sources are compiled twice over: once into the static library below, so a host
++# can link A.I.R.'s real delegate, and once into the executable, unchanged, so A.I.R. still
++# builds standalone. Two compilations rather than one is the deliberate cost - CMake cannot
++# put an executable's objects in a library, and there is no way to get the delegate without
++# relinking.
 +#
-+# main.cpp is the single exclusion. It holds the only main() in this tree, which is exactly why it
-+# cannot go into a library: a static lib containing main() is fine on its own, but any DLL or exe that
-+# pulled that object in would collide with its own entry point. main() is also the wrong thing to
-+# reuse anyway - it parses argv and drives a session start to finish, and a host needs to create
-+# the delegate itself and hand it to EngineMain. That is the seam this library exists to expose.
++# main.cpp is the single exclusion. It holds the only main() in this tree, which is exactly
++# why it cannot go into a library: a static lib containing main() is fine on its own, but any
++# DLL or exe that pulled that object in would collide with its own entry point. main() is
++# also the wrong thing to reuse anyway - it parses argv and drives a session start to
++# finish, and a host needs to create the delegate itself and hand it to EngineMain. That is
++# the seam this library exists to expose.
 +file(GLOB_RECURSE SONIC3AIR_GAME_SOURCES
-+							   ${WORKSPACE_DIR}/Oxygen/sonic3air/source/sonic3air/*.cpp)
++								   ${WORKSPACE_DIR}/Oxygen/sonic3air/source/sonic3air/*.cpp)
 +list(REMOVE_ITEM SONIC3AIR_GAME_SOURCES ${WORKSPACE_DIR}/Oxygen/sonic3air/source/sonic3air/main.cpp)
 +
 +add_library(sonic3air_game STATIC ${SONIC3AIR_GAME_SOURCES})
++# This patch creates the target, so it supplies the SDL include directories patch 0004
++# cannot.
++target_include_directories(sonic3air_game PUBLIC
++	${WORKSPACE_DIR}/framework/external/sdl/SDL2/include
++	${AIR_SDL_GENERATED_CONFIG_DIRS}
++)
 +target_link_libraries(sonic3air_game oxygen)
 +if (USE_DISCORD)
 +	target_link_libraries(sonic3air_game discord_game_sdk_source)
 +endif()
 +if (NOT CMAKE_VERSION VERSION_LESS "3.16.0")
-+	# Same PCH as the executable uses. Without it this target compiles ~50 files individually and
-+	# diverges from the executable's configuration, so the two copies of a shared header could
-+	# disagree about inline functions - which fails at link time with duplicate symbols, or worse
++	# Same PCH as the executable uses. Without it this target compiles ~50 files individually
++	# and diverges from the executable's configuration, so two copies of a shared header could
++	# disagree about an inline function - which fails at link time with duplicate symbols, or
 +	# silently picks one definition.
 +	target_precompile_headers(sonic3air_game PRIVATE ${WORKSPACE_DIR}/Oxygen/sonic3air/source/sonic3air/pch.h)
 +endif()
 +
 +if (NOT TARGET sonic3air_game)
-+	message(FATAL_ERROR "sonic3air_game was not created - a host linking this library would silently" "get no A.I.R. delegate")
++	message(FATAL_ERROR "sonic3air_game was not created - a host linking this library would silently get no A.I.R. delegate")
 +endif()
 +
- file(GLOB_RECURSE SONIC3AIR_SOURCES ${WORKSPACE_DIR}/Oxygen/sonic3air/source/sonic3air/*.cpp)
+ # Sonic3AIR
  
- # TODO: CMake seems to use a different working directory for this, so "Oxygen" is intentionally missing here
+ file(GLOB_RECURSE SONIC3AIR_SOURCES ${WORKSPACE_DIR}/Oxygen/sonic3air/source/sonic3air/*.cpp)

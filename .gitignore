@@ -91,3 +91,5 @@ __pycache__/
 .keepalive.log
 .keepalive.pid
 .keepalive-watchdog.log
+.keepalive-watchdog.d/
+.keepalive-watchdog.lock

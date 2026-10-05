@@ -1,8 +1,7 @@
 diff --git a/Oxygen/sonic3air/source/sonic3air/helper/DiscordIntegration.cpp b/Oxygen/sonic3air/source/sonic3air/helper/DiscordIntegration.cpp
-index d591b2f7..af5701f8 100644
 --- a/Oxygen/sonic3air/source/sonic3air/helper/DiscordIntegration.cpp
 +++ b/Oxygen/sonic3air/source/sonic3air/helper/DiscordIntegration.cpp
-@@ -9,11 +9,33 @@
+@@ -9,11 +9,32 @@
  #include "sonic3air/pch.h"
  #include "sonic3air/helper/DiscordIntegration.h"
  
@@ -13,8 +12,8 @@ index d591b2f7..af5701f8 100644
 -#if (defined(PLATFORM_WINDOWS) && !defined(__GNUC__)) || (defined(PLATFORM_LINUX) && defined(USE_DISCORD)) || (defined(PLATFORM_MAC) && !defined(NO_DISCORD))
 +// Only platforms that asked for Discord integration get it.
 +//
-+// [Sonic Hybrid Ultimate] This used to be a per-platform judgement that had nothing to do
-+// with the build option on two of the three platforms:
++// [Sonic Hybrid Ultimate] This used to be a per-platform judgement with nothing to do with
++// the build option on two of the three platforms:
 +//
 +//   #if (defined(PLATFORM_WINDOWS) && !defined(__GNUC__)) ||
 +//       (defined(PLATFORM_LINUX) && defined(USE_DISCORD)) ||
@@ -30,13 +29,12 @@ index d591b2f7..af5701f8 100644
 +//   ... 12 of them, every one a discord:: symbol.
 +//
 +// There was therefore no value of USE_DISCORD that made Windows agree with the link line.
-+// Linux already gated on it correctly, which is likely why this went unnoticed. Gating every
-+// platform on the same option is what makes the option mean what it says.
++// Linux already gated on it correctly, which is likely why this went unnoticed upstream.
 +//
 +// Sonic Hybrid Ultimate wants USE_DISCORD=OFF regardless - the app has no networking - so
 +// this is what makes the setting take effect here instead of being silently overridden.
 +//
-+// NO_DISCORD is kept as an additional opt-out for anyone who defines it explicitly.
++// NO_DISCORD is kept as an additional explicit opt-out.
 +#if defined(USE_DISCORD) && !defined(NO_DISCORD)
  	#define SUPPORT_DISCORD
  #endif
