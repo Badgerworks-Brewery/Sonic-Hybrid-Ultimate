@@ -658,6 +658,58 @@ if(BUILD_SONIC3AIR)
         # it. Doing this here rather than re-linking CURL::libcurl onto OxygenEngine afterwards
         # fixes the cause: `oxygen` and the DLL then agree on one curl by construction.
         get_filename_component(AIR_FRAMEWORK_LIB "${CMAKE_CURRENT_SOURCE_DIR}/../vendor/sonic3air/framework/lib/x64" ABSOLUTE)
+
+        # The include directory was missing, and only the library was set - so the link had
+        # something to point at while the compile did not, which shows up as:
+        #
+        #   oxygen\download\Downloader.cpp(17,11): error C1083:
+        #     Cannot open include file: 'curl/curl.h': No such file or directory
+        #
+        # A.I.R.'s Downloader.cpp includes <curl/curl.h>, and the vendored headers live at
+        # framework/external/curl/curl/include/curl/curl.h. So the include directory has to be
+        # .../curl/include, which makes the `curl/` prefix in the include resolve.
+        #
+        # Asserted rather than assumed, because the whole cost of this line was a failed build
+        # that looked like a curl problem and was actually a missing CMake variable.
+        get_filename_component(AIR_CURL_INCLUDE
+            "${CMAKE_CURRENT_SOURCE_DIR}/../vendor/sonic3air/framework/external/curl/curl/include" ABSOLUTE)
+        if(NOT EXISTS "${AIR_CURL_INCLUDE}/curl/curl.h")
+            message(FATAL_ERROR
+                "curl headers not found at ${AIR_CURL_INCLUDE}/curl/curl.h - the vendored curl "
+                "source is not where this expects it.")
+        endif()
+        set(CURL_INCLUDE_DIR "${AIR_CURL_INCLUDE}" CACHE PATH "" FORCE)
+        message(STATUS "  CURL_INCLUDE_DIR = ${CURL_INCLUDE_DIR}")
+
+        # Setting CURL_INCLUDE_DIR is necessary but not sufficient, and the reason is
+        # that A.I.R. never asks for it on Windows:
+        #
+        #   vendor/sonic3air/.../_cmake/CMakeLists.txt:385-388
+        #     if (UNIX)
+        #       find_package(CURL REQUIRED)
+        #       target_link_libraries(oxygen CURL::libcurl)
+        #     endif()
+        #
+        # so on Windows `oxygen` links no curl and receives no curl include directory, while
+        # oxygen/download/Downloader.cpp:17 includes <curl/curl.h> unconditionally - that
+        # file is compiled on every platform. Result:
+        #
+        #   Downloader.cpp(17,11): error C1083: Cannot open include file: 'curl/curl.h'
+        #
+        # Verified rather than inferred: after a --fresh configure with CURL_INCLUDE_DIR set
+        # correctly in the cache, oxygen.vcxproj still contained no curl include directory.
+        # The variable was right and the target did not have it.
+        #
+        # So the include directory is attached to `oxygen` here, and the import library is
+        # linked on top of whatever AIR left out. Both are applied after add_subdirectory, so
+        # this is a correction to AIR's UNIX-only guard rather than a second copy of the
+        # settings - the CURL::libcurl target itself is untouched.
+        # NOTE: the correction to `oxygen` itself lives below, after add_subdirectory. It cannot
+        # be here - `oxygen` does not exist until A.I.R.'s own CMakeLists runs, and a
+        # target_include_directories() on a target that does not exist yet is silently ignored.
+        # That was the first attempt at this fix, and it produced a configure that reported success
+        # while oxygen.vcxproj still had no curl include directory in it.
+
         if(EXISTS "${AIR_FRAMEWORK_LIB}/curl/libcurl.lib")
             set(CURL_LIBRARY "${AIR_FRAMEWORK_LIB}/curl/libcurl.lib" CACHE FILEPATH "" FORCE)
             message(STATUS "  CURL_LIBRARY = ${CURL_LIBRARY}")
@@ -674,6 +726,52 @@ if(BUILD_SONIC3AIR)
             ${CMAKE_BINARY_DIR}/sonic3air
             EXCLUDE_FROM_ALL
         )
+
+        # `oxygen` exists now, so its UNIX-only curl guard can actually be corrected.
+        #
+        # A.I.R.'s _cmake/CMakeLists.txt:385-388 does
+        #     if (UNIX)
+        #       find_package(CURL REQUIRED)
+        #       target_link_libraries(oxygen CURL::libcurl)
+        #     endif()
+        # while oxygen/download/Downloader.cpp:17 includes <curl/curl.h> unconditionally - that
+        # file compiles on every platform. On Windows `oxygen` therefore received no curl include
+        # directory and the build failed with
+        #     Downloader.cpp(17,11): error C1083: Cannot open include file: 'curl/curl.h'
+        # even though CURL_INCLUDE_DIR and CURL_LIBRARY were both correct in the cache. The
+        # variable was right and the target did not have it - which is why this is attached to
+        # `oxygen` directly rather than left to CURL_INCLUDE_DIR.
+        if(TARGET oxygen)
+            if(AIR_CURL_INCLUDE STREQUAL "")
+                message(FATAL_ERROR
+                    "AIR_CURL_INCLUDE is empty at the point `oxygen` exists. It is computed above, "
+                    "so this means the earlier block did not run in this scope.")
+            endif()
+            target_include_directories(oxygen PRIVATE ${AIR_CURL_INCLUDE})
+            message(STATUS "  oxygen: curl include dir attached -> ${AIR_CURL_INCLUDE}")
+            # CURL::libcurl does not exist on Windows, because A.I.R. only calls
+            # find_package(CURL) inside `if (UNIX)`. The import library is therefore added by
+            # path rather than through the target - and this is the branch that a
+            # `if(TARGET CURL::libcurl)` guard silently skipped, so no diagnostic appeared and the
+            # vcxproj stayed without a curl include.
+            if(TARGET CURL::libcurl)
+                target_link_libraries(oxygen CURL::libcurl)
+            elseif(TARGET CURL::libcurl_static)
+                target_link_libraries(oxygen CURL::libcurl_static)
+            elseif(CURL_LIBRARY)
+                # Plain signature, matching A.I.R.'s own `target_link_libraries(oxygen
+                # CURL::libcurl)` at _cmake/CMakeLists.txt:387. CMake requires every call for a
+                # target to agree on plain-vs-keyword, and mixing them is a configure error:
+                #   The plain signature for target_link_libraries has already been used with the
+                #   target "oxygen". All uses ... must be either all-keyword or all-plain.
+                target_link_libraries(oxygen ${CURL_LIBRARY})
+            endif()
+            message(STATUS "  oxygen: curl link -> ${CURL_LIBRARY}")
+        else()
+            message(FATAL_ERROR
+                "A.I.R.'s `oxygen` target was not created. OxygenEngine links the engine, so "
+                "there is nothing to build.")
+        endif()
 
         # And pass the same resolution on to the wrapper, so a transitive curl reference
         # cannot diverge from the one `oxygen` was built against.

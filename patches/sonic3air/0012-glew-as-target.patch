@@ -1,7 +1,7 @@
 diff --git a/Oxygen/sonic3air/build/_cmake/CMakeLists.txt b/Oxygen/sonic3air/build/_cmake/CMakeLists.txt
 --- a/Oxygen/sonic3air/build/_cmake/CMakeLists.txt
 +++ b/Oxygen/sonic3air/build/_cmake/CMakeLists.txt
-@@ -258,8 +258,31 @@ target_link_libraries(rmxbase zlibstatic)
+@@ -252,8 +252,30 @@ target_link_libraries(rmxbase zlibstatic)
  
  # rmxmedia
  
@@ -25,18 +25,17 @@ diff --git a/Oxygen/sonic3air/build/_cmake/CMakeLists.txt b/Oxygen/sonic3air/bui
 +
 +add_library(glew ${GLEW_SOURCES})
 +target_include_directories(glew PUBLIC ${WORKSPACE_DIR}/librmx/source/rmxmedia/_glew)
-+# This patch creates the target, so it supplies the SDL include directories rather than
-+# relying on patch 0004 - applied earlier, and therefore unable to name a target that does
-+# not exist yet.
++# This patch creates the target, so it supplies the SDL include directories itself - patch
++# 0004 is applied earlier and cannot name a target that does not exist yet.
 +target_include_directories(glew PUBLIC
-+	${WORKSPACE_DIR}/framework/external/sdl/SDL2/include
 +	${AIR_SDL_GENERATED_CONFIG_DIRS}
++	${WORKSPACE_DIR}/framework/external/sdl/SDL2/include
 +)
  
  add_library(rmxmedia ${RMXMEDIA_SOURCES})
  target_include_directories(rmxmedia PUBLIC
-@@ -267,6 +290,8 @@ target_include_directories(rmxmedia PUBLIC
- 	${AIR_SDL_GENERATED_CONFIG_DIRS}
+@@ -261,6 +283,8 @@ target_include_directories(rmxmedia PUBLIC
+ 	${WORKSPACE_DIR}/framework/external/sdl/SDL2/include
  )
  
 +target_link_libraries(rmxmedia glew)

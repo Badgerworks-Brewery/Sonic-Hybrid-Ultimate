@@ -1,0 +1,82 @@
+diff --git a/librmx/source/rmxmedia/framework/SystemManager.cpp b/librmx/source/rmxmedia/framework/SystemManager.cpp
+--- a/librmx/source/rmxmedia/framework/SystemManager.cpp
++++ b/librmx/source/rmxmedia/framework/SystemManager.cpp
+@@ -14,7 +14,10 @@
+ 	#if defined(__GNUC__)
+ 		#include <SDL2/SDL_syswm.h>
+ 	#else
+-		#include <SDL/SDL_syswm.h>
++		// [Sonic Hybrid Ultimate] <SDL/SDL_syswm.h> cannot resolve: the vendored SDL2
++		// keeps its headers flat - include/SDL_syswm.h exists, include/SDL/ does not.
++		// Same defect as the <SDL/SDL.h> in rmxmedia_externals.h; see the note there.
++		#include <SDL_syswm.h>
+ 	#endif
+ 
+ 	#define WIN32_LEAN_AND_MEAN
+diff --git a/librmx/source/rmxmedia/framework/VideoManager.cpp b/librmx/source/rmxmedia/framework/VideoManager.cpp
+--- a/librmx/source/rmxmedia/framework/VideoManager.cpp
++++ b/librmx/source/rmxmedia/framework/VideoManager.cpp
+@@ -14,7 +14,10 @@
+ 	#if defined(__GNUC__)
+ 		#include <SDL2/SDL_syswm.h>
+ 	#else
+-		#include <SDL/SDL_syswm.h>
++		// [Sonic Hybrid Ultimate] <SDL/SDL_syswm.h> cannot resolve: the vendored SDL2
++		// keeps its headers flat - include/SDL_syswm.h exists, include/SDL/ does not.
++		// Same defect as the <SDL/SDL.h> in rmxmedia_externals.h; see the note there.
++		#include <SDL_syswm.h>
+ 	#endif
+ 
+ 	#define WIN32_LEAN_AND_MEAN
+diff --git a/librmx/source/rmxmedia_externals.h b/librmx/source/rmxmedia_externals.h
+--- a/librmx/source/rmxmedia_externals.h
++++ b/librmx/source/rmxmedia_externals.h
+@@ -27,12 +27,46 @@
+ 
+ 
+ // SDL
++//
++// [Sonic Hybrid Ultimate] The MSVC branch asked for <SDL/SDL.h>, which cannot resolve.
++//
++// The vendored SDL2 keeps its public headers flat:
++//
++//   framework/external/sdl/SDL2/include/SDL.h          present
++//   framework/external/sdl/SDL2/include/SDL2/          absent
++//   framework/external/sdl/SDL2/include/SDL/           absent
++//
++// so <SDL/SDL.h> needs an include/SDL/ subdirectory that does not exist, and no include
++// path can provide one. Every rmxmedia translation unit failed:
++//
++//   rmxmedia_externals.h(35,12): error C1083: Cannot open include file: 'SDL/SDL.h'
++//
++// Worth recording how this took four attempts to see, because the fourth was the
++// informative one. With the include DIRECTORIES configured correctly - source include
++// dir plus SDL's generated include-config-<config>/SDL2, that one first so
++// "SDL_config.h" resolves to the generated config - the error was byte-for-byte
++// identical. A path fix that cannot change the symptom was never going to be the fix.
++//
++// SDL's own sources spell it flat, and that is what its CMake exports:
++//
++//   src/SDL_assert.c : #include "SDL.h"
++//   CMakeLists.txt:332 target_include_directories(sdl-build-options BEFORE INTERFACE
++//                      "${SDL2_BINARY_DIR}/include"
++//                      "${SDL2_BINARY_DIR}/include-config-$<LOWER_CASE:$<CONFIG>>")
++//
++// The __GNUC__ branch is deliberately untouched: it builds against an MSYS2-provided
++// SDL2 laid out as SDL2/SDL.h, which is what that escape hatch was for. Only the MSVC
++// branch is wrong, and only because the vendored tree it compiles against is laid out
++// differently from the one the condition was written for.
++//
++// Companion to patches/sonic3air/0004-sdl-include-path.patch, which supplies the
++// directories that go with this spelling.
+ #ifdef PLATFORM_WINDOWS
+-	// Needed for MSYS2
++	// Needed for MSYS2, which provides its own SDL2 laid out as SDL2/SDL.h
+ 	#if defined(__GNUC__)
+ 		#include <SDL2/SDL.h>
+ 	#else
+-		#include <SDL/SDL.h>
++		#include <SDL.h>
+ 	#endif
+ 
+ #elif defined(PLATFORM_LINUX)

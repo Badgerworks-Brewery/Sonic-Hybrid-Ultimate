@@ -1,7 +1,7 @@
 diff --git a/Oxygen/sonic3air/source/sonic3air/helper/DiscordIntegration.cpp b/Oxygen/sonic3air/source/sonic3air/helper/DiscordIntegration.cpp
 --- a/Oxygen/sonic3air/source/sonic3air/helper/DiscordIntegration.cpp
 +++ b/Oxygen/sonic3air/source/sonic3air/helper/DiscordIntegration.cpp
-@@ -9,11 +9,32 @@
+@@ -9,11 +9,31 @@
  #include "sonic3air/pch.h"
  #include "sonic3air/helper/DiscordIntegration.h"
  
@@ -12,8 +12,8 @@ diff --git a/Oxygen/sonic3air/source/sonic3air/helper/DiscordIntegration.cpp b/O
 -#if (defined(PLATFORM_WINDOWS) && !defined(__GNUC__)) || (defined(PLATFORM_LINUX) && defined(USE_DISCORD)) || (defined(PLATFORM_MAC) && !defined(NO_DISCORD))
 +// Only platforms that asked for Discord integration get it.
 +//
-+// [Sonic Hybrid Ultimate] This used to be a per-platform judgement with nothing to do with
-+// the build option on two of the three platforms:
++// [Sonic Hybrid Ultimate] This used to be a per-platform judgement with nothing to do
++// with the build option on two of the three platforms:
 +//
 +//   #if (defined(PLATFORM_WINDOWS) && !defined(__GNUC__)) ||
 +//       (defined(PLATFORM_LINUX) && defined(USE_DISCORD)) ||
@@ -21,20 +21,19 @@ diff --git a/Oxygen/sonic3air/source/sonic3air/helper/DiscordIntegration.cpp b/O
 +//
 +// Windows enabled Discord for any non-GCC build and Mac for any build not defining
 +// NO_DISCORD, while A.I.R.'s CMake links discord_game_sdk_source only inside
-+// `if (USE_DISCORD)`. Those two disagree, so USE_DISCORD=OFF compiled the integration and
-+// then failed to link the SDK it calls:
++// `if (USE_DISCORD)`. Those two disagree, so USE_DISCORD=OFF compiled the integration
++// and then failed to link the SDK it calls:
 +//
 +//   sonic3air_game.lib(DiscordIntegration.obj) : error LNK2019: unresolved external symbol
 +//     "public: void __cdecl discord::ActivityAssets::SetLargeImage(char const *)"
 +//   ... 12 of them, every one a discord:: symbol.
 +//
-+// There was therefore no value of USE_DISCORD that made Windows agree with the link line.
-+// Linux already gated on it correctly, which is likely why this went unnoticed upstream.
++// There was therefore no value of USE_DISCORD that made Windows agree with the link
++// line. Linux already gated on it correctly, which is likely why this went unnoticed.
 +//
-+// Sonic Hybrid Ultimate wants USE_DISCORD=OFF regardless - the app has no networking - so
-+// this is what makes the setting take effect here instead of being silently overridden.
-+//
-+// NO_DISCORD is kept as an additional explicit opt-out.
++// Sonic Hybrid Ultimate wants USE_DISCORD=OFF regardless - the app has no networking -
++// so this is what makes the setting take effect here instead of being silently
++// overridden. NO_DISCORD is kept as an additional explicit opt-out.
 +#if defined(USE_DISCORD) && !defined(NO_DISCORD)
  	#define SUPPORT_DISCORD
  #endif

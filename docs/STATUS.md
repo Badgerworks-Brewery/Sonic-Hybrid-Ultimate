@@ -2595,6 +2595,141 @@ So the remaining work is: extract `RunOneFrame()`, decide which engine presents 
 route the other engine's renderer and audio device into it. The nesting hook already exists on
 the A.I.R. side, which removes the hardest part of that from the list.
 
+## A clean-tree build works: both engines in one DLL, 13 patches, 0 errors
+
+The state this had been in for most of the session was "it links, but only with a stale build
+directory". Deleting `build/` exposed three defects that the CMake cache had been carrying.
+
+```
+configure  exit 0
+build      exit 0
+errors     0
+OxygenEngine.dll  13,965,312 bytes
+
+content, verified by scanning the binary:
+  AIR engine      librmx x7, vorbis x2, GLEW_ x858
+  AIR game layer  "Sonic 3 A.I.R." x6, GameMenuManager x2, "Ready to go" x2
+  RSDKv4          CollisionMasks.bin, Backgrounds.bin, Bytecode\, bonusStages
+```
+
+### Why the build directory had to be deleted to see any of this
+
+`VCPKG_INSTALLED_DIR` defaulted to `build/vcpkg_installed`, so deleting `build/` removed the
+installed packages and configure failed on `unofficial-theora`. The packages are actually present
+at the repository root, so configure now takes them explicitly:
+
+    cmake -S . -B build \
+      -DCMAKE_TOOLCHAIN_FILE="$PWD/vcpkg/scripts/buildsystems/vcpkg.cmake" \
+      -DVCPKG_INSTALLED_DIR="$PWD/vcpkg_installed" -DVCPKG_MANIFEST_MODE=OFF \
+      -DBUILD_SONIC3AIR=ON -DUSE_IMGUI=ON
+
+`CMAKE_TOOLCHAIN_FILE` must be passed explicitly because the root `CMakeLists.txt` does not set
+it and has no `CMAKE_TOOLCHAIN_FILE` in its cache unless it is given one; `-D` on the command line
+is set *before* the toolchain file is read, whereas a `set()` inside `CMakeLists.txt` is not.
+
+### Defect 1: `<SDL/SDL.h>` cannot resolve, and no include path can fix it
+
+`rmxmedia_externals.h:30-36` picks the SDL spelling by platform and compiler:
+
+    #ifdef PLATFORM_WINDOWS
+      #if defined(__GNUC__)
+        #include <SDL2/SDL.h>      <- GCC and Linux
+      #else
+        #include <SDL/SDL.h>       <- MSVC
+      #endif
+
+and the vendored SDL2 keeps its public headers **flat**:
+
+    framework/external/sdl/SDL2/include/SDL.h          present
+    framework/external/sdl/SDL2/include/SDL/           absent
+    framework/external/sdl/SDL2/include/SDL2/          absent
+
+So `<SDL/SDL.h>` needs an `include/SDL/` subdirectory that does not exist. SDL's own sources spell
+it flat (`src/SDL_assert.c: #include "SDL.h"`) and SDL's `CMakeLists.txt:332` exports exactly the
+two directories that support that. Upstream defect: on Windows with a vendored SDL2, that branch
+cannot work.
+
+**Four attempts, and the fourth is the one worth remembering.** Each fixed the include *path* and
+each failed differently:
+
+| Attempt | Path given | Result |
+|---|---|---|
+| 1 | `framework/include` | C1083 - directory does not exist |
+| 2 | `framework/external/sdl/SDL2/include` | C1083 gone, then 195x C1189 on `SDL_config.h` |
+| 3 | both, `include_directories()` | SDL's own `SDL_mslibc.c` fails |
+| 4 | both, `target_include_directories()` | **C1083, byte-for-byte identical to attempt 1** |
+
+Attempt 4 is the informative one: the include directories were now provably correct and the error
+was unchanged. That is the signal that the *spelling* was the bug and no path could ever fix it.
+Two directories are genuinely needed - the source include dir, and SDL's **generated**
+`include-config-<config>/SDL2` which holds the real `SDL_config.h`, listed first so the source
+tree's dispatcher (which falls back to `SDL_config_minimal.h`) loses.
+
+`include_directories()` is the wrong scope, and finding out cost 195 errors: it reaches every
+subdirectory added afterwards, including SDL's own `add_subdirectory()`.
+
+Patch 0004 supplies the directories; new patch 0015 changes the spelling, and also
+`<SDL/SDL_syswm.h>` -> `<SDL_syswm.h>` in `SystemManager.cpp` and `VideoManager.cpp`, which was
+the same defect in two more files - found only because the build reports one error per file and
+those files had not been reached yet.
+
+### Defect 2: `oxygen` was never given curl on Windows
+
+    oxygen/download/Downloader.cpp(17,11): error C1083: Cannot open include file: 'curl/curl.h'
+
+A.I.R.'s `_cmake/CMakeLists.txt:385-388`:
+
+    if (UNIX)
+      find_package(CURL REQUIRED)
+      target_link_libraries(oxygen CURL::libcurl)
+    endif()
+
+while `Downloader.cpp` includes `<curl/curl.h>` unconditionally - it compiles on every platform.
+So on Windows `oxygen` got no curl include directory at all. This project already set
+`CURL_INCLUDE_DIR` and `CURL_LIBRARY` correctly, which is exactly what made it confusing: the
+variable was right and the target did not have it.
+
+Now attached to `oxygen` directly, after `add_subdirectory`. Three mistakes in getting there, each
+of which configured successfully while doing nothing:
+
+- Placed **before** `add_subdirectory`, where `oxygen` does not exist yet. CMake silently ignores
+  `target_include_directories()` on a non-existent target, and the vcxproj had no curl include.
+- Guarded by `if(TARGET CURL::libcurl)` - false on Windows, precisely because `find_package(CURL)`
+  is inside `if (UNIX)`. So the guard skipped the branch it was protecting and printed no
+  diagnostic.
+- Used the **keyword** signature where A.I.R. uses the plain one, which is a configure error:
+  CMake requires every `target_link_libraries` call for a target to agree on plain-vs-keyword.
+
+Both curl facts are now asserted, so a moved or missing vendored curl fails at configure with a
+sentence rather than as a compiler error 6,000 lines later.
+
+### Defect 3: patch 0004 had been "fixed" three times, each time only the path
+
+The earlier patch-0004 revisions are worth listing because each looked correct in isolation:
+
+- `framework/include` - a directory that does not exist.
+- the real source include dir only - finds `SDL.h`, then 195 C1189 because `SDL_config.h` is
+  generated into the binary tree.
+- `include_directories()` for both - and then broke SDL's own sources.
+
+And the chain consequences: changing 0004 invalidates 0012 and 0013, which share its file. Both are
+regenerated by one bottom-up script, because generating them at different times from different
+states produces patches that conflict with each other - which happened repeatedly, and the applier
+correctly reported `CONFLICT` each time.
+
+Generated patches no longer carry the `index <pre>..<post>` line. `git apply` honours it as a
+pre-image blob check, so a patch carrying it depends on the exact content its predecessor produced;
+regenerating one patch then broke everything above it with an error that pointed at line numbers
+while the context matched character for character.
+
+### What is verified, and how
+
+    13 patches, 13 manifest entries, all must_contain and must_not_contain verified
+    all 13 patches are well-formed unified diffs (hunk line counts reconciled)
+    apply from pristine, exit 0
+    configure exit 0, build exit 0, 0 errors
+    both engines' literals present in the output
+
 ## The collision question is answered: zero, and it was measurable all along
 
 The symbol-collision question was open for most of the session. It is now answered, and the

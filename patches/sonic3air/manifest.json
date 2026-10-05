@@ -33,16 +33,19 @@
     ]
   },
   "0004-sdl-include-path.patch": {
-    "why": "rmxmedia_externals.h asks for <SDL/SDL.h> on MSVC (GCC and Linux take the <SDL2/SDL.h> branch), and nothing provided that spelling - every rmxmedia translation unit failed with C1083. The line that used to be here, include_directories(SDL/include), is a no-op because 'SDL' is the add_subdirectory binary directory name, not a source path. TWO include directories are needed: the SDL2 source include dir for SDL.h, and SDL's generated include-config-<config>/SDL2 for SDL_config.h. Adding only the first finds SDL.h and then fails 195x with C1189.",
+    "why": "A.I.R.'s MSVC build asks for <SDL/SDL.h>, which cannot resolve against the vendored SDL2 because its headers are flat. These are the include DIRECTORIES that go with the corrected spelling in patch 0015: the SDL2 source include dir, and SDL's GENERATED include-config-<config>/SDL2 which holds the real SDL_config.h - listed first so it wins over the source dispatcher that falls back to SDL_config_minimal.h. target_include_directories, not include_directories, because the latter also reached SDL's own add_subdirectory and broke SDL_mslibc.c. Each call sits after its add_library, since CMake requires the target to exist first.",
     "must_contain": [
       "+file(GLOB AIR_SDL_GENERATED_CONFIG_DIRS",
-      "+\tinclude_directories(${WORKSPACE_DIR}/framework/external/sdl/SDL2/include)",
-      "+\ttarget_include_directories(rmxmedia PUBLIC",
+      "+target_include_directories(rmxbase PUBLIC",
+      "+target_include_directories(rmxmedia PUBLIC",
+      "+\t${WORKSPACE_DIR}/framework/external/sdl/SDL2/include",
       "+\t${AIR_SDL_GENERATED_CONFIG_DIRS}"
     ],
     "must_not_contain": [
       "+\tinclude_directories(SDL/include)",
-      "+\tinclude_directories(${WORKSPACE_DIR}/framework/include)"
+      "+\tinclude_directories(${WORKSPACE_DIR}/framework/include)",
+      "+\ttarget_include_directories(glew PUBLIC",
+      "+\ttarget_include_directories(sonic3air_game PUBLIC"
     ]
   },
   "0005-stdcxxfs-guard.patch": {
@@ -114,6 +117,17 @@
     ],
     "must_not_contain": [
       "+# [Sonic Hybrid Ultimate]"
+    ]
+  },
+  "0015-sdl-include-spelling.patch": {
+    "why": "The vendored SDL2 keeps its public headers flat - include/SDL.h and include/SDL_syswm.h exist, include/SDL/ and include/SDL2/ do not - so <SDL/SDL.h> and <SDL/SDL_syswm.h> can never resolve and no include path can fix that. SDL's own sources spell these flat and SDL's CMake exports the matching directories. Four attempts to fix only the path each failed; the fourth was informative because with the directories configured correctly the error was byte-for-byte identical. The GCC branch is untouched: it builds against an MSYS2 SDL2 laid out as SDL2/SDL.h.",
+    "must_contain": [
+      "+\t\t#include <SDL.h>",
+      "+\t\t#include <SDL_syswm.h>"
+    ],
+    "must_not_contain": [
+      "+\t\t#include <SDL/SDL.h>",
+      "+\t\t#include <SDL/SDL_syswm.h>"
     ]
   }
 }
