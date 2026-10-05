@@ -2595,6 +2595,69 @@ So the remaining work is: extract `RunOneFrame()`, decide which engine presents 
 route the other engine's renderer and audio device into it. The nesting hook already exists on
 the A.I.R. side, which removes the hardest part of that from the list.
 
+## The Sonic CD container format: found a reader, and it is the wrong one
+
+`RSDKV3/RSDKv3/Script.cpp:1871` is `LoadBytecode`, and it reads exactly the files in
+`rsdk-source-data/soniccd/Data/Scripts/ByteCode/`. So the format was described in the tree all
+along. The description is:
+
+```
+scriptCodeSize  (u32, little-endian)
+scriptCode      scriptCodeSize elements, RLE encoded
+jumpTableSize   (u32, little-endian)
+jumpTable       jumpTableSize elements, RLE encoded
+
+one block = one byte:  low 7 bits = run length
+                         high bit  = 0 -> that many zeros
+                                      1 -> that many literal u32s
+```
+
+**0 of 88 containers decode.** `scripts/cd_bytecode_reader.py` implements exactly that and fails
+identically on every file: a zero-length block a few bytes in. Under `LoadBytecode`'s own loop
+that is not a parse failure but an infinite loop - `while (scriptCodeSize > 0)` with
+`blockSize == 0` never advances. So these files are not the layout that function reads.
+
+What was measured, so the next attempt does not repeat this one:
+
+```
+GS000.bin   fa 86 00 00 7f 0f 01 00 61 01 01 00
+PS000.bin   85 0e 00 00 7f 22 02 00 01 00 13 7b
+PS001.bin   fb 59 00 00 09 04 01 00 20 0a 01 00
+PS002.bin   26 25 00 00 0b 05 01 00 21 16 02 00
+PS003.bin   4c 14 00 00 7f 22 02 00 01 00 13 16
+```
+
+- u32 at offset 0 is a plausible element count in every case - 34554, 3717, 9510, 5196, 23035 -
+  but the RLE that follows does not hold.
+- u32 at offset 4 is also plausible (0x010f7f, 0x02227f, 0x010409) and also does not decode.
+- The first byte takes **66 distinct values across 88 files**, so it is not a signature.
+- Ruled out: an `RSDKvB` signature (absent, and expected - this is an RSDKv3 pack); per-file format
+  variation (0 of 88 either way); the reference `Sonic CD.rsdk` being different bytes (verified
+  identical earlier, so it cannot explain it).
+
+### Why this is worth recording rather than just noting
+
+`LoadBytecode` also explains the *filenames*, which is the strongest evidence these are the intended
+runtime files and therefore that the mismatch is interesting rather than expected:
+
+```
+Data/Scripts/ByteCode/<listID><nnn>.bin
+listID: P = PRESENTATION, R = REGULAR, B = BONUS, S = SPECIAL
+```
+
+The leading letter is the stage **list**, not the stage. So `RS061.bin` is REGULAR stage 61, and 70
+RS files against 70 stage folders follows from the naming scheme rather than being a coincidence.
+
+The correction to this document is worth stating plainly: it previously said the format was
+"un-reverse-engineered" and needed a Sonic CD RSDKv3 mod source. It was not under-described - it was
+described, by the wrong function, or these files are not what that function reads. Both readings
+remain open, and the reader above now says so in its own docstring and exits non-zero rather than
+printing a plausible-looking table.
+
+**Unchanged and still true:** 70 stages have no bytecode, all Sonic CD, so their objects spawn with
+no Main, Draw or Startup. `scripts/check_script_entrypoints.py` reports that, and reports it
+identically before and after this work - which is how it was confirmed not to be a regression.
+
 ## A clean-tree build works: both engines in one DLL, 13 patches, 0 errors
 
 The state this had been in for most of the session was "it links, but only with a stale build
