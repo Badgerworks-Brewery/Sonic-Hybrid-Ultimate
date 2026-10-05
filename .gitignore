@@ -89,3 +89,5 @@ __pycache__/
 .keepalive-heartbeat
 .keepalive-heartbeat.tmp
 .keepalive.log
+.keepalive.pid
+.keepalive-watchdog.log

@@ -33,12 +33,15 @@
     ]
   },
   "0004-sdl-include-path.patch": {
-    "why": "Add A.I.R.'s bundled SDL include dir; MSVC needs <SDL/SDL.h>, which only framework/include provides.",
+    "why": "rmxmedia_externals.h asks for <SDL/SDL.h> on MSVC (GCC and Linux take the <SDL2/SDL.h> branch), and nothing provided that spelling - every rmxmedia translation unit failed with C1083. The line that used to be here, include_directories(SDL/include), is a no-op because 'SDL' is the add_subdirectory binary directory name, not a source path. TWO include directories are needed: the SDL2 source include dir for SDL.h, and SDL's generated include-config-<config>/SDL2 for SDL_config.h. Adding only the first finds SDL.h and then fails 195x with C1189.",
     "must_contain": [
-      "framework/include"
+      "+file(GLOB SDL_GENERATED_CONFIG_DIRS",
+      "+\tinclude_directories(${WORKSPACE_DIR}/framework/external/sdl/SDL2/include)",
+      "+\tinclude_directories(${SDL_GENERATED_CONFIG_DIRS})"
     ],
     "must_not_contain": [
-      "stdc++fs"
+      "+\tinclude_directories(SDL/include)",
+      "+\tinclude_directories(${WORKSPACE_DIR}/framework/include)"
     ]
   },
   "0005-stdcxxfs-guard.patch": {
